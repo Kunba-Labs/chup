@@ -4,10 +4,11 @@
 
 With the island enabled on a notched display, the hover rail no longer appears at all; its controls moved under the notch. The island stays compact whenever it owns the rail's job — drawing nothing at rest, so the notch is always a hover target — and expands while dictating or while the pointer is over it. A display without a notch gets no compact state from DynamicNotchKit, so the rail keeps every case there.
 
-- Native arm64 build 73 passed: `.artifacts/island-controls-build.log`.
+- Native arm64 build passed: `.artifacts/island-controls-build.log`.
 - Offline native suite passed, including the new island presentation-policy check: `.artifacts/island-controls-native.log`; no microphone opened.
 - Design asset rendered from the shipping views: `Design/Previews/31-dynamic-island.png`.
-- Installation deferred: Chup! was running and may have been recording, so no process was stopped. Build 73 is staged in `.artifacts/DerivedData/Build/Products/Debug/Chup!.app`.
+- Installed **Chup! 1.0 (75)** at `/Applications/Chup!.app` after the user explicitly authorised terminating the running app; the running instance was quit gracefully, not force-killed. One stable process (PID 83990) verified for 20 seconds.
+- Follow-up in the same delivery: the island drew nothing and hid itself at rest, leaving the moved controls unreachable, so compact now stays present as an invisible hover target, hover shows the control row in every state, and the expanded band is 560 × 64.
 - Manual check after install: with the island on, confirm the rail never appears; hover the compact island during a recording and confirm pause and stop act on the meeting; toggle the setting off and confirm the rail returns immediately.
 
 ## Paste diagnostics and clearer recovery results — 2026-09-15
