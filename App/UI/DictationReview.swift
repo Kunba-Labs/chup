@@ -129,7 +129,7 @@ private struct ReviewTextEditor: NSViewRepresentable {
     view.isVerticallyResizable = true
     view.isHorizontallyResizable = false
     view.minSize = .zero
-    view.maxSize = NSSize(width: .greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
+    view.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
     view.textContainer?.widthTracksTextView = true
     view.textContainer?.heightTracksTextView = true
     view.textContainerInset = NSSize(width: 12, height: 12)
