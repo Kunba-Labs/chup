@@ -121,7 +121,7 @@ private struct ReviewTextEditor: NSViewRepresentable {
 
   func makeCoordinator() -> Coordinator { Coordinator(state: state) }
   func makeNSView(context: Context) -> NSTextView {
-    let view = NSTextView()
+    let view = TopAlignedTextView()
     view.delegate = context.coordinator
     view.font = .systemFont(ofSize: 16)
     view.isRichText = false
@@ -170,4 +170,12 @@ private struct ReviewTextEditor: NSViewRepresentable {
       state.dictationReviewSelection = view.selectedRange()
     }
   }
+}
+
+/// NSTextView's default non-flipped coordinate system can place a short
+/// paragraph against the lower edge when it is hosted directly by SwiftUI
+/// rather than inside an NSScrollView. A flipped subclass keeps the text
+/// container's origin at the visible top of the review field.
+private final class TopAlignedTextView: NSTextView {
+  override var isFlipped: Bool { true }
 }
