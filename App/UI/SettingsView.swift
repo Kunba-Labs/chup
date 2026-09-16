@@ -220,8 +220,9 @@ struct SettingsView: View {
       }
       WorkspaceCard("Floating controls", icon: "sidebar.right") {
         SettingSwitch(
-          title: "Show Dynamic Island transcript",
-          detail: "Show a dark top-center pill while dictation is listening or processing.",
+          title: "Use the Dynamic Island",
+          detail:
+            "On a notched display, put the live transcript, voice level and controls under the notch and keep the edge rail hidden. Other displays keep the rail.",
           isOn: $state.dynamicIslandEnabled)
         Picker("Dock at", selection: $state.railDock) {
           Text("Left").tag("left")

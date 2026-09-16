@@ -29,6 +29,7 @@ import CAudioSafety
       return
     }
     try await MicrophoneHealthValidation.run()
+    try DynamicIslandController.validatePresentationPolicy()
     try ShortcutRegistry.validateBindings()
     try await ShortcutRegistry.validateCallbackDelivery()
     try await TextInsertion.validateFocusObservation()

@@ -54,7 +54,11 @@ extension WorkspaceState {
     }
   }
   private func refreshDictationIndicator() {
-    if dictationStatus == .listening || dictationStatus == .processing || dictationFeedback != nil || dictationMicMessage != nil {
+    // The island already carries listening and transcribing, so the edge
+    // indicator is left with what the island does not say: delivery results
+    // and microphone problems.
+    let live = !islandCoversRail && (dictationStatus == .listening || dictationStatus == .processing)
+    if live || dictationFeedback != nil || dictationMicMessage != nil {
       if dictationIndicator == nil { dictationIndicator = DictationIndicatorController(state: self) }
       dictationIndicator?.show()
     } else { dictationIndicator?.hide() }

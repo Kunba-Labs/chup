@@ -1,5 +1,7 @@
 # Implementation status
 
+On a notched display the Dynamic Island now carries the floating controls and the hover rail stays hidden: compact glyph and live input level beside the notch during activity, the live transcript and Review while dictating, and the rail's dictate, meeting, assistant and settings row (pause and stop while recording) on hover. Displays without a notch keep the rail unchanged, and the edge indicator is left with delivery results and microphone problems. Build 73, the offline native suite and the island presentation-policy check pass; installation is deferred while Chup! is running. Design asset: `Design/Previews/31-dynamic-island.png`.
+
 Paste recovery now reports “Copied to clipboard” instead of the misleading “Couldn’t paste,” and Dictation diagnostics shows the trigger, route and safety reason for the last 20 delivery attempts. “Paste not confirmed” is reserved for a dispatched paste whose target did not verify the change.
 
 The rail and dictation pill now share a 2-point physical screen-edge inset. Transient dictation errors and microphone/delivery messages clear after 1.5 seconds; saved audio and ongoing meeting status remain intact. Build, 104 core tests, the offline native suite and actual window placement/reset checks pass. See the newest validation entry for deployment status and logs.

@@ -1,5 +1,15 @@
 # Validation
 
+## Dynamic Island absorbs the floating controls — 2026-09-16
+
+With the island enabled on a notched display, the hover rail no longer appears at all; its controls moved under the notch. The island is hidden when nothing is happening, compact during meeting, voice or dictation activity, and expanded while dictating or while the pointer is over it. A display without a notch gets no compact state from DynamicNotchKit, so the rail keeps every case there.
+
+- Native arm64 build 73 passed: `.artifacts/island-controls-build.log`.
+- Offline native suite passed, including the new island presentation-policy check: `.artifacts/island-controls-native.log`; no microphone opened.
+- Design asset rendered from the shipping views: `Design/Previews/31-dynamic-island.png`.
+- Installation deferred: Chup! was running and may have been recording, so no process was stopped. Build 73 is staged in `.artifacts/DerivedData/Build/Products/Debug/Chup!.app`.
+- Manual check after install: with the island on, confirm the rail never appears; hover the compact island during a recording and confirm pause and stop act on the meeting; toggle the setting off and confirm the rail returns immediately.
+
 ## Paste diagnostics and clearer recovery results — 2026-09-15
 
 Paste recovery now distinguishes “Copied to clipboard” from an actual copy failure. The former means the destination was unavailable, changed focus, or could not be safely confirmed; the text is preserved for manual paste. “Paste not confirmed” means a paste command was dispatched but the target did not expose a verifiable change. Every delivery records its trigger, route and safety reason in the Dictation diagnostics Paste activity card, without storing transcript text.

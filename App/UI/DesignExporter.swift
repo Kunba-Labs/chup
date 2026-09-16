@@ -65,6 +65,10 @@ import ChupCore
         try exportCompactMotion(state: state, destination: destination)
         return
       }
+      if ProcessInfo.processInfo.environment["CHUP_ISLAND_PREVIEW"] == "1" {
+        try exportIslandBoard(destination: destination)
+        return
+      }
       let now = Date(timeIntervalSince1970: 1_789_387_200)
       state.meetings = [
         Meeting(
@@ -375,6 +379,41 @@ import ChupCore
     try renderNative(AssistantView().environmentObject(state), size: CGSize(width: 620, height: 650), to: destination.appendingPathComponent("layout-assistant.png"))
     print("Native layout review exported: settings, library, meeting tabs, onboarding and sheets. Sample content only.")
   }
+  /// Each tile needs its own state, so the board shows five simultaneous
+  /// island states. Sample levels and text only; nothing is captured.
+  private static func exportIslandBoard(destination: URL) throws {
+    var states: [WorkspaceState] = []
+    func stage(_ configure: (WorkspaceState) -> Void) -> WorkspaceState {
+      let state = WorkspaceState(preview: true)
+      states.append(state)
+      configure(state)
+      return state
+    }
+    defer { states.forEach { try? FileManager.default.removeItem(at: $0.root) } }
+    let bars: [Float] = [0.42, 0.78, 0.55, 0.9, 0.36]
+    let board = IslandDesignBoard(
+      compact: stage {
+        $0.dictationStatus = .listening
+        $0.micWaveform = bars
+        $0.dictationLiveText = "launch moves to the fourth"
+      },
+      listening: stage {
+        $0.dictationStatus = .listening
+        $0.micWaveform = bars
+        $0.dictationLiveText = "launch moves to the fourth"
+      },
+      processing: stage { $0.dictationStatus = .processing },
+      ready: stage { $0.dictationStatus = .idle },
+      recording: stage {
+        $0.meetingStatus = .recording
+        $0.activeMeetingID = "preview-launch"
+        $0.elapsed = 768
+        $0.micWaveform = bars
+      })
+    try renderNative(board, size: CGSize(width: 1180, height: 1240),
+      to: destination.appendingPathComponent("31-dynamic-island.png"))
+    print("Island design board exported. Sample states only; no capture, no transcription.")
+  }
   private static func renderNative<V: View>(_ view: V, size: CGSize, to url: URL) throws {
     let host = NSHostingView(
       rootView: view.environment(\.colorScheme, .light).tint(Palette.olive).frame(
@@ -627,6 +666,100 @@ struct RailDesignBoard: View {
         .font(.system(size: 12)).foregroundStyle(Palette.secondary)
     }.padding(48).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
       .background(Palette.workspace).foregroundStyle(Palette.ink).environment(\.colorScheme, .light)
+  }
+}
+
+/// Proposed: with the island on, the hover rail stays hidden and its controls
+/// move into the island. Native views on a mocked desktop band.
+struct IslandDesignBoard: View {
+  @ObservedObject var compact: WorkspaceState
+  @ObservedObject var listening: WorkspaceState
+  @ObservedObject var processing: WorkspaceState
+  @ObservedObject var ready: WorkspaceState
+  @ObservedObject var recording: WorkspaceState
+  var body: some View {
+    VStack(alignment: .leading, spacing: 26) {
+      Text("CHUP! / DYNAMIC ISLAND · PROPOSAL").font(.system(size: 10, weight: .semibold))
+        .tracking(1.8).foregroundStyle(Palette.secondary)
+      Text("One surface at the top, instead of two.").font(.system(size: 36, design: .serif))
+      Text(
+        "When the island is on, the edge rail stays hidden. Its voice animation, dictate, meeting, assistant and settings controls move under the notch."
+      ).font(.system(size: 14)).foregroundStyle(Palette.secondary)
+        .fixedSize(horizontal: false, vertical: true).frame(width: 760, alignment: .leading)
+      row("01  COMPACT · LISTENING", "Glyph and live input level flank the notch. Nothing else is shown while you talk.") {
+        IslandStage {
+          IslandNotch(expanded: false) {
+            HStack(spacing: 0) {
+              IslandGlyph(state: compact, size: 18)
+              Spacer(minLength: 150)
+              VoiceWaveform(samples: compact.micWaveform, width: 20, height: 16, color: .white)
+            }.padding(.horizontal, 14).frame(width: 300, height: 30)
+          }
+        }
+      }
+      row("02  EXPANDED · DICTATING", "Hover reveals Review before pasting. The transcript keeps the tail of the sentence visible.") {
+        IslandStage { IslandNotch { DynamicIslandContent(state: listening, pinnedHover: true) } }
+      }
+      row("03  EXPANDED · TRANSCRIBING", "The spinner is the only claim made while text is still being produced.") {
+        IslandStage { IslandNotch { DynamicIslandContent(state: processing, pinnedHover: false) } }
+      }
+      row("04  EXPANDED · CONTROLS", "Hovering when idle gives the old rail row: dictate, meeting, assistant, settings.") {
+        IslandStage { IslandNotch { DynamicIslandContent(state: ready, pinnedHover: true) } }
+      }
+      row("05  EXPANDED · RECORDING", "A running meeting swaps in pause and stop, so capture is one click from control.") {
+        IslandStage { IslandNotch { DynamicIslandContent(state: recording, pinnedHover: true) } }
+      }
+      Divider()
+      Text(
+        "TRADE-OFF · FULLY IDLE, NOTHING IS SHOWN. THE MENU BAR ITEM AND SHORTCUTS STAY THE IDLE ENTRY POINTS."
+      ).font(.system(size: 9, weight: .medium)).tracking(1).foregroundStyle(Palette.secondary)
+      Text("NATIVE SWIFTUI · MOCKED DESKTOP BAND · SAMPLE LEVELS AND TEXT, NO CAPTURE")
+        .font(.system(size: 9, weight: .medium)).tracking(1).foregroundStyle(Palette.secondary)
+    }.padding(48).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      .background(Palette.workspace).foregroundStyle(Palette.ink).environment(\.colorScheme, .light)
+  }
+  private func row<V: View>(_ label: String, _ caption: String, @ViewBuilder content: () -> V)
+    -> some View
+  {
+    HStack(alignment: .center, spacing: 30) {
+      content()
+      VStack(alignment: .leading, spacing: 8) {
+        Text(label).font(.system(size: 9, weight: .semibold)).tracking(1.4)
+          .foregroundStyle(Palette.secondary)
+        Text(caption).font(.system(size: 13)).lineSpacing(4)
+          .fixedSize(horizontal: false, vertical: true).frame(width: 300, alignment: .leading)
+      }
+    }
+  }
+}
+
+/// A mocked desktop strip. The real backdrop is whatever is behind the notch.
+private struct IslandStage<Content: View>: View {
+  @ViewBuilder let content: () -> Content
+  var body: some View {
+    ZStack(alignment: .top) {
+      LinearGradient(
+        colors: [Color(red: 0.20, green: 0.24, blue: 0.29), Color(red: 0.36, green: 0.31, blue: 0.28)],
+        startPoint: .topLeading, endPoint: .bottomTrailing)
+      content()
+    }.frame(width: 640, height: 170).clipShape(RoundedRectangle(cornerRadius: 14))
+  }
+}
+
+/// Menu bar plus the black notch body the package masks the content into.
+private struct IslandNotch<Content: View>: View {
+  var expanded = true
+  @ViewBuilder let content: () -> Content
+  var body: some View {
+    VStack(spacing: 0) {
+      Color.black.frame(height: 24)
+      content()
+        .background(
+          .black,
+          in: UnevenRoundedRectangle(
+            bottomLeadingRadius: expanded ? 24 : 12, bottomTrailingRadius: expanded ? 24 : 12,
+            style: .continuous))
+    }.environment(\.colorScheme, .dark)
   }
 }
 

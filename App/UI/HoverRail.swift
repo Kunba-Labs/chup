@@ -26,6 +26,11 @@ extension WorkspaceState {
   var hasRailActivity: Bool {
     hasPersistentRailActivity || dictationStatus != .idle
   }
+  /// With the island on a notch screen, its controls replace the rail's, so the
+  /// rail stays out of the way entirely instead of duplicating them.
+  var islandCoversRail: Bool {
+    dynamicIslandEnabled && DynamicIslandController.hasNotch(NSScreen.main)
+  }
   var compactDictationVisible: Bool {
     dictationStatus == .listening || dictationStatus == .processing || dictationFeedback != nil || dictationMicMessage != nil
   }
@@ -133,7 +138,8 @@ extension WorkspaceState {
     else { hide() }
   }
   func show() {
-    guard let state, !state.compactDictationVisible || state.hasPersistentRailActivity else { hide(); return }
+    guard let state, !state.islandCoversRail,
+      !state.compactDictationVisible || state.hasPersistentRailActivity else { hide(); return }
     relocate()
     panel.orderFrontRegardless()
   }

@@ -61,7 +61,12 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   var dictationTraceID: String?
   @Published var notice: String?
   @Published var dynamicIslandEnabled = UserDefaults.standard.object(forKey: "dynamicIslandEnabled") as? Bool ?? true {
-    didSet { defaults.set(dynamicIslandEnabled, forKey: "dynamicIslandEnabled"); dynamicIsland?.refresh() }
+    didSet {
+      defaults.set(dynamicIslandEnabled, forKey: "dynamicIslandEnabled")
+      dynamicIsland?.refresh()
+      rail?.refresh()
+      updateDictationIndicator()
+    }
   }
   @Published var dictationLiveText = "" { didSet { dynamicIsland?.refresh() } }
   @Published var deliveryDiagnostics: [DeliveryDiagnostic] = []
