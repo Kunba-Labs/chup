@@ -126,6 +126,13 @@ private struct ReviewTextEditor: NSViewRepresentable {
     view.font = .systemFont(ofSize: 16)
     view.isRichText = false
     view.drawsBackground = false
+    view.isVerticallyResizable = true
+    view.isHorizontallyResizable = false
+    view.minSize = .zero
+    view.maxSize = NSSize(width: .greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
+    view.textContainer?.widthTracksTextView = true
+    view.textContainer?.heightTracksTextView = true
+    view.textContainerInset = NSSize(width: 12, height: 12)
     context.coordinator.apply(state.dictationReviewText,
       selection: NSRange(location: (state.dictationReviewText as NSString).length, length: 0),
       to: view)
