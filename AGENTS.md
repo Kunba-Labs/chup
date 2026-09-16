@@ -6,6 +6,7 @@ The user requires a fresh build installed in their Applications folder after eve
 - Report the installed version/build and path in the handoff. Keep setup and validation documentation current.
 - Complete implementation, visual/automated validation and Codex's final code review before replacing or restarting the installed app. Installation and restart are the final delivery operation of the turn; do not restart mid-iteration and continue development afterward. Launch verification is part of that final operation.
 - Never force-quit an app that could be recording. If Chup! is running, finish building the replacement and defer replacing it until the user closes it safely. Do not install the separate virtual audio driver as part of routine app deployment.
+- If the user explicitly says “kill it and redeploy” (or equivalent), that is standing authorization for this delivery to terminate the running Chup! process before installation; perform it only as the final delivery operation and report the termination.
 - Product name and executable: `Chup!`; Xcode project/scheme: `Chup`; module: `ChupCore`; bundle/Keychain identity: `com.chup.mac`. No legacy identity aliases are needed.
 
 ## Repository and implementation conventions
