@@ -172,6 +172,16 @@ public struct ShortcutResolver {
     let heldIDs = Set(bindings.filter(held).map(\.id))
     latched.formIntersection(heldIDs)
     suppressed.formIntersection(heldIDs)
+    // A modifier-only hold must not begin after a navigation key was pressed
+    // while the modifier was down. Quartz can deliver the arrow key-up before
+    // the final flags-changed event; without this fence, the now-empty key set
+    // briefly looks like a fresh modifier-only shortcut and starts dictation.
+    if !keys.isEmpty {
+      for binding in bindings where binding.modifierOnly && binding.hold
+        && modifiers.isSuperset(of: binding.modifiers) {
+        suppressed.insert(binding.id)
+      }
+    }
     let match = bindings.filter { matches($0) && !suppressed.contains($0.id) }
       .sorted { $0.specificity > $1.specificity }.first
     var result: [ShortcutSignal] = []

@@ -36,6 +36,22 @@ final class MultipleShortcutTests: XCTestCase {
         [.init(action: .holdDictation, began: false)])
     }
   }
+  func testNavigationKeysCannotPromoteModifierOnlyDictationHold() {
+    let hold = ShortcutBinding(.holdDictation, [.control, .shift], hold: true)
+    var resolver = ShortcutResolver(bindings: [hold])
+    XCTAssertTrue(resolver.update(modifiers: [.control, .shift], keys: [], time: 0).isEmpty)
+    // Right/left arrows arrive as ordinary key events while modifiers remain held.
+    XCTAssertTrue(resolver.update(modifiers: [.control, .shift], keys: [124], time: 0.05).isEmpty)
+    XCTAssertTrue(resolver.update(modifiers: [.control, .shift], keys: [], time: 0.25).isEmpty)
+    XCTAssertTrue(resolver.update(modifiers: [.control, .shift], keys: [123], time: 0.30).isEmpty)
+    XCTAssertTrue(resolver.update(modifiers: [.control, .shift], keys: [], time: 0.50).isEmpty)
+    XCTAssertTrue(resolver.update(modifiers: [], keys: [], time: 0.60).isEmpty)
+    // A clean hold after the navigation keys still works.
+    XCTAssertTrue(resolver.update(modifiers: [.control, .shift], keys: [], time: 1.0).isEmpty)
+    XCTAssertEqual(
+      resolver.update(modifiers: [.control, .shift], keys: [], time: 1.2),
+      [.init(action: .holdDictation, began: true)])
+  }
   func testCaptureRetainsFullModifierAndOrdinaryChordsDuringPartialRelease() {
     var capture = ShortcutCapture()
     for modifiers: KeyModifiers in [.control, [.control, .shift], .shift, []] {
