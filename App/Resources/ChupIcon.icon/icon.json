@@ -1,0 +1,14 @@
+{
+  "fill": { "solid": "srgb:0.035,0.030,0.027,1.000" },
+  "groups": [
+    {
+      "layers": [
+        { "image-name": "Waveform.png", "name": "Scanner waveform" }
+      ],
+      "name": "Waveform",
+      "shadow": { "kind": "neutral", "opacity": 0.0 },
+      "translucency": { "enabled": false, "value": 0.0 }
+    }
+  ],
+  "supported-platforms": { "squares": "shared" }
+}

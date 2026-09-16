@@ -1,0 +1,6 @@
+Parakeet TDT 0.6B v3
+Original weights: NVIDIA https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
+Core ML conversion: FluidInference https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml
+Conversion revision: 7dd20fe6b1797d35f5e3307e8b1732d9a178edfe
+Model license: CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+Chup uses the Core ML conversion without further weight modifications. No endorsement is implied.

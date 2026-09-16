@@ -1,0 +1,14 @@
+.build/
+DerivedData/
+.tools/
+node_modules/
+.env
+*.xcuserstate
+xcuserdata/
+.DS_Store
+*.xcresult
+.artifacts/
+__pycache__/
+backend/.data/
+.codex/
+.xcodebuildmcp/
