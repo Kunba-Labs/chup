@@ -117,7 +117,7 @@ extension WorkspaceState {
 }
 
 private struct ReviewTextEditor: NSViewRepresentable {
-  let state: WorkspaceState
+  @ObservedObject var state: WorkspaceState
 
   func makeCoordinator() -> Coordinator { Coordinator(state: state) }
   func makeNSView(context: Context) -> NSTextView {
@@ -126,23 +126,39 @@ private struct ReviewTextEditor: NSViewRepresentable {
     view.font = .systemFont(ofSize: 16)
     view.isRichText = false
     view.drawsBackground = false
-    view.string = state.dictationReviewText
-    view.selectedRange = NSRange(location: (view.string as NSString).length, length: 0)
+    context.coordinator.apply(state.dictationReviewText,
+      selection: NSRange(location: (state.dictationReviewText as NSString).length, length: 0),
+      to: view)
     return view
   }
   func updateNSView(_ view: NSTextView, context: Context) {
-    if view.string != state.dictationReviewText { view.string = state.dictationReviewText }
-    if view.selectedRange != state.dictationReviewSelection { view.selectedRange = state.dictationReviewSelection }
+    // NSTextView sends textDidChange while its string is assigned. Without a
+    // guard, the initial blank view can overwrite the freshly seeded state
+    // during the same render pass that presents the panel.
+    let selection = state.dictationReviewSelection
+    if view.string != state.dictationReviewText || view.selectedRange != selection {
+      context.coordinator.apply(state.dictationReviewText, selection: selection, to: view)
+    }
   }
   final class Coordinator: NSObject, NSTextViewDelegate {
     let state: WorkspaceState
+    private var applyingState = false
     init(state: WorkspaceState) { self.state = state }
+    func apply(_ text: String, selection: NSRange, to view: NSTextView) {
+      applyingState = true
+      defer { applyingState = false }
+      if view.string != text { view.string = text }
+      let clamped = NSRange(location: min(selection.location, (text as NSString).length), length: 0)
+      view.setSelectedRange(clamped)
+    }
     func textDidChange(_ notification: Notification) {
+      guard !applyingState else { return }
       guard let view = notification.object as? NSTextView else { return }
       state.dictationReviewText = view.string
       state.dictationReviewSelection = view.selectedRange()
     }
     func textViewDidChangeSelection(_ notification: Notification) {
+      guard !applyingState else { return }
       guard let view = notification.object as? NSTextView else { return }
       state.dictationReviewSelection = view.selectedRange()
     }
