@@ -22,7 +22,7 @@ import SwiftUI
     notch = DynamicNotch(hoverBehavior: .all, style: .auto) {
       DynamicIslandContent(state: state)
     } compactLeading: {
-      IslandGlyph(state: state, size: 16)
+      IslandGlyph(state: state, size: 16, hideAtRest: true)
     } compactTrailing: {
       IslandLevel(state: state)
     }
@@ -41,12 +41,13 @@ import SwiftUI
   }
 
   /// Pure decision, so the policy is checkable offline without a display.
+  /// Compact stays present whenever the island owns the rail's job, so the
+  /// notch is always there to hover; at rest it draws nothing.
   static func presentation(dictating: Bool, activity: Bool, hovering: Bool, enabled: Bool,
     notchScreen: Bool) -> Presentation
   {
     guard enabled, notchScreen else { return .hidden }
-    if dictating || (hovering && activity) { return .expanded }
-    return activity ? .compact : .hidden
+    return dictating || hovering ? .expanded : .compact
   }
 
   private var screen: NSScreen { NSScreen.main ?? NSScreen.screens[0] }
@@ -77,7 +78,8 @@ import SwiftUI
       (true, true, false, true, true, .expanded),
       (false, true, false, true, true, .compact),
       (false, true, true, true, true, .expanded),
-      (false, false, true, true, true, .hidden),
+      (false, false, true, true, true, .expanded),
+      (false, false, false, true, true, .compact),
       (true, true, false, false, true, .hidden),
       (true, true, false, true, false, .hidden),
     ]
@@ -91,17 +93,20 @@ import SwiftUI
       }
     }
     print(
-      "PASS: island shows only on a notch screen when enabled — expanded while dictating or hovered, compact during other activity, hidden when idle or disabled; the rail keeps every other case.")
+      "PASS: island shows only on a notch screen when enabled — expanded while dictating or hovered, compact otherwise so the notch stays hoverable, hidden when disabled or off a notch; the rail keeps every other case.")
   }
 }
 
 /// The live input envelope beside the notch: the rail's voice animation, compact.
+/// Silent at rest, so an idle island is only a hover target.
 struct IslandLevel: View {
   @ObservedObject var state: WorkspaceState
   var body: some View {
-    VoiceWaveform(
-      samples: state.micWaveform, width: 20, height: 16,
-      color: state.meetingStatus == .recording ? RailPalette.red : .white)
+    if state.hasRailActivity {
+      VoiceWaveform(
+        samples: state.micWaveform, width: 20, height: 16,
+        color: state.meetingStatus == .recording ? RailPalette.red : .white)
+    }
   }
 }
 
@@ -110,6 +115,8 @@ struct IslandLevel: View {
 struct IslandGlyph: View {
   @ObservedObject var state: WorkspaceState
   var size: CGFloat = 22
+  /// Beside the notch there is nothing to say when nothing is happening.
+  var hideAtRest = false
 
   private var listening: Bool { state.dictationStatus == .listening || state.addressing }
   private var recording: Bool { state.meetingStatus == .recording }
@@ -129,7 +136,7 @@ struct IslandGlyph: View {
       VoiceWaveform(
         samples: state.micWaveform, width: size, height: size,
         color: recording && !listening ? RailPalette.red : .white)
-    } else {
+    } else if !hideAtRest || state.hasRailActivity {
       Image(systemName: symbol)
         .font(.system(size: size * 0.6, weight: .medium))
         .foregroundStyle(state.dictationStatus == .error ? RailPalette.red : .white.opacity(0.62))
@@ -176,11 +183,11 @@ struct DynamicIslandContent: View {
           .foregroundStyle(.white.opacity(0.85))
           .lineLimit(1)
           .frame(maxWidth: .infinity, alignment: .leading)
-        controls
       }
+      if hovering { controls.transition(.opacity) }
     }
     .padding(.horizontal, 18)
-    .frame(width: transcribing ? 300 : 420, height: 58, alignment: .center)
+    .frame(width: hovering ? 560 : (transcribing ? 340 : 420), height: 64, alignment: .center)
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Chup! island · " + (transcribing ? text : state.statusText))
     .onHover { entered in
