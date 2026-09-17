@@ -45,7 +45,8 @@ final class VoiceOutputEngine: @unchecked Sendable {
       }
       for channel in UnsafeMutableAudioBufferListPointer(list) {
         if let data = channel.mData {
-          memcpy(data, storage.pointer, Int(frames) * MemoryLayout<Float>.size)
+          memcpy(data, storage.pointer,
+            min(Int(channel.mDataByteSize), Int(frames) * MemoryLayout<Float>.size))
         }
       }
       return noErr

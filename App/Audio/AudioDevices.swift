@@ -99,7 +99,8 @@ struct InputDevice: Identifiable, Equatable {
     guard AudioObjectGetPropertyData(object, &address, 0, nil, &size, &value) == noErr else {
       return nil
     }
-    return value?.takeUnretainedValue() as String?
+    // CoreAudio hands back a +1 CFString; the caller owns it.
+    return value?.takeRetainedValue() as String?
   }
   private static func number(_ object: AudioObjectID, selector: AudioObjectPropertySelector) -> UInt32? {
     var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal,
