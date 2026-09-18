@@ -22,7 +22,7 @@ settings:
     ARCHS: arm64
     ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: '1.0'
-    CURRENT_PROJECT_VERSION: 79
+    CURRENT_PROJECT_VERSION: 80
 targets:
   Chup:
     type: application

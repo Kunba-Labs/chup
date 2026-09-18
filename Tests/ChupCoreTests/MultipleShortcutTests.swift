@@ -52,6 +52,22 @@ final class MultipleShortcutTests: XCTestCase {
       resolver.update(modifiers: [.control, .shift], keys: [], time: 1.2),
       [.init(action: .holdDictation, began: true)])
   }
+  func testArrowKeyWhoseFunctionFlagArrivesLateCannotStartTheFnHold() {
+    let hold = ShortcutBinding(.holdDictation, .fn, hold: true)
+    var resolver = ShortcutResolver(bindings: [hold])
+    // macOS stamps the Fn flag onto arrow keys nobody pressed Fn for, and the
+    // flag can land on the key-up, or on the session state, rather than on the
+    // key-down that would otherwise fence the hold off.
+    XCTAssertTrue(resolver.update(modifiers: [], keys: [125], time: 0).isEmpty)
+    XCTAssertTrue(resolver.update(modifiers: [.fn], keys: [], time: 0.02).isEmpty)
+    XCTAssertTrue(resolver.update(modifiers: [.fn], keys: [], time: 0.30).isEmpty)
+    XCTAssertTrue(resolver.update(modifiers: [], keys: [], time: 0.40).isEmpty)
+    // The real gesture still works once everything is released.
+    XCTAssertTrue(resolver.update(modifiers: [.fn], keys: [], time: 1.0).isEmpty)
+    XCTAssertEqual(
+      resolver.update(modifiers: [.fn], keys: [], time: 1.2),
+      [.init(action: .holdDictation, began: true)])
+  }
   func testCaptureRetainsFullModifierAndOrdinaryChordsDuringPartialRelease() {
     var capture = ShortcutCapture()
     for modifiers: KeyModifiers in [.control, [.control, .shift], .shift, []] {

@@ -33,11 +33,14 @@ import Combine
   private var carbonKeys = Set<UInt16>()
   private var buttons = Set<Int>()
   private var modifiers: KeyModifiers = []
+  private var fnDown = false
   private var lastInput = Date()
   private var requiresRelease = false
   private var capture = ShortcutCapture()
   private var enabled = false
   private var nextHotKeyID: UInt32 = 1
+  /// Keys macOS reports with the Fn flag set whether or not Fn was touched.
+  private static let fnStampedKeys: Set<UInt16> = [114, 115, 116, 117, 119, 121, 123, 124, 125, 126]
   init(defaults: UserDefaults? = .standard, initialBindings: [ShortcutBinding]? = nil) {
     self.defaults = defaults
     let saved = defaults?.data(forKey: "shortcutBindings").flatMap {
@@ -263,6 +266,7 @@ import Combine
     carbonKeys = []
     buttons = []
     modifiers = []
+    fnDown = false
   }
   private func receive(_ type: CGEventType, _ event: CGEvent) {
     receive(ShortcutInput(type: type, event: event))
@@ -286,7 +290,16 @@ import Combine
     if flags.contains(.maskAlternate) { modifiers.insert(.option) }
     if flags.contains(.maskShift) { modifiers.insert(.shift) }
     if flags.contains(.maskCommand) { modifiers.insert(.command) }
-    if flags.contains(.maskSecondaryFn) { modifiers.insert(.fn) }
+    // Apple keyboards stamp the Fn flag onto the navigation keys they synthesise
+    // it for — arrows, page, forward delete — and the session flag state can keep
+    // reporting it afterwards. None of that is the user holding Fn, and Fn alone
+    // is a hold-to-dictate gesture, so only a real flags change moves this.
+    if type == .flagsChanged, !flags.contains(.maskNumericPad),
+      !Self.fnStampedKeys.contains(input.key)
+    {
+      fnDown = flags.contains(.maskSecondaryFn)
+    }
+    if fnDown { modifiers.insert(.fn) }
     let key = input.key
     if type == .keyDown && !bindings.contains(where: { $0.keyCode == key && $0.modifiers == modifiers && $0.mouseButton == nil }) {
       onUserInteraction?()
@@ -360,7 +373,8 @@ import Combine
       if flags.contains(.maskAlternate) { modifiers.insert(.option) }
       if flags.contains(.maskShift) { modifiers.insert(.shift) }
       if flags.contains(.maskCommand) { modifiers.insert(.command) }
-      if flags.contains(.maskSecondaryFn) { modifiers.insert(.fn) }
+      fnDown = fnDown && flags.contains(.maskSecondaryFn)
+      if fnDown { modifiers.insert(.fn) }
     }
     process()
   }
@@ -504,6 +518,9 @@ extension ShortcutRegistry {
     watcher.onUserInteraction = { interactions += 1 }
     guard let event = CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true) else { throw WorkspaceError.message("Cannot create interaction fixture.") }
     event.flags = .maskSecondaryFn
+    // Holding Fn changes the flags before the key it modifies is pressed.
+    event.setIntegerValueField(.keyboardEventKeycode, value: 63)
+    watcher.receive(.flagsChanged, event)
     event.setIntegerValueField(.keyboardEventKeycode, value: 49)
     watcher.receive(.keyDown, event)
     watcher.receive(.flagsChanged, event)
@@ -516,5 +533,39 @@ extension ShortcutRegistry {
     watcher.reset()
     guard interactions == 4 else { throw WorkspaceError.message("Input interaction fencing missed typing, clicking, scrolling or event reset.") }
     print("PASS: opaque input fencing ignores its shortcut and detects typing, clicking, scrolling and interrupted event streams. Synthetic events only.")
+    try validateNavigationKeys()
+  }
+
+  /// Arrow keys arrive carrying the Fn flag they never asked for. Replays them
+  /// against the shipping Fn hold, slowly enough to clear the hold's delay, and
+  /// then confirms a real Fn press still starts dictation.
+  private static func validateNavigationKeys() throws {
+    let registry = ShortcutRegistry(
+      defaults: nil, initialBindings: [.init(.holdDictation, .fn, hold: true)])
+    var started = 0
+    registry.dispatch = { if $0.began { started += 1 } }
+    guard let event = CGEvent(keyboardEventSource: nil, virtualKey: 125, keyDown: true) else {
+      throw WorkspaceError.message("Cannot create navigation key fixture.")
+    }
+    event.flags = [.maskSecondaryFn, .maskNumericPad]
+    for _ in 0..<3 {
+      event.setIntegerValueField(.keyboardEventKeycode, value: 125)
+      registry.receive(.keyDown, event)
+      registry.receive(.keyUp, event)
+      Thread.sleep(forTimeInterval: 0.12)
+    }
+    guard started == 0 else {
+      throw WorkspaceError.message("Arrow keys started \(started) dictation(s) through the Fn hold.")
+    }
+    event.flags = .maskSecondaryFn
+    event.setIntegerValueField(.keyboardEventKeycode, value: 63)
+    registry.receive(.flagsChanged, event)
+    Thread.sleep(forTimeInterval: 0.25)
+    registry.receive(.flagsChanged, event)
+    guard started == 1 else {
+      throw WorkspaceError.message("A held Fn key no longer starts dictation.")
+    }
+    print(
+      "PASS: arrow keys never start the Fn hold-to-dictate gesture across repeated presses; a real Fn press still does. Synthetic events only, no input posted.")
   }
 }

@@ -171,14 +171,15 @@ public struct ShortcutResolver {
     }
     let heldIDs = Set(bindings.filter(held).map(\.id))
     latched.formIntersection(heldIDs)
-    suppressed.formIntersection(heldIDs)
-    // A modifier-only hold must not begin after a navigation key was pressed
-    // while the modifier was down. Quartz can deliver the arrow key-up before
-    // the final flags-changed event; without this fence, the now-empty key set
-    // briefly looks like a fresh modifier-only shortcut and starts dictation.
-    if !keys.isEmpty {
-      for binding in bindings where binding.modifierOnly && binding.hold
-        && modifiers.isSuperset(of: binding.modifiers) {
+    // Suppression lasts until everything is released, not merely until the
+    // suppressed gesture stops being held: macOS stamps the Fn flag onto arrow
+    // and page keys, and it can arrive on the key-up or in the session's flag
+    // state, after the key that should have fenced the gesture off is gone.
+    if modifiers.isEmpty, keys.isEmpty, buttons.isEmpty { suppressed = [] }
+    // Any key press fences off the modifier-only holds. Its modifiers cannot be
+    // trusted to have arrived yet, so this does not ask which ones are down.
+    if !keys.isEmpty || !buttons.isEmpty {
+      for binding in bindings where binding.modifierOnly && binding.hold {
         suppressed.insert(binding.id)
       }
     }
