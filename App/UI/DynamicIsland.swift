@@ -55,7 +55,16 @@ import SwiftUI
     return dictating || hovering ? .expanded : .compact
   }
 
-  private var screen: NSScreen { NSScreen.main ?? NSScreen.screens[0] }
+  /// The screen the user is working on: the one under the pointer, falling back
+  /// to the focused screen. Both the island and the rail are hover targets, so
+  /// the pointer decides which display owns them — the rail picks its screen the
+  /// same way, and on an external display there is no notch to hover.
+  static var activeScreen: NSScreen {
+    NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) }
+      ?? NSScreen.main ?? NSScreen.screens[0]
+  }
+
+  private var screen: NSScreen { Self.activeScreen }
 
   func refresh() {
     guard let state else { return }

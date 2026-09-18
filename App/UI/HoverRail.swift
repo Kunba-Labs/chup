@@ -29,7 +29,7 @@ extension WorkspaceState {
   /// With the island on a notch screen, its controls replace the rail's, so the
   /// rail stays out of the way entirely instead of duplicating them.
   var islandCoversRail: Bool {
-    dynamicIslandEnabled && DynamicIslandController.hasNotch(NSScreen.main)
+    dynamicIslandEnabled && DynamicIslandController.hasNotch(DynamicIslandController.activeScreen)
   }
   var compactDictationVisible: Bool {
     dictationStatus == .listening || dictationStatus == .processing || dictationFeedback != nil || dictationMicMessage != nil

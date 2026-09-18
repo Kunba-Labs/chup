@@ -59,6 +59,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var traceStorageFailed = false
   var traceOrigins: [String: Double] = [:]
   var dictationTraceID: String?
+  /// Last known answer to "does the island own the rail's job here", so a move
+  /// between displays is noticed on the tick.
+  var islandOwnedRail = false
   @Published var notice: String?
   @Published var dynamicIslandEnabled = UserDefaults.standard.object(forKey: "dynamicIslandEnabled") as? Bool ?? true {
     didSet {
@@ -513,6 +516,13 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     return String(format: "%02d:%02d", n / 60, n % 60)
   }
   func tick() {
+    // Moving to a display without a notch has to hand the controls back to the
+    // rail, and take them back on return. No notification fires when the active
+    // screen changes, so the surfaces are re-evaluated on the shared tick.
+    if islandCoversRail != islandOwnedRail {
+      islandOwnedRail = islandCoversRail
+      updateDictationIndicator()
+    }
     checkDictationMicrophone()
     checkMicrophonePreview()
     if let last = micLastPacket, Date().timeIntervalSince(last) > 0.35,
