@@ -5,6 +5,22 @@ import ChupCore
   @StateObject private var state = WorkspaceState(
     preview: ProcessInfo.processInfo.arguments.contains("--render-design")
       || ProcessInfo.processInfo.arguments.contains("--validate-audio"))
+
+  /// Offline checks run off the main actor queue, not off a window appearing:
+  /// a signed bundle exec'd straight from its path never shows one, which left
+  /// `--validate-audio` hanging until its deployment timeout.
+  init() {
+    guard ProcessInfo.processInfo.arguments.contains("--validate-audio") else { return }
+    Task { @MainActor in
+      do {
+        try await AudioValidation.run()
+        exit(0)
+      } catch {
+        print("FAIL: " + error.localizedDescription)
+        exit(1)
+      }
+    }
+  }
   var body: some Scene {
     Window("Chup!", id: "workspace") {
       WorkspaceView().environmentObject(state).frame(minWidth: 960, minHeight: 650)

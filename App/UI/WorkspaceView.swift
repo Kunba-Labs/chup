@@ -85,18 +85,7 @@ struct WorkspaceView: View {
       }.background(Palette.workspace)
     }.foregroundStyle(Palette.ink).tint(Palette.olive)
       .onAppear {
-        if state.isPreview && ProcessInfo.processInfo.arguments.contains("--validate-audio") {
-          Task {
-            do {
-              try await AudioValidation.run()
-              exit(0)
-            } catch {
-              print("FAIL: " + error.localizedDescription)
-              exit(1)
-            }
-          }
-          return
-        }
+        if ProcessInfo.processInfo.arguments.contains("--validate-audio") { return }
         if state.isPreview {
           DesignExporter.export(state: state)
           NSApp.terminate(nil)
