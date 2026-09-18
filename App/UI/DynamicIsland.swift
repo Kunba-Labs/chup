@@ -15,6 +15,7 @@ import SwiftUI
   private let notch: DynamicNotch<DynamicIslandContent, IslandGlyph, IslandLevel>
   private var transitionTask: Task<Void, Never>?
   private var presented: Presentation = .hidden
+  private var desired: Presentation = .hidden
   private var hoverObserver: AnyCancellable?
 
   init(state: WorkspaceState) {
@@ -28,9 +29,13 @@ import SwiftUI
     }
     // Hovering the compact island opens the controls, the way hovering opened
     // the rail. The package publishes its own hover tracking.
-    hoverObserver = notch.$isHovering.dropFirst().sink { [weak self] _ in
-      Task { @MainActor in self?.refresh() }
-    }
+    // Debounced: the pointer merely crossing the notch on its way to the menu
+    // bar should not open the island.
+    hoverObserver = notch.$isHovering.dropFirst()
+      .debounce(for: .milliseconds(120), scheduler: RunLoop.main)
+      .sink { [weak self] _ in
+        Task { @MainActor in self?.refresh() }
+      }
   }
 
   /// A screen without a notch gets no compact state from the package, so the
@@ -58,15 +63,23 @@ import SwiftUI
     let target = Self.presentation(
       dictating: dictating, activity: state.hasRailActivity, hovering: notch.isHovering,
       enabled: state.dynamicIslandEnabled, notchScreen: Self.hasNotch(screen))
-    guard target != presented else { return }
-    presented = target
-    transitionTask?.cancel()
-    transitionTask = Task { @MainActor [weak self] in
-      guard let self else { return }
-      switch target {
-      case .expanded: await notch.expand(on: screen)
-      case .compact: await notch.compact(on: screen)
-      case .hidden: await notch.hide()
+    guard target != desired else { return }
+    desired = target
+    // Transitions run one at a time to completion. The package animates through
+    // a detached hidden step, so cancelling one mid-flight left its window state
+    // and ours disagreeing — the island stayed expanded with nothing happening.
+    if transitionTask == nil {
+      transitionTask = Task { @MainActor [weak self] in
+        while let self, self.presented != self.desired {
+          let next = self.desired
+          switch next {
+          case .expanded: await self.notch.expand(on: self.screen)
+          case .compact: await self.notch.compact(on: self.screen)
+          case .hidden: await self.notch.hide()
+          }
+          self.presented = next
+        }
+        self?.transitionTask = nil
       }
     }
     state.rail?.refresh()
