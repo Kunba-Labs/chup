@@ -34,6 +34,10 @@ Fn, modifier-only gestures such as Control–Shift, and mouse gestures require I
 
 Settings → General → Launch Chup! at login uses Apple's main-app login service. If approval is pending, use “Open Login Items settings” and enable it under General → Login Items & Extensions. Disable the toggle to unregister it. Startup reveals controls; it never starts recording.
 
+## Workspace window restore
+
+The workspace window reopens at its last size and position, on the display it was closed on, after a normal quit or a crash. SwiftUI autosaves the frame as `NSWindow Frame workspace`; Chup! re-applies it at launch because SwiftUI would otherwise move the window to the display under the mouse. A saved frame on a disconnected display is ignored. The last page, open meeting and meeting tab are restored from `lastPage`, `lastMeetingID` and `lastMeetingTab`; a deleted meeting is not reopened. Check with `defaults read com.chup.mac | grep -E "NSWindow Frame|last"`.
+
 ## Cloud processing
 
 Follow the backend instructions in the repository README. Save the app token in Settings → Advanced; keep the OpenAI project secret on the trusted backend. Settings → Privacy controls AI uploads. Local recording and typed notes remain usable when cloud processing is off or disconnected. Live captions have an additional Meetings toggle.
