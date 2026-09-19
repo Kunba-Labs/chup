@@ -322,35 +322,50 @@ import ChupCore
       return clipboard.board.changeCount == pasteChange ? .copied : .clipboardChanged
     }
     let pasteBefore = destination.focusedPaste ? (attribute(destination.element, kAXValueAttribute) as? String ?? "") : nil
-    let dispatched: Bool
-    if let menuItem {
-      lastDeliveryRoute = "Native Paste command"
-      dispatched = AXUIElementPerformAction(menuItem, kAXPressAction as CFString) == .success
-      // An uncertain menu action must never be followed by a second paste.
-    } else {
+    func dispatch() -> Bool {
+      if let menuItem {
+        lastDeliveryRoute = "Native Paste command"
+        return AXUIElementPerformAction(menuItem, kAXPressAction as CFString) == .success
+      }
       lastDeliveryRoute = "Command-V event"
       let source = CGEventSource(stateID: .privateState)
       guard let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true),
-        let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else { return .copied }
+        let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else { return false }
       down.flags = .maskCommand
       up.flags = .maskCommand
       down.postToPid(destination.application.processIdentifier)
       up.postToPid(destination.application.processIdentifier)
-      dispatched = true
+      return true
     }
-    let confirmed = await confirm(expected, in: destination, pasteBefore: pasteBefore)
+    var dispatched = dispatch()
+    var confirmed = await confirm(expected, in: destination, pasteBefore: pasteBefore)
+    var retried = false
+    // A dropped paste (target busy or still restoring focus) leaves the field
+    // exactly as it was. Allow late renders to land first, then retry once only
+    // when the same field, focus, interaction epoch and clipboard are all intact.
+    if !confirmed, !Task.isCancelled, clipboard.board.changeCount == pasteChange,
+      (try? await Task.sleep(for: .milliseconds(300))) != nil {
+      if confirms(expected, in: destination, pasteBefore: pasteBefore) {
+        confirmed = true
+      } else if clipboard.board.changeCount == pasteChange, isValid(destination),
+        attribute(destination.element, kAXValueAttribute) as? String == (pasteBefore ?? destination.value) {
+        retried = true
+        dispatched = dispatch() || dispatched
+        confirmed = await confirm(expected, in: destination, pasteBefore: pasteBefore)
+      }
+    }
     if Task.isCancelled {
       clipboard.restore(snapshot, ifUnchanged: pasteChange)
       return .cancelled
     }
     if confirmed {
       clipboard.restore(snapshot, ifUnchanged: pasteChange)
-      delivery("Paste confirmed via \(lastDeliveryRoute)")
+      delivery("Paste confirmed via \(lastDeliveryRoute)" + (retried ? " after one retry" : ""))
       return .inserted
     }
     // Retain the text for manual paste, without overwriting a newer user copy.
     guard clipboard.board.changeCount == pasteChange else { delivery("User clipboard action replaced recovery text"); return .clipboardChanged }
-    delivery("Paste dispatched via \(lastDeliveryRoute), but target did not confirm; recovery text retained")
+    delivery("Paste dispatched via \(lastDeliveryRoute)" + (retried ? " twice" : "") + ", but target did not confirm; recovery text retained")
     return TextDeliveryPolicy.afterDispatch(confirmed: false, dispatched: dispatched, recovery: .copied)
   }
   static func copy(_ text: String) {
