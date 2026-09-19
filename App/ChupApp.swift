@@ -10,6 +10,7 @@ import ChupCore
   /// a signed bundle exec'd straight from its path never shows one, which left
   /// `--validate-audio` hanging until its deployment timeout.
   init() {
+    _ = WorkspaceFrameRestorer.saved
     guard ProcessInfo.processInfo.arguments.contains("--validate-audio") else { return }
     Task { @MainActor in
       do {
@@ -24,6 +25,7 @@ import ChupCore
   var body: some Scene {
     Window("Chup!", id: "workspace") {
       WorkspaceView().environmentObject(state).frame(minWidth: 960, minHeight: 650)
+        .background(WorkspaceFrameRestorer())
         .preferredColorScheme(.light)
     }.defaultSize(width: 1240, height: 810)
       .commands {
@@ -84,4 +86,25 @@ import ChupCore
       if state.meetingStatus == .recording { Text(WorkspaceState.time(state.elapsed)) }
     }
   }
+}
+
+/// SwiftUI reopens the workspace on the display under the mouse, keeping only the
+/// saved offset, and autosaves that move; `setFrame(from:)` maps onto that same
+/// display. Read the saved rect before the window exists and put it back once,
+/// unless its display is gone.
+@MainActor struct WorkspaceFrameRestorer: NSViewRepresentable {
+  static var saved = UserDefaults.standard.string(forKey: "NSWindow Frame workspace")
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    DispatchQueue.main.async {
+      guard let window = view.window, let values = Self.saved?.split(separator: " ").compactMap({ Double($0) }),
+        values.count >= 4 else { return }
+      Self.saved = nil
+      let frame = NSRect(x: values[0], y: values[1], width: values[2], height: values[3])
+      guard NSScreen.screens.contains(where: { $0.visibleFrame.intersects(frame) }) else { return }
+      window.setFrame(frame, display: true)
+    }
+    return view
+  }
+  func updateNSView(_ nsView: NSView, context: Context) {}
 }
