@@ -28,11 +28,13 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
 
 @MainActor final class WorkspaceState: ObservableObject {
   let runningBuild = RunningBuild()
-  @Published var page: WorkspacePage = .meetings
+  // The window frame autosaves under the stable "workspace" scene id; these
+  // restore the screen inside it. "Close windows when quitting" skips scene storage.
+  @Published var page: WorkspacePage = .meetings { didSet { defaults.set(page.rawValue, forKey: "lastPage") } }
   @Published var meetings: [Meeting] = []
   @Published var history: [DictationEntry] = []
   @Published var personalization: [Personalization] = []
-  @Published var selectedMeetingID: String?
+  @Published var selectedMeetingID: String? { didSet { defaults.set(selectedMeetingID, forKey: "lastMeetingID") } }
   @Published var segments: [TranscriptSegment] = []
   @Published var summary: MeetingSummary?
   @Published var liveOutline: SummaryRevision?
@@ -42,7 +44,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var lastActionReceipt: ActionReceipt?
   @Published var thoughts = Note()
   @Published var thoughtsDraft = ""
-  @Published var meetingTab = "Summary"
+  @Published var meetingTab = "Summary" { didSet { defaults.set(meetingTab, forKey: "lastMeetingTab") } }
   @Published var selectedTranscriptSource: String?
   @Published var usageRecords: [UsageRecord] = []
   @Published var liveOutlineEnabled = UserDefaults.standard.bool(forKey: "liveOutlineEnabled") {
@@ -475,6 +477,11 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           )
         }
       })
+    page = WorkspacePage(rawValue: defaults.string(forKey: "lastPage") ?? "") ?? page
+    meetingTab = defaults.string(forKey: "lastMeetingTab") ?? meetingTab
+    if let id = defaults.string(forKey: "lastMeetingID"), meetings.contains(where: { $0.id == id }) {
+      selectMeeting(id)
+    }
   }
   func focusRail() {
     if rail == nil { rail = HoverRailController(state: self) }
