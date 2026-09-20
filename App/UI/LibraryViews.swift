@@ -191,7 +191,7 @@ struct PersonalizationView: View {
       PageHeader(
         eyebrow: "Make it sound like you", title: page.rawValue,
         subtitle: page == .dictionary
-          ? "Names, preferred spellings, and pronunciation aliases."
+          ? "Names, acronyms, product names and preferred spellings. Used for dictation and meeting transcripts."
           : page == .snippets
             ? "A short spoken phrase for something you write often."
             : "Writing preferences for each application and language.")

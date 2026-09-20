@@ -127,6 +127,14 @@ final class IterationTests: XCTestCase {
         "Mara, not marathons: 12", entries: entries, language: "en"), "Maara, not marathons: 12")
     XCTAssertEqual(
       DictationPersonalization.spellings("Mara", entries: entries, language: "nl"), "Mara")
+    XCTAssertEqual(
+      DictationPersonalization.spellings("Mara", entries: entries, language: "auto"), "Maara")
+    XCTAssertEqual(
+      DictationPersonalization.vocabulary(entries, language: "en"), ["Maara"])
+    XCTAssertEqual(
+      DictationPersonalization.vocabulary(entries, language: "nl"), [])
+    XCTAssertEqual(
+      DictationPersonalization.vocabulary(entries, language: "auto"), ["Maara"])
   }
   func testOldModelsDecodeWithoutNewOptionalMetadata() throws {
     let leg = try JSONDecoder().decode(

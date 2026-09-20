@@ -1096,7 +1096,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           try Task.checkCancellation()
           let result = try await client.transcribe(
             readWave(file), diarize: false, language: language,
-            keywords: preferences.filter { $0.kind == "dictionary" && $0.language == language }.map(\.replacement))
+            keywords: DictationPersonalization.vocabulary(preferences, language: language))
           text += (text.isEmpty ? "" : " ") + result.text
         }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -1143,7 +1143,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           do {
             entry.text = try await client.cleanup(text, mode: cleanup, selection: selection,
               instruction: selection.isEmpty ? "" : text,
-              personalization: preferences.filter { $0.language == language }, application: entry.application)
+              personalization: preferences.filter { DictationPersonalization.applies($0, language: language) },
+              application: entry.application)
           } catch {
             try Task.checkCancellation()
             if !selection.isEmpty { throw error }
@@ -1382,7 +1383,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           let wave = try await archive.wave(
             start: window.audioStart, end: window.audioEnd, track: window.track)
           let result = try await client.transcribe(
-            wave, diarize: true, language: language, keywords: [],
+            wave, diarize: true, language: language,
+            keywords: DictationPersonalization.vocabulary(personalization, language: language),
             references: window.track == .assistant ? [] : references)
           var mapped: [TranscriptSegment] = []
           for (segmentIndex, item) in (result.segments ?? []).enumerated() {
@@ -1396,7 +1398,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
             var segment = TranscriptSegment(
               id: window.id + "/\(segmentIndex)", meetingID: id,
               start: window.audioStart + item.start, end: window.audioStart + item.end,
-              text: item.text,
+              text: DictationPersonalization.spellings(
+                item.text, entries: personalization, language: language),
               speakerID: profile.map { "enrolled:" + $0.id } ?? window.id + "/" + item.speaker,
               speakerName: profile.map { $0.name + " · voice match" }, track: window.track)
             segment.attribution =
