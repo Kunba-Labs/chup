@@ -1,8 +1,31 @@
 # Chup!
 
-A native macOS 15+ / Apple silicon development preview for dictation, local meeting recording, notes, and scoped AI assistance. SwiftUI and AppKit share one application state. **The project builds; it is not yet a production-complete release.** Private voice and assistant broadcast are implemented as route-gated development prototypes; physical routing and provider access remain unqualified. Read [implementation status](docs/STATUS.md) before trying capture.
+Dictation and meeting notes for the Mac. Hold a shortcut and talk, and the text lands in whatever app you're typing in. Start a meeting and Chup! records it locally, transcribes it and keeps a summary and a list of actions that point back to the moments they came from. Native SwiftUI and AppKit, macOS 15+ on Apple silicon.
 
-## See the design
+![A meeting in Chup!: the summary tab with an overview, a decision and an action, each linked to its source in the transcript](docs/screenshots/meeting.jpg)
+
+<details>
+<summary>More screens: the meetings list, the Dynamic Island and the floating rail</summary>
+
+![The meetings list with search across notes and transcripts](docs/screenshots/meetings.jpg)
+
+![Dictation and recording controls in the Dynamic Island on a notched Mac](docs/screenshots/dynamic-island.jpg)
+
+![The dark glass rail on displays without a notch](docs/screenshots/rail.jpg)
+</details>
+
+- **Recording stays on your Mac.** Audio, transcripts and notes are stored in an encrypted local library. Cloud transcription and summaries only run when you turn them on, through a backend you host.
+- **Dictation anywhere.** Local Whisper models or the cloud. Chup! applies your personal dictionary and snippets, and you can review the text before it's pasted.
+- **Summaries show their sources.** Every point in a summary links to the part of the transcript it came from. Your own edits are kept when the summary is regenerated.
+- **Out of the way.** The controls sit in the notch or on a thin rail at the edge of the screen, and nothing takes focus from the app you're in.
+
+**Status: development preview.** The app builds and ships, but it isn't production-complete. Private voice and assistant broadcast are route-gated prototypes, and physical audio routing and provider access haven't been qualified yet. Read [implementation status](docs/STATUS.md) before relying on capture.
+
+## Install
+
+Download the `.dmg` from the [latest release](../../releases/latest) and drag Chup! into Applications. Every push to `main` becomes a Developer ID signed, notarized release. The app checks for updates hourly and has **Check for Updates…** in its menu bar menu. See [Releases and updates](#releases-and-updates).
+
+## Design gallery
 
 Open [the design gallery](Design/index.html), or view [Meetings](Design/Previews/01-workspace.png), [meeting detail](Design/Previews/02-meeting.png), [notification panels](Design/Previews/03-panels.png), [dark glass rail](Design/Previews/04-dark-glass-rail.png), and [speaker controls](Design/Previews/09-speakers.png), [meeting actions](Design/Previews/10-actions.png), [private voice](Design/Previews/11-private-voice.png), [onboarding](Design/Previews/12-onboarding.png), [Permissions](Design/Previews/13-permissions.png), and [storage settings](Design/Previews/14-storage.png). Sample content is restricted to the explicit `--render-design` path and uses a temporary database. Normal startup is empty.
 
