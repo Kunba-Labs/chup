@@ -17,6 +17,11 @@ import SwiftUI
   private var presented: Presentation = .hidden
   private var desired: Presentation = .hidden
   private var hoverObserver: AnyCancellable?
+  private var dwellTask: Task<Void, Never>?
+  /// True once the pointer has rested on the notch for `dwell`; only then
+  /// does hovering open the controls.
+  private var dwelled = false
+  static let dwell: Duration = .seconds(3)
 
   init(state: WorkspaceState) {
     self.state = state
@@ -29,13 +34,41 @@ import SwiftUI
     }
     // Hovering the compact island opens the controls, the way hovering opened
     // the rail. The package publishes its own hover tracking.
-    // Debounced: the pointer merely crossing the notch on its way to the menu
-    // bar should not open the island.
+    // Debounced, then gated on the pointer resting still for `dwell`: dragging
+    // across the notch on the way to the menu bar should not open the island.
     hoverObserver = notch.$isHovering.dropFirst()
       .debounce(for: .milliseconds(120), scheduler: RunLoop.main)
-      .sink { [weak self] _ in
-        Task { @MainActor in self?.refresh() }
+      .sink { [weak self] hovering in
+        Task { @MainActor in self?.hoverChanged(hovering) }
       }
+  }
+
+  private func hoverChanged(_ hovering: Bool) {
+    dwellTask?.cancel()
+    guard hovering else {
+      dwelled = false
+      refresh()
+      return
+    }
+    guard !dwelled else { return }
+    dwellTask = Task { @MainActor [weak self] in
+      var last = NSEvent.mouseLocation
+      var stillSince = ContinuousClock.now
+      while !Task.isCancelled {
+        try? await Task.sleep(for: .milliseconds(100))
+        let now = NSEvent.mouseLocation
+        // Any movement beyond a hand tremor restarts the wait.
+        if hypot(now.x - last.x, now.y - last.y) > 3 {
+          last = now
+          stillSince = .now
+        } else if ContinuousClock.now - stillSince >= Self.dwell {
+          guard let self, !Task.isCancelled else { return }
+          self.dwelled = true
+          self.refresh()
+          return
+        }
+      }
+    }
   }
 
   /// A screen without a notch gets no compact state from the package, so the
@@ -70,7 +103,7 @@ import SwiftUI
     guard let state else { return }
     let dictating = state.dictationStatus == .listening || state.dictationStatus == .processing
     let target = Self.presentation(
-      dictating: dictating, activity: state.hasRailActivity, hovering: notch.isHovering,
+      dictating: dictating, activity: state.hasRailActivity, hovering: dwelled && notch.isHovering,
       enabled: state.dynamicIslandEnabled, notchScreen: Self.hasNotch(screen))
     guard target != desired else { return }
     desired = target

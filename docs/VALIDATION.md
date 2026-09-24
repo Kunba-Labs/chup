@@ -2,7 +2,7 @@
 
 ## Dynamic Island absorbs the floating controls — 2026-09-16
 
-With the island enabled on a notched display, the hover rail no longer appears at all; its controls moved under the notch. The island stays compact whenever it owns the rail's job — drawing nothing at rest, so the notch is always a hover target — and expands while dictating or while the pointer is over it. A display without a notch gets no compact state from DynamicNotchKit, so the rail keeps every case there.
+With the island enabled on a notched display, the hover rail no longer appears at all; its controls moved under the notch. The island stays compact whenever it owns the rail's job — drawing nothing at rest, so the notch is always a hover target — and expands while dictating or once the pointer has rested still over it for three seconds, so dragging across the notch toward the menu bar never opens it. A display without a notch gets no compact state from DynamicNotchKit, so the rail keeps every case there.
 
 - Native arm64 build passed: `.artifacts/island-controls-build.log`.
 - Offline native suite passed, including the new island presentation-policy check: `.artifacts/island-controls-native.log`; no microphone opened.
