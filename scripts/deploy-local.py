@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build, locally sign, validate and install a versioned Chup! development app."""
+"""Build, locally sign, validate and install Chup! as the commit-count build that later releases update."""
 import argparse
 import os
 import datetime
@@ -74,20 +74,17 @@ def main():
     target = args.applications_dir.expanduser().resolve() / APP_NAME
     if target.is_symlink():
         raise RuntimeError('The installed app is a symbolic link; choose a regular Applications destination.')
-    previous = info(target) if target.exists() else None
+    if target.exists(): info(target)  # refuses to replace a different app
+    # Developer ID first: it is what CI releases carry, so Sparkle can replace this
+    # install in place and macOS keeps its microphone and Accessibility grants.
     identities = subprocess.check_output(['/usr/bin/security', 'find-identity', '-v', '-p', 'codesigning'], text=True)
-    available = re.findall(r'([A-F0-9]{40}) "Apple Development:[^"]+"', identities)
+    available = (re.findall(r'([A-F0-9]{40}) "Developer ID Application:[^"]+"', identities)
+                 or re.findall(r'([A-F0-9]{40}) "Apple Development:[^"]+"', identities))
     identity = args.signing_identity or (available[0] if available else None)
     if not identity:
-        raise RuntimeError('No Apple Development identity is available. Configure Xcode signing or pass --signing-identity.')
-    project = ROOT / 'project.yml'
-    specification = project.read_text()
-    match = re.search(r'(?m)^(\s+CURRENT_PROJECT_VERSION: )([0-9]+)$', specification)
-    if not match:
-        raise RuntimeError('project.yml must declare a numeric CURRENT_PROJECT_VERSION.')
-    version = max(int(match[2]), int(previous['CFBundleVersion']) if previous else 0) + 1
-    specification = specification[:match.start(2)] + str(version) + specification[match.end(2):]
-    project.write_text(specification)
+        raise RuntimeError('No Developer ID or Apple Development identity is available. Configure Xcode signing or pass --signing-identity.')
+    # The same number CI gives a release of HEAD, so every later push updates this install.
+    version = int(subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], cwd=ROOT, text=True))
     ARTIFACTS.mkdir(exist_ok=True)
     log = ARTIFACTS / f'deploy-build-{version}.log'
     print(f'Building Chup! build {version}. Log: {log}', flush=True)
@@ -96,7 +93,7 @@ def main():
         run('xcodebuild', '-project', 'Chup.xcodeproj', '-scheme', 'Chup',
             '-configuration', 'Debug', '-destination', 'platform=macOS,arch=arm64',
             '-derivedDataPath', '.artifacts/DerivedData', 'CODE_SIGNING_ALLOWED=NO',
-            'build', stdout=output, stderr=subprocess.STDOUT)
+            f'CURRENT_PROJECT_VERSION={version}', 'build', stdout=output, stderr=subprocess.STDOUT)
     built = ARTIFACTS / 'DerivedData/Build/Products/Debug' / APP_NAME
     metadata = info(built)
     expected_uuids = code_uuids(built)

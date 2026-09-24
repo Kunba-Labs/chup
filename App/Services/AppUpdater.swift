@@ -1,17 +1,17 @@
 import AppKit
 import Sparkle
 
-/// In-app updates from GitHub releases. The appcast and each DMG are signed with
-/// an EdDSA key whose public half `package-release.py` writes into the release
-/// Info.plist along with `SUFeedURL`; Sparkle refuses anything that key did not
-/// sign. Local development installs carry neither key, so they never update
-/// themselves and this returns nil.
+/// In-app updates from GitHub releases. Every build carries `SUFeedURL` and the
+/// public half of the EdDSA key that signs each release (project.yml); Sparkle
+/// refuses anything that key did not sign. Only a copy in an Applications
+/// folder — a release or a `deploy-local.py` install — updates itself, so
+/// Xcode runs and design renders from DerivedData never do.
 @MainActor final class AppUpdater: NSObject, SPUUpdaterDelegate {
   private weak var state: WorkspaceState?
   private var controller: SPUStandardUpdaterController?
 
   init?(state: WorkspaceState) {
-    guard Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") != nil else { return nil }
+    guard Bundle.main.bundlePath.contains("/Applications/") else { return nil }
     self.state = state
     super.init()
     controller = SPUStandardUpdaterController(

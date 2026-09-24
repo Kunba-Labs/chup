@@ -33,5 +33,13 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Record your voice for dictation and meeting notes when you start capture.</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/Kunba-Labs/chup/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>0ZjXQFugKOwQMsEa/AsRzZfYOzwqIBqpQj9KCuJI1EI=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>3600</integer>
 </dict>
 </plist>

@@ -26,7 +26,7 @@ One planned increment remains, with genuine engineering and qualification work i
 
 ## Iteration delivery requirement
 
-After every implementation iteration, run the relevant checks, build a new numbered version and install the locally signed app at `/Applications/Chup!.app` with `python3 scripts/deploy-local.py`. This is authorized by the user for future iterations; no repeated confirmation is required. Report the installed version and path. A running recording must never be force-quit to replace the application. Local app installation does not install the separate virtual microphone driver or satisfy the release qualification gates.
+After every implementation iteration, run the relevant checks, build the commit-count version and install the locally signed app at `/Applications/Chup!.app` with `python3 scripts/deploy-local.py`. This is authorized by the user for future iterations; no repeated confirmation is required. Report the installed version and path. A running recording must never be force-quit to replace the application. Local app installation does not install the separate virtual microphone driver or satisfy the release qualification gates.
 
 Delivered follow-up: multiple global shortcuts per action, including Fn plus Control–Shift for external keyboards, with per-binding settings and native capture/persistence validation. This completes a dictation/settings refinement; the remaining release qualification scope is unchanged.
 
