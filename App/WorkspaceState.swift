@@ -277,6 +277,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   var pendingExchangeID: String?
   var pendingWriteScope: (String, Int, String)?
   var reveal: (() -> Void)?
+  /// Nil outside CI releases; see `AppUpdater`.
+  var updater: AppUpdater?
   let isPreview: Bool
   init(preview: Bool = false) {
     defaults = preview ? UserDefaults(suiteName: "com.chup.preview." + UUID().uuidString)! : .standard
@@ -493,6 +495,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     if detector == nil { detector = MeetingDetector(state: self) }
     if rail == nil { rail = HoverRailController(state: self) }
     if dynamicIsland == nil { dynamicIsland = DynamicIslandController(state: self) }
+    if updater == nil { updater = AppUpdater(state: self) }
     if dictationReviewController == nil { dictationReviewController = DictationReviewController(state: self) }
     dynamicIsland?.refresh()
     if showRail { rail?.show() }

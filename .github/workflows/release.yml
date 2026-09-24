@@ -1,0 +1,109 @@
+# Every push to main is a release: tag v<MARKETING_VERSION>.<commit count>, build
+# arm64 Release, sign with Developer ID, notarize, and publish the DMG with
+# appcast.xml — which is what every release copy's Sparkle updater polls
+# (package-release.py FEED, App/Services/AppUpdater.swift).
+#
+# Secrets (repo Settings → Secrets → Actions; scripts/release-secrets sets them all):
+#   SPARKLE_ED_KEY                        ~/Desktop/chup-updater-key/chup.key — losing it strands every install
+#   APPLE_CERTIFICATE[_PASSWORD]          Developer ID .p12, base64
+#   APPLE_SIGNING_IDENTITY                "Developer ID Application: … (KF53B4S5HD)"
+#   APPLE_API_KEY / APPLE_API_ISSUER / APPLE_API_KEY_P8   App Store Connect key, for notarizing
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One release at a time; a push that lands mid-build waits, then ships on top.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the build number counts commits
+
+      - name: Version
+        run: |
+          BUILD=$(git rev-list --count HEAD)
+          M=$(sed -n "s/^ *MARKETING_VERSION: '\(.*\)'/\1/p" project.yml)
+          echo "BUILD=$BUILD" >> "$GITHUB_ENV"
+          echo "V=$M.$BUILD" >> "$GITHUB_ENV"
+          echo "DMG=.artifacts/Distribution/Chup-$M-$BUILD-arm64.dmg" >> "$GITHUB_ENV"
+
+      # An unsigned or unnotarized DMG would still be offered to every install.
+      # Refuse instead.
+      - name: Secrets present
+        env:
+          A: ${{ secrets.SPARKLE_ED_KEY }}
+          B: ${{ secrets.APPLE_CERTIFICATE }}
+          C: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: '[ -n "$A" ] && [ -n "$B" ] && [ -n "$C" ] || { echo "::error::release secrets missing — run scripts/release-secrets"; exit 1; }'
+
+      - name: Newest Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          xcodebuild -version
+          brew install xcodegen
+
+      - name: Signing keychain
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          K="$RUNNER_TEMP/signing.keychain-db"; P=$(uuidgen)
+          security create-keychain -p "$P" "$K"
+          security set-keychain-settings -lut 21600 "$K"
+          security unlock-keychain -p "$P" "$K"
+          security default-keychain -s "$K"
+          security list-keychains -d user -s "$K"
+          echo "$APPLE_CERTIFICATE" | base64 -d > "$RUNNER_TEMP/devid.p12"
+          security import "$RUNNER_TEMP/devid.p12" -k "$K" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$P" "$K" >/dev/null
+          echo "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+          xcrun notarytool store-credentials chup --key "$RUNNER_TEMP/AuthKey.p8" \
+            --key-id "${{ secrets.APPLE_API_KEY }}" --issuer "${{ secrets.APPLE_API_ISSUER }}"
+
+      - name: Build, sign, notarize
+        run: python3 scripts/package-release.py --identity "${{ secrets.APPLE_SIGNING_IDENTITY }}" --notary-profile chup --build "$BUILD"
+
+      - name: Appcast
+        env:
+          SPARKLE_ED_KEY: ${{ secrets.SPARKLE_ED_KEY }}
+          NOTES: ${{ github.event.head_commit.message }}
+        run: |
+          echo "$SPARKLE_ED_KEY" > "$RUNNER_TEMP/ed.key"
+          SIG=$(.artifacts/ReleaseDerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update --ed-key-file "$RUNNER_TEMP/ed.key" "$DMG")
+          python3 - "$SIG" <<'PY'
+          import email.utils, os, sys
+          from xml.sax.saxutils import escape
+          e = os.environ; name = os.path.basename(e['DMG'])
+          url = f"https://github.com/{e['GITHUB_REPOSITORY']}/releases/download/v{e['V']}/{name}"
+          open('appcast.xml', 'w').write(f'''<?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+          <channel><title>Chup!</title><item>
+          <title>Chup! {e['V']}</title>
+          <pubDate>{email.utils.formatdate()}</pubDate>
+          <sparkle:version>{e['BUILD']}</sparkle:version>
+          <sparkle:shortVersionString>{e['V']}</sparkle:shortVersionString>
+          <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+          <description>{escape(e.get('NOTES') or '')}</description>
+          <enclosure url="{url}" {sys.argv[1]} type="application/octet-stream"/>
+          </item></channel></rss>
+          ''')
+          PY
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTES: ${{ github.event.head_commit.message }}
+        run: gh release create "v$V" "$DMG" appcast.xml --title "Chup! $V" --notes "${NOTES:-Manual release}" --target "$GITHUB_SHA"

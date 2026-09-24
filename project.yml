@@ -15,6 +15,9 @@ packages:
   DynamicNotchKit:
     url: https://github.com/MrKai77/DynamicNotchKit.git
     revision: cd0b3e52d537db115ad3a9d89601f20e0bee8d27
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.0
 settings:
   base:
     SWIFT_VERSION: '5.0'
@@ -45,6 +48,8 @@ targets:
         product: WhisperKit
       - package: DynamicNotchKit
         product: DynamicNotchKit
+      - package: Sparkle
+        product: Sparkle
     info:
       path: App/Resources/Info.plist
       properties:

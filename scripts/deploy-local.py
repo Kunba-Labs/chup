@@ -111,10 +111,12 @@ def main():
         run('/usr/bin/ditto', built, stage)
         # Xcode's Debug product includes a separate app-code dylib. Sign embedded
         # code before its containing bundle so hardened runtime sees one Team ID.
-        for library in sorted(stage.rglob('*.dylib')):
-            run('/usr/bin/codesign', '--force', '--sign', identity, '--timestamp=none', library)
-        for framework in sorted(stage.rglob('*.framework'), key=lambda p: len(p.parts), reverse=True):
-            run('/usr/bin/codesign', '--force', '--sign', identity, '--timestamp=none', framework)
+        # Sparkle nests an app, XPC services and Autoupdate inside its framework.
+        nested = [p for pattern in ('*.dylib', '*.framework', '*.xpc', '*.app') for p in stage.rglob(pattern)]
+        nested += list(stage.glob('Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate'))
+        for item in sorted(nested, key=lambda p: len(p.parts), reverse=True):
+            run('/usr/bin/codesign', '--force', '--sign', identity, '--timestamp=none',
+                '--preserve-metadata=entitlements', item)
         run('/usr/bin/codesign', '--force', '--sign', identity, '--options', 'runtime',
             '--timestamp=none', '--entitlements', ROOT / 'App/Resources/Chup.entitlements', stage)
         run('/usr/bin/codesign', '--verify', '--deep', '--strict', stage)

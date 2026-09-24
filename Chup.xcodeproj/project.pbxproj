@@ -41,6 +41,7 @@
 		59BE2BFEE855E135DAEEBB7B /* TranscriptionLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 153A7A069759A5235EF69E10 /* TranscriptionLabView.swift */; };
 		5B4585E986F598D84F90CCFD /* KeyVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FE7F85C7F8E6C8B79958091 /* KeyVault.swift */; };
 		5CE9FAA957ECAC500A0BE667 /* LocalSpeechSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC0F9A366CB410ADC333269 /* LocalSpeechSettings.swift */; };
+		5E06DF42FECAA0487FBD13D2 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7E423D91CF79AB6FC2AFBD /* AppUpdater.swift */; };
 		5EB02093EDD8BF574BD71FBB /* AssistantVoiceControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACF8462C4E9520E24926C4D4 /* AssistantVoiceControls.swift */; };
 		5FE277921552C2E49CE87209 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B49CB687CA7A4F84742FBE9 /* OnboardingView.swift */; };
 		680EA9A44C7AA3CD053FFB19 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CE34B4F998A8B859137194D /* Theme.swift */; };
@@ -54,6 +55,7 @@
 		88EB230D35E86EAD792CBB6F /* ProcessAudioCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4C0AB363B22B7AED4A2D67E /* ProcessAudioCapture.swift */; };
 		8A671F705238441990FE4E4E /* MainActorTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BEDDC33345B1DF1E25F0B3E /* MainActorTimer.swift */; };
 		8DA868FB811A17CD12F2E90E /* RecordingIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB8D3078474DDC75B9051EC /* RecordingIndex.swift */; };
+		91C048430938490C62ABE73A /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 9755FB5510B8D270C815195D /* Sparkle */; };
 		937D6C52EA29408571E71621 /* LiveConversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E0ADF331FFE6E26E499BA7 /* LiveConversation.swift */; };
 		93A913CAB29D6714F97FE2E5 /* LiveAudioPlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34C56368215432378DED9953 /* LiveAudioPlayback.swift */; };
 		93B471458ADEDB7997C19146 /* ChupApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F857B811F96B29D7B0FB9018 /* ChupApp.swift */; };
@@ -120,6 +122,7 @@
 		36298A9EDCA24223085BBE8E /* AudioDevices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDevices.swift; sourceTree = "<group>"; };
 		38D7A87FC1BFA5639186462B /* ClipboardDelivery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardDelivery.swift; sourceTree = "<group>"; };
 		3BEDDC33345B1DF1E25F0B3E /* MainActorTimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainActorTimer.swift; sourceTree = "<group>"; };
+		3F7E423D91CF79AB6FC2AFBD /* AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdater.swift; sourceTree = "<group>"; };
 		3FB826D1866EBEBA9B6D3160 /* DictationDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationDiagnosticsView.swift; sourceTree = "<group>"; };
 		4359D626923245602F63F510 /* Chup!.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Chup!.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		44B0527B32BCCDCC84A60498 /* TranscriptionLab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionLab.swift; sourceTree = "<group>"; };
@@ -199,6 +202,7 @@
 				DE54BD7F50E1F51968328170 /* FluidAudio in Frameworks */,
 				E94E71C4638FDC1782257081 /* WhisperKit in Frameworks */,
 				33C28807D76E49DCAC6B9E6D /* DynamicNotchKit in Frameworks */,
+				91C048430938490C62ABE73A /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -208,6 +212,7 @@
 		02D0EA4B190119BB802E57C7 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				3F7E423D91CF79AB6FC2AFBD /* AppUpdater.swift */,
 				565F89B836D116E31DA4D215 /* BackendClient.swift */,
 				38D7A87FC1BFA5639186462B /* ClipboardDelivery.swift */,
 				8FE7F85C7F8E6C8B79958091 /* KeyVault.swift */,
@@ -385,6 +390,7 @@
 				5F2C03BA7D54F02F59109002 /* FluidAudio */,
 				C4D206058510A6CB61BC49E4 /* WhisperKit */,
 				7E64871C504A5498DC7B5721 /* DynamicNotchKit */,
+				9755FB5510B8D270C815195D /* Sparkle */,
 			);
 			productName = Chup;
 			productReference = 4359D626923245602F63F510 /* Chup!.app */;
@@ -417,6 +423,7 @@
 				4B3121120D920BCFED7E874E /* XCRemoteSwiftPackageReference "argmax-oss-swift" */,
 				A23BE884B5D15EB949D886D7 /* XCRemoteSwiftPackageReference "DynamicNotchKit" */,
 				B6334B04E490B4311649F35A /* XCRemoteSwiftPackageReference "FluidAudio" */,
+				A6385944C27502F666C4B73A /* XCRemoteSwiftPackageReference "Sparkle" */,
 				F43810F37F1BB941DCB855F0 /* XCLocalSwiftPackageReference "." */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -457,6 +464,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5E06DF42FECAA0487FBD13D2 /* AppUpdater.swift in Sources */,
 				C141AED957452EA61F8CFDB2 /* AssistantAudioRouter.swift in Sources */,
 				0237E234DF59BE430581E9F5 /* AssistantRouteDevices.swift in Sources */,
 				5EB02093EDD8BF574BD71FBB /* AssistantVoiceControls.swift in Sources */,
@@ -746,6 +754,14 @@
 				revision = cd0b3e52d537db115ad3a9d89601f20e0bee8d27;
 			};
 		};
+		A6385944C27502F666C4B73A /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.10.0;
+			};
+		};
 		B6334B04E490B4311649F35A /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/FluidInference/FluidAudio.git";
@@ -774,6 +790,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A23BE884B5D15EB949D886D7 /* XCRemoteSwiftPackageReference "DynamicNotchKit" */;
 			productName = DynamicNotchKit;
+		};
+		9755FB5510B8D270C815195D /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A6385944C27502F666C4B73A /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 		C4D206058510A6CB61BC49E4 /* WhisperKit */ = {
 			isa = XCSwiftPackageProductDependency;

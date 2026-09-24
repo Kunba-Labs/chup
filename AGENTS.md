@@ -20,5 +20,7 @@ The user requires a fresh build installed in their Applications folder after eve
 
 ## Git and local files
 
+- The canonical remote is `origin` → `git@github.com:Kunba-Labs/chup.git`. Every push to `main` is a public, notarized release (`.github/workflows/release.yml`) that release installs pick up through Sparkle. Keep commits shippable, and after pushing, check the run with `gh run list -R Kunba-Labs/chup`.
+
 - Commit source, project configuration, documentation, scripts, and reproducible design assets. Do not commit local credentials, generated build products, crash artifacts, Xcode user state, or MCP/tool configuration.
 - Before handoff, run `git status`, record the tested build/version, and keep `README.md` and `docs/` aligned with the implementation.

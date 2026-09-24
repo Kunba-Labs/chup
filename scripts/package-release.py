@@ -10,6 +10,10 @@ import subprocess
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+# Only release builds carry the updater feed and the public half of the EdDSA
+# key that signs it (~/Desktop/chup-updater-key); local installs never self-update.
+FEED = 'https://github.com/Kunba-Labs/chup/releases/latest/download/appcast.xml'
+PUBLIC_ED_KEY = '0ZjXQFugKOwQMsEa/AsRzZfYOzwqIBqpQj9KCuJI1EI='
 
 def run(*args, **kwargs):
     return subprocess.run([str(a) for a in args], cwd=ROOT, check=True, **kwargs)
@@ -18,6 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--identity', required=True, help='Developer ID Application identity name or SHA-1')
     parser.add_argument('--notary-profile', help='Existing notarytool Keychain profile; authorizes upload to Apple')
+    parser.add_argument('--build', type=int, help='Build number (CFBundleVersion); CI passes the commit count')
     args = parser.parse_args()
     output = ROOT / '.artifacts/Distribution'
     output.mkdir(parents=True, exist_ok=True)
@@ -25,7 +30,8 @@ def main():
     with (output / 'release-build.log').open('w') as log:
         run('xcodebuild', '-project', 'Chup.xcodeproj', '-scheme', 'Chup', '-configuration', 'Release',
             '-destination', 'platform=macOS,arch=arm64', '-derivedDataPath', '.artifacts/ReleaseDerivedData',
-            'CODE_SIGNING_ALLOWED=NO', 'build', stdout=log, stderr=subprocess.STDOUT)
+            'CODE_SIGNING_ALLOWED=NO', *([f'CURRENT_PROJECT_VERSION={args.build}'] if args.build else []),
+            'build', stdout=log, stderr=subprocess.STDOUT)
     source = ROOT / '.artifacts/ReleaseDerivedData/Build/Products/Release/Chup!.app'
     metadata = plistlib.loads((source / 'Contents/Info.plist').read_bytes())
     version = metadata['CFBundleShortVersionString'] + '-' + metadata['CFBundleVersion']
@@ -36,8 +42,18 @@ def main():
         stage = pathlib.Path(folder)
         app = stage / 'Chup!.app'
         run('ditto', source, app)
-        for item in sorted(list(app.rglob('*.dylib')) + list(app.rglob('*.framework')), key=lambda p: len(p.parts), reverse=True):
-            run('codesign', '--force', '--sign', args.identity, '--timestamp', '--options', 'runtime', item)
+        plist = app / 'Contents/Info.plist'
+        values = plistlib.loads(plist.read_bytes())
+        values.update(SUFeedURL=FEED, SUPublicEDKey=PUBLIC_ED_KEY, SUEnableAutomaticChecks=True,
+                      SUScheduledCheckInterval=3600)
+        plist.write_bytes(plistlib.dumps(values))
+        # Innermost first: Sparkle nests an app, XPC services and a bare
+        # Autoupdate tool inside its framework, and notarization checks them all.
+        nested = [p for pattern in ('*.dylib', '*.framework', '*.xpc', '*.app') for p in app.rglob(pattern)]
+        nested += list(app.glob('Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate'))
+        for item in sorted(nested, key=lambda p: len(p.parts), reverse=True):
+            run('codesign', '--force', '--sign', args.identity, '--timestamp', '--options', 'runtime',
+                '--preserve-metadata=entitlements', item)
         run('codesign', '--force', '--sign', args.identity, '--timestamp', '--options', 'runtime',
             '--entitlements', ROOT / 'App/Resources/Chup.entitlements', app)
         details = run('codesign', '-dvv', app, capture_output=True, text=True).stderr

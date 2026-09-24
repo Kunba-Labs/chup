@@ -73,6 +73,9 @@ import ChupCore
         state.cancelDictation()
       }
       Divider()
+      if let updater = state.updater {
+        Button("Check for Updates…") { updater.check() }
+      }
       SettingsLink()
       Button("Quit Chup!") {
         state.stopMeeting()

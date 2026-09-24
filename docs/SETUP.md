@@ -72,7 +72,7 @@ Local iteration delivery remains `python3 scripts/deploy-local.py`. The separate
 python3 scripts/package-release.py --identity 'Developer ID Application: YOUR NAME (TEAMID)'
 ```
 
-Artifacts are under `.artifacts/Distribution`. The default command does not upload to Apple, install a driver, or claim Gatekeeper readiness. Once you have configured your own notarytool Keychain profile, pass `--notary-profile YOUR_PROFILE` to explicitly submit, await acceptance, staple and assess the DMG. Never put Apple credentials in this repository. An existing versioned DMG is protected from overwrite; archive it or use the next build number. A future auto-update feed and App Store sandbox/distribution design remain separate engineering.
+Artifacts are under `.artifacts/Distribution`. The default command does not upload to Apple, install a driver, or claim Gatekeeper readiness. Once you have configured your own notarytool Keychain profile, pass `--notary-profile YOUR_PROFILE` to explicitly submit, await acceptance, staple and assess the DMG. Never put Apple credentials in this repository. An existing versioned DMG is protected from overwrite; archive it or use the next build number. `--build N` sets CFBundleVersion. Every release build gets the Sparkle feed and public key in its Info.plist, and its nested Sparkle code is signed with the Developer ID identity. CI runs this script with `--build <commit count>` on every push to `main`. See *Releases and updates* in the README. App Store sandbox/distribution design remains separate engineering.
 
 ## Chup! missing from the recording permission list
 

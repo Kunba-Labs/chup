@@ -96,6 +96,10 @@ Run `python3 scripts/deploy-local.py` after completing an iteration and its rele
 The command does not force-quit Chup!, start a microphone, enable login items or install the virtual audio driver. Close Chup! safely before replacing a running version. `--applications-dir "$HOME/Applications"` selects the per-user Applications folder if desired. `--signing-identity` can select another configured local identity. This is a development install, separate from notarization or App Store distribution.
 
 
+## Releases and updates
+
+Every push to `main` on [Kunba-Labs/chup](https://github.com/Kunba-Labs/chup) runs `.github/workflows/release.yml` on a GitHub macOS runner. It builds arm64 Release as **1.0.<commit count>**, signs it with Developer ID, notarizes and staples the DMG, and publishes it as a GitHub release with `appcast.xml`. Release copies check that appcast hourly through Sparkle and have **Check for Updates…** in the menu bar. They offer no update while you're recording or dictating. Local `deploy-local.py` installs have no feed and never update themselves. `scripts/release-secrets` puts the signing, notarizing and Sparkle secrets on the repo. The Sparkle private key lives in `~/Desktop/chup-updater-key`: back it up, because losing it strands every installed release.
+
 Increment 8 independent work is implemented and locally installed as **1.0 (5)**: [implementation and test evidence](docs/PHASE-8.md), [manual acceptance checklist](docs/MANUAL-TESTS.md). Real-provider synthetic checks pass; physical recording, privacy routing and public distribution are not yet qualified. Release DMGs and their explicit notarization status are in `.artifacts/Distribution`.
 
 Latest dictation update: **1.0 (14)** adds saved-audio playback, recoverable accidental-clip filtering and an independent listening indicator. See [validation](docs/VALIDATION.md) and [the 2026 local-transcription investigation](docs/LOCAL-TRANSCRIPTION.md). Local dictation ASR is now implemented; see Dictation settings for model readiness and VALIDATION.md for qualification.
