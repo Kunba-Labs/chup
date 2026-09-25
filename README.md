@@ -1,6 +1,6 @@
 # Chup!
 
-Dictation and meeting notes for the Mac. Hold a shortcut and talk, and the text lands in whatever app you're typing in. Start a meeting and Chup! records it locally, transcribes it and keeps a summary and a list of actions that point back to the moments they came from. Native SwiftUI and AppKit, macOS 15+ on Apple silicon.
+Dictation and meeting notes for the Mac. Hold a shortcut and talk, and the text lands in whatever app you're typing in. Start a meeting and Chup! records it on your Mac, transcribes it, and keeps a summary and a list of actions that point back to the moments they came from. Native SwiftUI and AppKit, macOS 15 or later on Apple silicon.
 
 ![A meeting in Chup!: the summary tab with an overview, a decision and an action, each linked to its source in the transcript](docs/screenshots/meeting.jpg)
 
@@ -14,33 +14,29 @@ Dictation and meeting notes for the Mac. Hold a shortcut and talk, and the text 
 ![The dark glass rail on displays without a notch](docs/screenshots/rail.jpg)
 </details>
 
-- **Recording stays on your Mac.** Audio, transcripts and notes are stored in an encrypted local library. Cloud transcription and summaries only run when you turn them on, through a backend you host.
-- **Dictation anywhere.** Local Whisper models or the cloud. Chup! applies your personal dictionary and snippets, and you can review the text before it's pasted.
-- **Summaries show their sources.** Every point in a summary links to the part of the transcript it came from. Your own edits are kept when the summary is regenerated.
-- **Out of the way.** The controls sit in the notch or on a thin rail at the edge of the screen, and nothing takes focus from the app you're in.
+Skype made the phone call free and the telcos never recovered. Local speech models have done the same to transcription: the cost of turning an hour of audio into text has gone to roughly zero, so the only question left is where the audio goes. Most meeting note tools answer that by uploading everything. Chup! keeps it on the machine that recorded it.
 
-**Status: development preview.** The app builds and ships, but it isn't production-complete. Private voice and assistant broadcast are route-gated prototypes, and physical audio routing and provider access haven't been qualified yet. Read [implementation status](docs/STATUS.md) before relying on capture.
+- **Recording stays on your Mac.** Audio, transcripts and notes live in an encrypted local library. Cloud transcription and summaries run only when you turn them on, through a backend you host.
+- **Dictate anywhere.** Local Whisper models or the cloud. Chup! applies your personal dictionary and snippets, and you can review the text before it's pasted.
+- **Summaries show their sources.** Every point in a summary links to the part of the transcript it came from. Your own edits survive when the summary is regenerated.
+- **It stays out of the way.** The controls sit in the notch or on a thin rail at the edge of the screen, and nothing takes focus from the app you're in.
+
+**Status: development preview.** The app builds and ships, but it is not production-complete. Private voice and assistant broadcast are route-gated prototypes, and physical audio routing and provider access have not been qualified. Read [implementation status](docs/STATUS.md) before you record something you can't repeat.
 
 ## Install
 
-Download the `.dmg` from the [latest release](../../releases/latest) and drag Chup! into Applications. Every push to `main` becomes a Developer ID signed, notarized release. The app checks for updates hourly and has **Check for Updates…** in its menu bar menu. See [Releases and updates](#releases-and-updates).
-
-## Design gallery
-
-Open [the design gallery](Design/index.html), or view [Meetings](Design/Previews/01-workspace.png), [meeting detail](Design/Previews/02-meeting.png), [notification panels](Design/Previews/03-panels.png), [dark glass rail](Design/Previews/04-dark-glass-rail.png), and [speaker controls](Design/Previews/09-speakers.png), [meeting actions](Design/Previews/10-actions.png), [private voice](Design/Previews/11-private-voice.png), [onboarding](Design/Previews/12-onboarding.png), [Permissions](Design/Previews/13-permissions.png), and [storage settings](Design/Previews/14-storage.png). Sample content is restricted to the explicit `--render-design` path and uses a temporary database. Normal startup is empty.
-
-The original red scanner waveform is provided as a [1024 px master](Design/AppIcon-master.png), a [layered Icon Composer document](App/Resources/ChupIcon.icon), and legacy size variants. See [icon notes](Design/ICON.md).
+Download the `.dmg` from the [latest release](../../releases/latest) and drag Chup! into Applications. Every push to `main` becomes a Developer ID signed, notarized release. The app checks for updates every hour and has **Check for Updates…** in its menu bar menu. See [Releases and updates](#releases-and-updates).
 
 ## Build and run
 
-Requirements: Xcode 27 (latest build validated here), Apple silicon, macOS 15+, XcodeGen, Node 22+ for the optional backend.
+You need Xcode 27, Apple silicon, macOS 15 or later, XcodeGen, and Node 22 or later for the optional backend.
 
 ```sh
 xcodegen generate
 open Chup.xcodeproj
 ```
 
-Choose the `Chup` scheme, My Mac, and a signing team for permission testing. Run with Command-R. The checked-in `.xcodeproj` is usable without regenerating it. ChupCore is a local Swift package with vendored SQLCipher using Apple CommonCrypto. The first app build resolves the pinned WhisperKit dependency through SwiftPM; the core package remains self-contained. See [dependency provenance](docs/DEPENDENCIES.md).
+Choose the `Chup` scheme, My Mac, and a signing team if you want to test permissions. Run with Command-R. The checked-in `.xcodeproj` works without regenerating it. ChupCore is a local Swift package with vendored SQLCipher on Apple CommonCrypto. The first app build resolves the pinned WhisperKit dependency through SwiftPM, and the core package stays self-contained. See [dependency provenance](docs/DEPENDENCIES.md).
 
 For a compile-only build without signing:
 
@@ -51,7 +47,7 @@ For a compile-only build without signing:
 open Design/index.html
 ```
 
-XcodeBuildMCP 2.7.0 was installed and used through its CLI. To reproduce:
+XcodeBuildMCP 2.7.0 was used through its CLI. To reproduce:
 
 ```sh
 npm install --prefix .tools --no-audit --no-fund xcodebuildmcp@2.7.0
@@ -60,11 +56,17 @@ npm install --prefix .tools --no-audit --no-fund xcodebuildmcp@2.7.0
   --derived-data-path "$PWD/.artifacts/DerivedData" --extra-args CODE_SIGNING_ALLOWED=NO
 ```
 
-A project-local `.codex/config.toml` registers the MCP for future trusted sessions. The current implementation did not require global Codex configuration changes.
+A project-local `.codex/config.toml` registers the MCP for trusted sessions. Global Codex configuration was left alone.
 
-## AI backend setup
+## Install each iteration
 
-Local recording, typed notes and installed-model dictation work without this service. Meeting transcription, summaries and AI editing use the cloud when enabled.
+Run `python3 scripts/deploy-local.py` after you finish an iteration and its checks. It builds `Chup!.app` with the commit count as its build number, signs it with Developer ID (Apple Development if that is all you have), validates the app with the offline native fixtures and installs it at `/Applications/Chup!.app`. The installed copy is checked again. Earlier versions are kept under `.artifacts/InstalledBackups` and the latest successful installation is recorded in `.artifacts/last-install.json`.
+
+The command will not force-quit Chup!, start a microphone, enable login items or install the virtual audio driver. Close Chup! yourself before replacing a running version. `--applications-dir "$HOME/Applications"` installs into the per-user Applications folder and `--signing-identity` picks another configured local identity. A development install like this is separate from notarization and App Store distribution.
+
+## The AI backend
+
+Local recording, typed notes and dictation with an installed model work without this service. Meeting transcription, summaries and AI editing use the cloud when you enable them.
 
 ```sh
 cd backend
@@ -75,54 +77,49 @@ cp .env.example .env
 npm start
 ```
 
-In app Settings → Advanced, enter `http://127.0.0.1:8787` and the **app token**, then Save token in Keychain. Do not enter your OpenAI project secret in the app. Enable cloud processing in Privacy. Live captions have a separate Meetings toggle. Production deployment needs HTTPS, real per-user authentication, quotas and monitoring; the included service binds loopback only and is a development relay.
+In the app, open Settings → Advanced, enter `http://127.0.0.1:8787` and the **app token**, then save the token in the Keychain. The OpenAI project secret stays in the backend's `.env` and never goes into the app. Turn on cloud processing under Privacy. Live captions have their own toggle under Meetings. The included service binds loopback only and is a development relay, so a production deployment needs HTTPS, real per-user authentication, quotas and monitoring.
 
-Models: `gpt-live-1` for the Live transport spike; `gpt-live-transcribe` for live captions; `gpt-4o-transcribe-diarize` for final file segments; `gpt-transcribe` for dictation; configurable `gpt-5.6-luna` for cleanup, summaries and questions. These names/contracts were checked against current official documentation, but no account-level requests were performed here. See [API research](docs/API-RESEARCH.md).
+Models: `gpt-live-1` for the Live transport spike, `gpt-live-transcribe` for live captions, `gpt-4o-transcribe-diarize` for final file segments, `gpt-transcribe` for dictation, and a configurable `gpt-5.6-luna` for cleanup, summaries and questions. The names and contracts were checked against the current official documentation. No account-level requests were made here. See [API research](docs/API-RESEARCH.md).
 
-## Try the workflows
+## Try it
 
-- Create a meeting note. Type notes; writes commit immediately. Record opens an explicit mic-only/application picker. Inform participants. Pause does not mute the conference app.
-- Stop and choose Transcribe saved audio. Completed chunk jobs survive a retry. Rename/correct speakers in Transcript; generate a source-backed summary afterward.
-- Settings → Shortcuts supports multiple bindings per action: keep Fn and add Control–Shift for an external keyboard. Edit or remove each binding independently; changes persist immediately. Configure Input Monitoring and Accessibility through Settings. Use the default or no-Fn shortcut preset. Fn OS behavior must be configured appropriately. Dictation records into the original field only if its identity, focus epoch, content and selection still match.
-- Meeting detection reads Core Audio activity metadata for known apps. Its nonactivating prompt dismisses after ten seconds, deduplicates and supports two-minute snooze. Accepting starts recording. Browser detection is heuristic, not tab isolation.
-- Ask a meeting question in private text. Proposed note writes are visible; Save commits with a request ID and expected version. Undo will not overwrite newer edits.
+- Create a meeting note. Type notes and every write commits immediately. Record opens a picker for the microphone alone or a specific application. Tell the participants. Pause does not mute the conference app.
+- Stop, then choose Transcribe saved audio. Completed chunk jobs survive a retry. Rename or correct speakers in the transcript, then generate a summary that cites its sources.
+- Settings → Shortcuts holds several bindings per action: keep Fn and add Control–Shift for an external keyboard. Edit or remove each binding on its own and the change persists at once. Grant Input Monitoring and Accessibility from Settings. Use the default preset or the one without Fn, and set the Fn key's macOS behaviour to match. Dictation writes into the original field only while its identity, focus epoch, content and selection still match.
+- Meeting detection reads Core Audio activity metadata for known apps. Its prompt takes no focus, dismisses after ten seconds, deduplicates and can snooze for two minutes. Accepting starts recording. Browser detection is a heuristic and cannot tell tabs apart.
+- Ask a meeting a question in private text. Proposed note writes are shown before they land. Save commits with a request ID and an expected version, and Undo never overwrites newer edits.
 
-## Local data
+## Your data
 
-`~/Library/Application Support/Chup/` stores **Chup!** data. The app and Keychain service use `com.chup.mac`; no legacy identity or data-directory fallback is retained. SQLCipher encrypts metadata, FTS, notes and request journals; a separate Keychain key encrypts audio/reference files. Previous plaintext databases migrate on opening. Settings provides opt-in retention, deletion, readable JSON export and password-protected backup/restore. See [setup and recovery](docs/SETUP.md).
+`~/Library/Application Support/Chup/` holds the **Chup!** library. The app and its Keychain service use `com.chup.mac`, with no legacy identity or data-directory fallback. SQLCipher encrypts metadata, search indexes, notes and request journals, and a separate Keychain key encrypts audio and reference files. Earlier plaintext databases migrate when opened. Settings offers opt-in retention, deletion, readable JSON export and password-protected backup and restore. See [setup and recovery](docs/SETUP.md).
 
-The backend caches encrypted provider results for durable retries, with separate retention/deletion; it logs neither meeting text nor audio. No login item, voice enrollment, virtual driver, bot or cloud sync is silently enabled.
+The backend caches encrypted provider results so retries survive, with its own retention and deletion, and it logs neither meeting text nor audio. Login items, voice enrollment, the virtual driver, bots and cloud sync all stay off until you turn them on.
 
-[Product specification](docs/PRODUCT.md) · [Architecture](docs/ARCHITECTURE.md) · [Phased backlog](docs/PLAN.md) · [Actual validation and manual steps](docs/VALIDATION.md)
+[Product specification](docs/PRODUCT.md) · [Architecture](docs/ARCHITECTURE.md) · [Phased backlog](docs/PLAN.md) · [Validation and manual steps](docs/VALIDATION.md)
 
-## Motion preview
+## Design and motion previews
 
-Open [Design/motion.html](Design/motion.html) for the light workspace and animated dark glass rail. Try Listening, Speaking, Interrupt and the ten-second meeting prompt. [The MP4](Design/Previews/06-motion.mp4) and [GIF](Design/Previews/06-motion.gif) show the walkthrough without requiring the app. These are labeled design demonstrations, with no audio connection. See [motion and validation notes](docs/MOTION.md).
+Open [the design gallery](Design/index.html), or view [Meetings](Design/Previews/01-workspace.png), [meeting detail](Design/Previews/02-meeting.png), [notification panels](Design/Previews/03-panels.png), [the dark glass rail](Design/Previews/04-dark-glass-rail.png), [speaker controls](Design/Previews/09-speakers.png), [meeting actions](Design/Previews/10-actions.png), [private voice](Design/Previews/11-private-voice.png), [onboarding](Design/Previews/12-onboarding.png), [permissions](Design/Previews/13-permissions.png) and [storage settings](Design/Previews/14-storage.png). Sample content appears only on the explicit `--render-design` path and uses a temporary database. A normal start is empty.
 
-## Latest build-out
+[Design/motion.html](Design/motion.html) shows the light workspace and the animated dark glass rail. Try Listening, Speaking, Interrupt and the ten-second meeting prompt. [The MP4](Design/Previews/06-motion.mp4) and [GIF](Design/Previews/06-motion.gif) walk through it without the app. They are labelled design demonstrations with no audio connection. See [motion and validation notes](docs/MOTION.md).
 
-[Iteration 7](docs/ITERATION-7.md) adds encrypted metadata/migration, retention/deletion, backups, durable request recovery, provider usage, feature-scoped onboarding, Privacy settings links and launch at login. It also applies the **Chup!** name throughout the product. Native build, **50 Swift tests + 20 backend tests**, offline audio and localhost Live fixtures pass. One planned increment remains: qualification and distribution. Real provider, signed permissions/login registration and physical privacy/audio routing remain untested.
+The red scanner waveform icon comes as a [1024 px master](Design/AppIcon-master.png), a [layered Icon Composer document](App/Resources/ChupIcon.icon) and legacy size variants. See [icon notes](Design/ICON.md).
 
-[Iterations 4–6](docs/ITERATIONS-4-6.md) cover meeting intelligence, private voice and assistant outgoing routing.
+## Where things stand
+
+[Implementation status](docs/STATUS.md) is the current picture and [validation](docs/VALIDATION.md) records what was tested and how. The iteration notes trace how it got here: [iterations 1–3](docs/ITERATIONS-1-3.md) for capture recovery, dictation and transcript and speaker work, [iterations 4–6](docs/ITERATIONS-4-6.md) for meeting intelligence, private voice and assistant routing, [iteration 7](docs/ITERATION-7.md) for encrypted storage, retention, backups and onboarding, and [phase 8](docs/PHASE-8.md) with its [manual acceptance checklist](docs/MANUAL-TESTS.md) for provider checks. Local dictation is covered in [the local transcription investigation](docs/LOCAL-TRANSCRIPTION.md).
+
+Real provider access, physical recording and privacy routing are still unqualified. Two scripts help with the pieces that need no hardware:
 
 ```sh
 python3 scripts/test-live-transport.py  # after building; no OpenAI or audio hardware
 python3 scripts/build-virtual-mic.py   # builds a separate driver; never installs it
 ```
 
-See [driver setup and qualification](DriverPrototype/README.md) for the separate license and explicit development installation steps. Ordinary meeting recording does not need it. See [iterations 1–3](docs/ITERATIONS-1-3.md) for capture recovery, dictation and transcript/speaker work.
-
-## Install each iteration
-
-Run `python3 scripts/deploy-local.py` after completing an iteration and its relevant checks. It builds `Chup!.app` with the commit count as its build number, signs it with Developer ID (falling back to Apple Development), validates the app with offline native fixtures and installs it at `/Applications/Chup!.app`. The installed copy is checked again. Previous app versions are retained under `.artifacts/InstalledBackups`; the latest successful installation is recorded in `.artifacts/last-install.json`.
-
-The command does not force-quit Chup!, start a microphone, enable login items or install the virtual audio driver. Close Chup! safely before replacing a running version. `--applications-dir "$HOME/Applications"` selects the per-user Applications folder if desired. `--signing-identity` can select another configured local identity. This is a development install, separate from notarization or App Store distribution.
-
+The virtual audio driver has its own licence and an explicit development install, described in [driver setup and qualification](DriverPrototype/README.md). Ordinary meeting recording does not need it.
 
 ## Releases and updates
 
-Every push to `main` on [Kunba-Labs/chup](https://github.com/Kunba-Labs/chup) runs `.github/workflows/release.yml` on a GitHub macOS runner. It builds arm64 Release as **1.0.<commit count>**, signs it with Developer ID, notarizes and staples the DMG, and publishes it as a GitHub release with `appcast.xml`. Any copy installed in an Applications folder checks that appcast hourly through Sparkle, including `deploy-local.py` installs, which carry the same Developer ID signature and commit-count build number, and has **Check for Updates…** in the menu bar. It offers no update while you're recording or dictating. Xcode runs from DerivedData never update themselves. `scripts/release-secrets` puts the signing, notarizing and Sparkle secrets on the repo. The Sparkle private key lives in `~/Desktop/chup-updater-key`: back it up, because losing it strands every installed release.
+Every push to `main` on [Kunba-Labs/chup](https://github.com/Kunba-Labs/chup) runs `.github/workflows/release.yml` on a GitHub macOS runner. It builds arm64 Release as **1.0.<commit count>**, signs it with Developer ID, notarizes and staples the DMG, and publishes it as a GitHub release with `appcast.xml`. Any copy in an Applications folder checks that appcast every hour through Sparkle and has **Check for Updates…** in the menu bar. That includes `deploy-local.py` installs, which carry the same Developer ID signature and commit-count build number. No update is offered while you're recording or dictating. Xcode runs from DerivedData never update themselves.
 
-Increment 8 independent work is implemented and locally installed as **1.0 (5)**: [implementation and test evidence](docs/PHASE-8.md), [manual acceptance checklist](docs/MANUAL-TESTS.md). Real-provider synthetic checks pass; physical recording, privacy routing and public distribution are not yet qualified. Release DMGs and their explicit notarization status are in `.artifacts/Distribution`.
-
-Latest dictation update: **1.0 (14)** adds saved-audio playback, recoverable accidental-clip filtering and an independent listening indicator. See [validation](docs/VALIDATION.md) and [the 2026 local-transcription investigation](docs/LOCAL-TRANSCRIPTION.md). Local dictation ASR is now implemented; see Dictation settings for model readiness and VALIDATION.md for qualification.
+`scripts/release-secrets` puts the signing, notarizing and Sparkle secrets on the repo. The Sparkle private key lives in `~/Desktop/chup-updater-key`. Back it up. Losing it strands every installed release.
