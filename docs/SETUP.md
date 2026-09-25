@@ -20,6 +20,8 @@ Settings → Permissions provides a button to open each relevant macOS pane and 
 
 System-audio-only access has no general public preflight status used by this app. “Checked when capture starts” is intentional. First choose a source in the meeting capture sheet and start recording to invoke that system check. Browsers may include audio from other tabs. Ordinary recording needs no virtual driver. No camera, Full Disk Access or Automation access is requested by these workflows.
 
+macOS ties each grant to the app's code signature. A build signed with a different identity (for example the 24 September 2026 move of local installs from Apple Development to Developer ID) keeps showing Chup! as enabled in these panes while every grant is ignored, so global shortcuts and insertion stop. Remove Chup! from the affected pane (or run `tccutil reset Accessibility com.chup.mac`) and grant it again from Settings → Permissions.
+
 Chup! does not share your screen. The optional screen permission supports meeting audio capture. Conferencing software continues to control its own screen sharing and microphone mute.
 
 ## Multiple shortcuts and external keyboards
