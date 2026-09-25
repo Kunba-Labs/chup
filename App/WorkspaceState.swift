@@ -518,7 +518,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     case .listening: return "Listening"
     case .processing: return "Processing dictation"
     case .error: return "Needs attention"
-    default: return "Ready when you are"
+    default: return "Waiting for input…"
     }
   }
   static func time(_ seconds: Double) -> String {

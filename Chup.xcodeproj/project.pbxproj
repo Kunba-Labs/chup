@@ -83,6 +83,7 @@
 		D1089FFECCBBCDE4CE7FD3F9 /* VoicePCMConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 903CCCAB4CF435BC59A48D9A /* VoicePCMConverter.swift */; };
 		D111B61DE0A89C4C6F2F61FF /* WorkspaceState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7DAE6469E33635695B0344 /* WorkspaceState.swift */; };
 		D208144B7B7FC055A9CFBB3B /* WorkspaceDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F05457FD4D16B86955D3C590 /* WorkspaceDiagnostics.swift */; };
+		D3E39377FFB069C85F030055 /* AttentionDesignBoard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA5CE29FBD662DCD5A2193CC /* AttentionDesignBoard.swift */; };
 		D533A97196AC14655B3F6233 /* HoverRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D6D9542FAA1FD5814ECDD6 /* HoverRail.swift */; };
 		D57B2353A5F14F37B32A12EB /* DictationTraceValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42E0EE13EE7525DA1AF87A /* DictationTraceValidation.swift */; };
 		D5B5B9789E18A2EC00022C62 /* VoiceRenderSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E150C2465963FD2E8C8CB71 /* VoiceRenderSink.swift */; };
@@ -177,6 +178,7 @@
 		C59B554336A827383EA2B3F7 /* WorkspaceDeliveryDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDeliveryDiagnostics.swift; sourceTree = "<group>"; };
 		C64A14F11CCE3285A0EF5709 /* DictationIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationIndicator.swift; sourceTree = "<group>"; };
 		C8D90900FDDDD21C7DA8433B /* LiveSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSession.swift; sourceTree = "<group>"; };
+		CA5CE29FBD662DCD5A2193CC /* AttentionDesignBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttentionDesignBoard.swift; sourceTree = "<group>"; };
 		CA6515593DFB0FC88682A64D /* NotificationCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationCard.swift; sourceTree = "<group>"; };
 		CD46CB93BBAEEF9446BA9C2B /* ParakeetModel.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ParakeetModel.json; sourceTree = "<group>"; };
 		CE4BDA2CFB6B8BD22953EDA1 /* WorkspaceDictationPlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDictationPlayback.swift; sourceTree = "<group>"; };
@@ -256,6 +258,7 @@
 			isa = PBXGroup;
 			children = (
 				ACF8462C4E9520E24926C4D4 /* AssistantVoiceControls.swift */,
+				CA5CE29FBD662DCD5A2193CC /* AttentionDesignBoard.swift */,
 				EB4B76130F88388DB9DACCC4 /* DesignExporter.swift */,
 				3FB826D1866EBEBA9B6D3160 /* DictationDiagnosticsView.swift */,
 				C64A14F11CCE3285A0EF5709 /* DictationIndicator.swift */,
@@ -468,6 +471,7 @@
 				C141AED957452EA61F8CFDB2 /* AssistantAudioRouter.swift in Sources */,
 				0237E234DF59BE430581E9F5 /* AssistantRouteDevices.swift in Sources */,
 				5EB02093EDD8BF574BD71FBB /* AssistantVoiceControls.swift in Sources */,
+				D3E39377FFB069C85F030055 /* AttentionDesignBoard.swift in Sources */,
 				B19BEF22313BF17A95559D76 /* AudioDevices.swift in Sources */,
 				ABBE8555E4361309FFD73A93 /* AudioOwner.swift in Sources */,
 				7A7148678282133B83D58F7B /* AudioValidation.swift in Sources */,

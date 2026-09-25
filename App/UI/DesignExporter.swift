@@ -69,6 +69,12 @@ import ChupCore
         try exportIslandBoard(destination: destination)
         return
       }
+      if ProcessInfo.processInfo.environment["CHUP_ATTENTION_PREVIEW"] == "1" {
+        try renderNative(AttentionDesignBoard(), size: CGSize(width: 1180, height: 1420),
+          to: destination.appendingPathComponent("32-attention.png"))
+        print("Attention design board exported. Proposal mocks only; no checks run, no capture.")
+        return
+      }
       let now = Date(timeIntervalSince1970: 1_789_387_200)
       state.meetings = [
         Meeting(
@@ -734,7 +740,7 @@ struct IslandDesignBoard: View {
 }
 
 /// A mocked desktop strip. The real backdrop is whatever is behind the notch.
-private struct IslandStage<Content: View>: View {
+struct IslandStage<Content: View>: View {
   @ViewBuilder let content: () -> Content
   var body: some View {
     ZStack(alignment: .top) {
@@ -747,7 +753,7 @@ private struct IslandStage<Content: View>: View {
 }
 
 /// Menu bar plus the black notch body the package masks the content into.
-private struct IslandNotch<Content: View>: View {
+struct IslandNotch<Content: View>: View {
   var expanded = true
   @ViewBuilder let content: () -> Content
   var body: some View {
