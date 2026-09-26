@@ -1,0 +1,47 @@
+# Filesystem security scan: dependency lockfiles (Package.resolved, npm
+# lockfiles) for known-fixable HIGH/CRITICAL vulnerabilities, plus secret
+# scanning. No container images are built here, so there is no image to
+# scan — this replaces that with a Trivy fs scan over the checked-out repo
+# (gitignored build/vendor dirs such as .build/, .artifacts/, node_modules/
+# are never checked out, so they never add noise).
+name: security
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Vulnerability and secret scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: SBOM (CycloneDX)
+        if: always()
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: cyclonedx
+          output: sbom.cdx.json
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          retention-days: 365
