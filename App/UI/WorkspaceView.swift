@@ -283,8 +283,10 @@ struct MeetingDetailView: View {
       HStack(spacing: 14) {
         if state.activeMeetingID == state.selectedMeetingID {
           Label(
-            state.meetingStatus == .recording ? "Recording" : "Paused",
-            systemImage: state.meetingStatus == .recording ? "record.circle.fill" : "pause.circle"
+            state.meetingStatus == .recording
+              ? "Recording" : state.meetingStatus == .processing ? "Starting…" : "Paused",
+            systemImage: state.meetingStatus == .recording
+              ? "record.circle.fill" : state.meetingStatus == .processing ? "hourglass" : "pause.circle"
           ).foregroundStyle(Palette.red)
           Text(WorkspaceState.time(state.elapsed)).monospacedDigit()
           SourceMeter(
@@ -331,7 +333,7 @@ struct MeetingDetailView: View {
           }.buttonStyle(.plain)
         }
         Spacer()
-        if state.processingMeeting { ProgressView().controlSize(.small) }
+        if state.processingMeetingID == state.selectedMeetingID { ProgressView().controlSize(.small) }
       }.overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 1) }
       Group {
         if tab == "My notes" {
@@ -515,7 +517,7 @@ struct MeetingDetailView: View {
         }.disabled(
           state.processingMeeting || state.activeMeetingID == state.selectedMeetingID)
       }.padding(.vertical, 24)
-      if state.processingMeeting {
+      if state.processingMeetingID == state.selectedMeetingID {
         HStack {
           ProgressView().controlSize(.small)
           Text(state.transcriptionProgress)

@@ -39,7 +39,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var summary: MeetingSummary?
   @Published var liveOutlines: [SummaryRevision] = []
   @Published var enhancedNotes: EnhancedNotes?
-  @Published var writingNotes = false
+  /// The meeting whose notes are being written, or nil.
+  @Published var notesMeetingID: String?
+  var writingNotes: Bool { notesMeetingID != nil }
   @Published var summaryVersions: [SummaryRevision] = []
   @Published var summaryEdits: [SummaryItem] = []
   @Published var actions: [ActionRecord] = []
@@ -59,7 +61,20 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   { didSet { defaults.set(autoSummaryEnabled, forKey: "autoSummaryEnabled") } }
   var outlineTask: Task<Void, Never>?
   var outlineCovered: [String: Set<String>] = [:]
-  var notesQueue: [String] = []
+  /// Meetings stopped with automatic notes still to write. Persisted, so quitting mid-way
+  /// resumes at the next launch.
+  var notesQueue: [String] {
+    get { defaults.stringArray(forKey: "pendingNotes") ?? [] }
+    set { defaults.set(newValue, forKey: "pendingNotes") }
+  }
+  func resumePendingNotes() {
+    guard cloudEnabled, !backendToken.isEmpty, !processingMeeting, activeMeetingID == nil else {
+      return
+    }
+    let known = Set(meetings.map(\.id))
+    notesQueue = notesQueue.filter { known.contains($0) }
+    if let next = notesQueue.first { transcribeMeeting(meetingID: next) }
+  }
   @Published var captureGaps: [CaptureGap] = []
   @Published var note = Note()
   @Published var noteDraft = ""
@@ -119,6 +134,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var activeMeetingID: String?
   @Published var elapsed: Double = 0
   @Published var processingMeeting = false
+  /// The meeting `processingMeeting` refers to, so other meetings don't show its progress.
+  @Published var processingMeetingID: String?
   @Published var transcriptionProgress = ""
   @Published var transcriptReviews: [TranscriptReview] = []
   @Published var enrollments: [VoiceEnrollment] = []
@@ -165,6 +182,47 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   }
   @Published var liveCaptionsEnabled: Bool {
     didSet { defaults.set(liveCaptionsEnabled, forKey: "liveCaptionsEnabled") }
+  }
+  /// Kept in Keychain (Chup!-only ACL), so another local process can't switch MCP on.
+  @Published var mcpEnabled = false {
+    didSet {
+      guard !isPreview, oldValue != mcpEnabled, !revertingMCP else { return }
+      do { try KeyVault.write(Data((mcpEnabled ? "1" : "0").utf8), account: "mcp-enabled") } catch {
+        notice = "MCP setting not saved: " + error.localizedDescription
+        revertingMCP = true
+        mcpEnabled = oldValue
+        revertingMCP = false
+        return
+      }
+      updateMCP()
+    }
+  }
+  private var revertingMCP = false
+  var mcpServer: MeetingMCPServer?
+  func updateMCP() {
+    guard mcpEnabled else {
+      mcpServer?.stop()
+      mcpServer = nil
+      return
+    }
+    guard mcpServer == nil else { return }
+    let version = runningBuild.label
+    let server = MeetingMCPServer(root: root) { [weak self] line in
+      DispatchQueue.main.sync {
+        MainActor.assumeIsolated {
+          guard let self, self.mcpEnabled, let store = try? self.db() else {
+            return Data(#"{"jsonrpc":"2.0","id":null,"error":{"code":-32603,"message":"Chup! library unavailable"}}"#.utf8 + [10])
+          }
+          var mcp = MeetingMCP(store: store)
+          mcp.version = version
+          return mcp.handle(line)
+        }
+      }
+    }
+    do {
+      try server.start()
+      mcpServer = server
+    } catch { notice = error.localizedDescription }
   }
   @Published var meetingDetectionEnabled: Bool {
     didSet { defaults.set(meetingDetectionEnabled, forKey: "meetingDetectionEnabled") }
@@ -335,6 +393,20 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       if !preview {
         backendToken =
           String(data: try KeyVault.read(account: "backend-token") ?? Data(), encoding: .utf8) ?? ""
+        mcpEnabled = (try? KeyVault.read(account: "mcp-enabled")) == Data("1".utf8)
+        // Local setup hand-off: a 0600 `backend-token.import` file in the workspace folder is
+        // read once, saved to the app's own Keychain item and deleted. Items created with the
+        // `security` CLI can't be matched without prompting at every launch, and arguments or
+        // environment variables show up in process listings.
+        let handoff = root.appendingPathComponent("backend-token.import")
+        if let data = FileManager.default.contents(atPath: handoff.path) {
+          let token = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+          if token.count >= 32 {
+            try KeyVault.write(Data(token.utf8), account: "backend-token")
+            backendToken = token
+          }
+          try? FileManager.default.removeItem(at: handoff)
+        }
       }
       try db().indexLegacyQuestions(root: root)
       try db().recoverRequests()
@@ -501,6 +573,12 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     localSpeech.checkInstalled()
     if detector == nil { detector = MeetingDetector(state: self) }
     if sidebar == nil { sidebar = MeetingSidebar(state: self) }
+    updateMCP()
+    resumePendingNotes()
+    if MeetingSimulation.active && !MeetingSimulation.started {
+      MeetingSimulation.started = true
+      Task { await MeetingSimulation.run(state: self) }
+    }
     if rail == nil { rail = HoverRailController(state: self) }
     if dynamicIsland == nil { dynamicIsland = DynamicIslandController(state: self) }
     if updater == nil { updater = AppUpdater(state: self) }
@@ -737,11 +815,15 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     elapsed = 0
     meetingBaseElapsed = 0
     meetingTask = Task {
+      if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+        notice = "Waiting for microphone permission. Allow Chup! in the macOS prompt to start recording."
+      }
       guard await AVCaptureDevice.requestAccess(for: .audio) else {
         if activeMeetingID == id {
           activeMeetingID = nil
           meetingStatus = .idle
-          notice = "Microphone access is required to start recording."
+          notice =
+            "Microphone access is required to start recording. Turn it on in System Settings → Privacy & Security → Microphone."
         }
         return
       }
@@ -780,9 +862,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       meetingMicrophone = device
       activeMicrophone = device
       if meetingPID != 0 {
-        guard let app = NSRunningApplication(processIdentifier: meetingPID), !app.isTerminated,
-          app.bundleIdentifier == meetingBundleID
-        else {
+        guard callProcessAlive else {
           throw WorkspaceError.message(
             "The selected call app exited. Stop this recording and select the reopened app; another process will not be captured automatically."
           )
@@ -894,16 +974,28 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         preparePlayback()
       }
       // Every leading notetaker writes the notes on stop; cloud off keeps recordings local.
-      if cloudEnabled && !backendToken.isEmpty {
+      if cloudEnabled && backendToken.isEmpty {
+        notice =
+          "Audio saved. Notes weren’t written: add the backend token in Settings → Advanced, then use Write notes."
+      } else if cloudEnabled {
         notice = "Writing your notes…"
         if selectedMeetingID == id { meetingTab = "Notes" }
-        if processingMeeting { notesQueue.append(id) } else { transcribeMeeting(meetingID: id) }
+        notesQueue.append(id)
+        if !processingMeeting { transcribeMeeting(meetingID: id) }
       }
     } catch {
       notice = error.localizedDescription
       meetingStatus = .error
       meetingStarted = nil
     }
+  }
+  /// The same call app is still running. Bundle-less processes (a CLI player) have no bundle ID
+  /// to guard against PID reuse, so they're checked by liveness alone.
+  var callProcessAlive: Bool {
+    if let app = NSRunningApplication(processIdentifier: meetingPID) {
+      return !app.isTerminated && app.bundleIdentifier == meetingBundleID
+    }
+    return meetingBundleID == nil && kill(meetingPID, 0) == 0
   }
   func remoteFailed(_ message: String) {
     guard let id = activeMeetingID, meetingStatus == .recording, remoteGapID == nil else { return }
@@ -936,9 +1028,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     guard activeMeetingID != nil, meetingStatus == .recording, meetingPID != 0 else { return }
     Task {
       do {
-        guard let app = NSRunningApplication(processIdentifier: meetingPID), !app.isTerminated,
-          app.bundleIdentifier == meetingBundleID
-        else { throw WorkspaceError.message("Reselect the reopened call app in a new recording.") }
+        guard callProcessAlive else { throw WorkspaceError.message("Reselect the reopened call app in a new recording.") }
         audio?.stopRemote()
         try await audio?.startRemote(pid: meetingPID, fallback: captureFallback)
         notice = "Waiting for call audio packets. The capture gap stays open until audio arrives."
@@ -1359,12 +1449,16 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       return
     }
     processingMeeting = true
+    processingMeetingID = id
     transcriptionTask = Task {
       defer {
         processingMeeting = false
+        processingMeetingID = nil
         transcriptionProgress = ""
-        // A meeting stopped while another was processing gets its notes next.
-        if !notesQueue.isEmpty { transcribeMeeting(meetingID: notesQueue.removeFirst()) }
+        // Done (or failed, with a notice): next queued meeting. A quit before this line leaves
+        // the meeting queued for the next launch.
+        notesQueue.removeAll { $0 == id }
+        if !Task.isCancelled { resumePendingNotes() }
       }
       var activeJob: TranscriptionJob?
       do {
@@ -1451,16 +1545,20 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         if selectedMeetingID == id { try refreshDetail() }
         notice =
           "Transcript refinement saved. Review voice matches and any pending correction conflicts."
+        // The transcript is saved; a failed summary or notes pass must not read as a failed
+        // refine, and neither blocks the other.
+        var problems: [String] = []
         if autoSummaryEnabled {
-          // The transcript is saved; a failed summary or notes pass must not read as a failed refine.
-          do {
-            try await finalizeSummary(meetingID: id)
-            try await writeNotes(meetingID: id)
-            notice = "Your notes are ready."
-          } catch {
-            notice = "Transcript saved. Notes weren’t written: " + error.localizedDescription
+          do { try await finalizeSummary(meetingID: id) } catch {
+            problems.append("Summary: " + error.localizedDescription)
           }
         }
+        do { try await writeNotes(meetingID: id) } catch {
+          problems.append("Notes: " + error.localizedDescription)
+        }
+        notice =
+          problems.isEmpty
+          ? "Your notes are ready." : "Transcript saved. " + problems.joined(separator: " ")
       } catch {
         if var job = activeJob {
           job.status = Task.isCancelled ? "pending" : "failed"
@@ -1555,8 +1653,12 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   func generateSummary() {
     guard let id = selectedMeetingID, !processingMeeting else { return }
     processingMeeting = true
+    processingMeetingID = id
     Task {
-      defer { processingMeeting = false }
+      defer {
+        processingMeeting = false
+        processingMeetingID = nil
+      }
       do {
         try await finalizeSummary(meetingID: id)
         notice = "Summary saved with transcript sources. Your pinned edits are preserved."

@@ -95,15 +95,16 @@ export function validItems(items, segments) {
 /// model dropped is appended so no note is lost. Headings must be the user's or the template's.
 export function validateEnhanced(result, note, segments, sections = []) {
   if (!Array.isArray(result?.blocks)) throw new Error('Invalid notes.');
-  const remaining = noteLines(note), allowedHeadings = new Set(sections.map(s => s.toLowerCase())), ids = new Set();
+  const lines = noteLines(note), remaining = lines.map((text, index) => ({text, index})), allowedHeadings = new Set(sections.map(s => s.toLowerCase())), ids = new Set();
   const kept = [];
   for (const raw of result.blocks) {
     const text = String(raw?.text ?? '').trim();
     if (!text || ids.has(raw.id) || !Array.isArray(raw.sources)) continue;
     if (raw.kind === 'user') {
-      const index = remaining.findIndex(line => line.trim() === text);
+      const index = remaining.findIndex(line => line.text.trim() === text);
       if (index < 0) continue;  // A reworded "user" line is not the user's: drop, never misattribute.
-      kept.push({id: raw.id, kind: 'user', text: remaining.splice(index, 1)[0], sources: []});
+      const line = remaining.splice(index, 1)[0];
+      kept.push({id: raw.id, kind: 'user', text: line.text, index: line.index, sources: []});
     } else if (raw.kind === 'heading') {
       if (raw.sources.length || !allowedHeadings.has(text.toLowerCase())) continue;
       kept.push({id: raw.id, kind: 'heading', text, sources: []});
@@ -114,6 +115,13 @@ export function validateEnhanced(result, note, segments, sections = []) {
     } else continue;
     ids.add(raw.id);
   }
-  if (remaining.length) kept.push({id:'from-your-notes',kind:'heading',text:'From your notes',sources:[]}, ...remaining.map((text,i)=>({id:'note-'+i,kind:'user',text,sources:[]})));
+  // The user's lines keep their own order: a model that reorders them gets its user slots
+  // refilled in note order (AI lines stay where they were placed).
+  const slots = kept.map((block, i) => block.kind === 'user' ? i : -1).filter(i => i >= 0);
+  const ordered = slots.map(i => kept[i]).sort((a, b) => a.index - b.index);
+  slots.forEach((slot, n) => { kept[slot] = ordered[n]; });
+  for (const block of kept) delete block.index;
+  const fresh = base => { let id = base, n = 1; while (ids.has(id)) id = `${base}-${n++}`; ids.add(id); return id; };
+  if (remaining.length) kept.push({id:fresh('chup-from-your-notes'),kind:'heading',text:'From your notes',sources:[]}, ...remaining.map(({text})=>({id:fresh('chup-note'),kind:'user',text,sources:[]})));
   return {blocks: kept};
 }

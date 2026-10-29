@@ -43,6 +43,7 @@ import SwiftUI
       panel.orderFrontRegardless()
     }
   }
+  var visible: Bool { panel.isVisible }
   func toggle() {
     collapsed.toggle()
     layout()
@@ -100,7 +101,7 @@ struct MeetingSidebarView: View {
           Label("Live notes", systemImage: "sparkle").font(.system(size: 13, weight: .semibold))
           ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-              let items = state.liveOutlines.flatMap(\.summary.items)
+              let items = LiveOutlineView.items(state.liveOutlines)
               if items.isEmpty {
                 Text(
                   state.liveOutlineEnabled && state.liveCaptionsEnabled && state.cloudEnabled
@@ -108,7 +109,7 @@ struct MeetingSidebarView: View {
                     : "Turn on Live captions and Live outline in Settings to see notes as you talk."
                 ).font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
               }
-              ForEach(items) { item in
+              ForEach(items, id: \.key) { _, item in
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                   Text("•").foregroundStyle(RailPalette.olive)
                   Text(item.text).font(.system(size: 13)).textSelection(.enabled)

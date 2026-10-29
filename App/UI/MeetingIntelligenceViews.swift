@@ -85,13 +85,17 @@ struct PrivateThoughtsView: View {
 struct LiveOutlineView: View {
   @EnvironmentObject var state: WorkspaceState
   let outlines: [SummaryRevision]
+  /// Model item IDs repeat across passes; key each by its revision too.
+  static func items(_ outlines: [SummaryRevision]) -> [(key: String, item: SummaryItem)] {
+    outlines.flatMap { revision in revision.summary.items.map { (revision.id + "/" + $0.id, $0) } }
+  }
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       Label("Live notes", systemImage: "sparkle").font(.system(size: 22, design: .serif))
       Text(
         "Written from completed live text as the meeting goes. Wording may change after final refinement."
       ).font(.caption).foregroundStyle(Palette.secondary)
-      ForEach(outlines.flatMap(\.summary.items)) { item in
+      ForEach(LiveOutlineView.items(outlines), id: \.key) { key, item in
         VStack(alignment: .leading, spacing: 6) {
           Text(item.text)
           ForEach(item.sources.indices, id: \.self) { i in
@@ -136,7 +140,7 @@ struct EnhancedNotesView: View {
       HStack {
         Text("Your notes, filled in").font(.system(size: 22, design: .serif))
         Spacer()
-        if state.writingNotes || state.processingMeeting {
+        if busy {
           ProgressView().controlSize(.small)
           Text("Writing your notes…").font(.caption).foregroundStyle(Palette.secondary)
         }
@@ -144,7 +148,7 @@ struct EnhancedNotesView: View {
           ForEach(EnhancedNotes.templates, id: \.id) { template in
             Button(template.name) { state.regenerateNotes(template: template.id) }
           }
-        }.fixedSize().disabled(state.writingNotes || state.activeMeetingID == state.selectedMeetingID)
+        }.fixedSize().disabled(busy || state.activeMeetingID == state.selectedMeetingID)
           .help("Rewrite the notes with this template")
         Menu("Share") {
           Button("Copy as Markdown") { state.copyNotesMarkdown() }
@@ -167,12 +171,17 @@ struct EnhancedNotesView: View {
           subtitle:
             "Jot anything in My notes or the sidebar. When you stop, Chup! keeps your lines and fills in the rest from the transcript."
         )
-        if state.activeMeetingID != state.selectedMeetingID, !state.writingNotes {
+        if state.activeMeetingID != state.selectedMeetingID, !busy {
           Button("Write notes") { state.regenerateNotes(template: state.enhancedNotes?.template ?? "general") }
             .buttonStyle(.borderedProminent)
         }
       }
     }
+  }
+  private var busy: Bool {
+    state.selectedMeetingID != nil
+      && (state.notesMeetingID == state.selectedMeetingID
+        || state.processingMeetingID == state.selectedMeetingID)
   }
   private var templateName: String {
     let id = state.enhancedNotes?.template ?? "general"

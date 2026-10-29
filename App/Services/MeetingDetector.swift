@@ -9,6 +9,7 @@ import ChupCore
   private var policy = MeetingDetectionPolicy()
   private var endPolicy = MeetingEndPolicy()
   private var browserCalls: [pid_t: (call: BrowserMeetingAX.Call?, checked: Double)] = [:]
+  private var scanning = Set<pid_t>()
   private var timer: Timer?
   private let panel = NonactivatingPanel(
     contentRect: NSRect(x: 0, y: 0, width: 336, height: 230),
@@ -107,11 +108,15 @@ import ChupCore
   /// Cached Accessibility read, refreshed off the main thread at most every 3 s; nil = unknown.
   private func browserCall(_ pid: pid_t, now: Double) -> BrowserMeetingAX.Call? {
     let cached = browserCalls[pid]
-    if cached == nil || now - cached!.checked >= 3 {
+    if (cached == nil || now - cached!.checked >= 3) && !scanning.contains(pid) {
       browserCalls[pid] = (cached?.call, now)
+      scanning.insert(pid)  // One scan per browser at a time; a slow tree can't pile them up.
       Task.detached(priority: .utility) {
         let call = BrowserMeetingAX.call(pid: pid)
-        await MainActor.run { [weak self] in self?.browserCalls[pid]?.call = call }
+        await MainActor.run { [weak self] in
+          self?.browserCalls[pid]?.call = call
+          self?.scanning.remove(pid)
+        }
       }
     }
     return cached?.call
@@ -176,6 +181,7 @@ enum BrowserMeetingAX {
   static func call(pid: pid_t) -> Call {
     guard AXIsProcessTrusted() else { return Call(inspected: false) }
     let app = AXUIElementCreateApplication(pid)
+    AXUIElementSetMessagingTimeout(app, 1)  // A hung browser can't stall the scan for long.
     var urls = [String](), titles = [String](), controls = [String]()
     var budget = 0
     func value(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
@@ -188,7 +194,10 @@ enum BrowserMeetingAX {
       return (ref as? String) ?? (ref as? URL)?.absoluteString
     }
     func walk(_ element: AXUIElement, depth: Int) {
-      guard depth < 32, budget > 0 else { return }
+      guard depth < 32, budget > 0 else {
+        budget = 0  // Depth or size cut the scan short: "couldn't inspect", not "no call".
+        return
+      }
       budget -= 1
       switch text(element, kAXRoleAttribute) {
       case kAXWindowRole:

@@ -17,13 +17,13 @@ extension WorkspaceState {
         guard let end = recent.map(\.end).max(), end - (recent.first?.start ?? end) >= 60
         else { return }
         let result = try await backend(scope: meetingID).outline(recent)
-        outlineCovered[meetingID, default: []].formUnion(recent.map(\.id))
         try Task.checkCancellation()
         try EvidenceValidator.validate(
           result, meetingID: meetingID, segments: TranscriptScope.outlineEvidence(recent))
         let revision = SummaryRevision(
           meetingID: meetingID, provisional: true, segments: recent, summary: result)
         try db().put(revision, kind: "liveOutline", id: revision.id, parent: meetingID)
+        outlineCovered[meetingID, default: []].formUnion(recent.map(\.id))
         if selectedMeetingID == meetingID { try refreshDetail() }
       } catch {
         if !Task.isCancelled {
@@ -67,8 +67,8 @@ extension WorkspaceState {
     let note = try db().note(meetingID).text
     let previous = try db().list(EnhancedNotes.self, kind: "enhancedNotes", parent: meetingID).last
     let chosen = template ?? previous?.template ?? "general"
-    writingNotes = true
-    defer { writingNotes = false }
+    notesMeetingID = meetingID
+    defer { notesMeetingID = nil }
     let usageID = startUsage(category: "backend.notes", meetingID: meetingID)
     do {
       let blocks = try await backend(scope: meetingID).enhance(source, note: note, template: chosen)

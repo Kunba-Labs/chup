@@ -34,7 +34,8 @@ async function enhance(input, signal) {
   const sections = templates[input?.template ?? 'general'];
   if (!sections) throw new Error('Unknown notes template.');
   if (JSON.stringify(segments).length > 900_000) throw new Error('This meeting is too long to write notes for in one pass.');
-  const note = typeof input.note === 'string' ? input.note.slice(0, 60000) : '';
+  const note = typeof input.note === 'string' ? input.note : '';
+  if (note.length > 60000) throw new Error('Your notes are over 60,000 characters; shorten them to write merged notes.');
   if (!segments.length && !noteLines(note).length) return {blocks: []};
   const result = await structured('meeting_notes',enhancedSchema,`Write the final meeting notes as an ordered list of blocks. The user's own notes are the backbone: copy each non-empty line of the user's notes exactly, character for character, as kind "user" (a line starting with # is still kind "user"), keeping their order. Under each user line or heading, add kind "ai" lines with the supporting detail from the transcript. Where the user wrote no headings, organise AI lines under these section headings as kind "heading": ${sections.join(', ')}. Every "ai" line is one concise bullet, needs verbatim source quotes with exact segment IDs, and must be entailed by them. Owners and dates only when explicitly stated. Preserve negation, quantities and uncertainty. "user" and "heading" blocks have empty sources. Never invent content; omit a section with no support. Block IDs are unique short strings.`,{note,segments},signal);
   const checked = validateEnhanced(result, note, segments, sections);

@@ -9,6 +9,7 @@ import ChupCore
 enum AudioProcesses {
   struct Entry {
     var object: AudioObjectID
+    var pid: pid_t
     var appPID: pid_t
     var input: Bool
   }
@@ -47,7 +48,7 @@ enum AudioProcesses {
       // Regular apps keep their own PID; one launched from Terminal is "responsible" to Terminal.
       let isApp = NSRunningApplication(processIdentifier: pid)?.activationPolicy == .regular
       let owner = isApp ? pid : responsible?(pid) ?? pid
-      return Entry(object: id, appPID: owner > 0 ? owner : pid, input: running != 0)
+      return Entry(object: id, pid: pid, appPID: owner > 0 ? owner : pid, input: running != 0)
     }
   }
 }
@@ -70,7 +71,7 @@ final class ProcessAudioCapture: RemoteAudioCapture {
     var size: UInt32 = 0
     // ponytail: helpers that first appear after start aren't tapped; re-tap on process-list
     // change if a call app spawns its audio helper mid-call.
-    let processes = AudioProcesses.list().filter { $0.appPID == pid }.map(\.object)
+    let processes = AudioProcesses.list().filter { $0.appPID == pid || $0.pid == pid }.map(\.object)
     guard !processes.isEmpty else {
       throw WorkspaceError.message(
         "The selected app has no active audio process. Start call audio, then retry."
@@ -79,7 +80,8 @@ final class ProcessAudioCapture: RemoteAudioCapture {
     let description = CATapDescription(stereoMixdownOfProcesses: processes)
     description.name = "Chup! call capture"
     description.isPrivate = true
-    description.muteBehavior = .unmuted
+    // The rehearsal records its synthetic call silently; real calls are never muted.
+    description.muteBehavior = MeetingSimulation.active ? .muted : .unmuted
     do {
       try check(AudioHardwareCreateProcessTap(description, &tap), "Create process tap")
       var asbd = AudioStreamBasicDescription()

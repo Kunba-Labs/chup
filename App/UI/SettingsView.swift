@@ -245,6 +245,17 @@ struct SettingsView: View {
             "Transcription, summaries and questions send the required content through your backend to OpenAI. Recording itself stays local.",
           isOn: $state.cloudEnabled)
       }
+      WorkspaceCard("AI tools (MCP)", icon: "point.3.connected.trianglepath.dotted") {
+        SettingSwitch(
+          title: "Let AI tools read meetings",
+          detail:
+            "Claude and other MCP apps can read your meetings, notes, summaries, actions and transcripts while Chup! runs. Read-only. Private thoughts are never shared.",
+          isOn: $state.mcpEnabled)
+        if state.mcpEnabled {
+          Text("Add to your MCP client: command \"\(Bundle.main.executablePath ?? "/Applications/Chup!.app/Contents/MacOS/Chup!")\" with argument --mcp")
+            .font(.caption).textSelection(.enabled).foregroundStyle(Palette.secondary)
+        }
+      }
       StorageSettingsView()
     case "Permissions": PermissionCards(setup: state.setup)
     case "Usage": UsageSettingsView()

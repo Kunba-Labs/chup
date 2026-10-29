@@ -10,6 +10,7 @@ import ChupCore
   /// a signed bundle exec'd straight from its path never shows one, which left
   /// `--validate-audio` hanging until its deployment timeout.
   init() {
+    if ProcessInfo.processInfo.arguments.contains("--mcp") { MCPBridge.run() }
     _ = WorkspaceFrameRestorer.saved
     guard ProcessInfo.processInfo.arguments.contains("--validate-audio") else { return }
     Task { @MainActor in
@@ -83,10 +84,7 @@ import ChupCore
         NSApp.terminate(nil)
       }.keyboardShortcut("q")
     } label: {
-      Label(
-        state.meetingStatus == .recording ? "Recording" : "Chup!",
-        systemImage: state.meetingStatus == .recording ? "record.circle.fill" : "waveform")
-      if state.meetingStatus == .recording { Text(WorkspaceState.time(state.elapsed)) }
+      ShellLabel(state: state)
     }
   }
 }
@@ -110,4 +108,29 @@ import ChupCore
     return view
   }
   func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+/// The menu bar label renders at every launch, even when the workspace window stays closed
+/// (login launch, window closed last session). Start the shell from here too, so meeting
+/// detection, the rail, the notes sidebar and MCP run without the window ever opening.
+struct ShellLabel: View {
+  @ObservedObject var state: WorkspaceState
+  @Environment(\.openWindow) private var openWindow
+  var body: some View {
+    Group {
+      Label(
+        state.meetingStatus == .recording ? "Recording" : "Chup!",
+        systemImage: state.meetingStatus == .recording ? "record.circle.fill" : "waveform")
+      if state.meetingStatus == .recording { Text(WorkspaceState.time(state.elapsed)) }
+    }.onAppear {
+      guard !state.isPreview else { return }
+      if state.reveal == nil {
+        state.reveal = {
+          openWindow(id: "workspace")
+          NSApp.activate(ignoringOtherApps: true)
+        }
+      }
+      state.startShell()
+    }
+  }
 }

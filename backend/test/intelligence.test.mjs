@@ -34,6 +34,9 @@ test('enhanced notes keep user lines verbatim, drop reworded or unsupported AI l
     ['heading','From your notes'],['user','  pricing??'],['user','Sam owns rollout'],['user','Sam owns rollout'],
   ]);
   await assert.rejects(engine.enhance({segments:[segment],note,template:'nope'}),/Unknown notes template/);
+  const reordered=createIntelligence(async(name)=>name==='evidence_check'?{verdicts:[]}:{blocks:[
+    {id:'b',kind:'user',text:'second',sources:[]},{id:'a',kind:'user',text:'first',sources:[]}]});
+  assert.deepEqual((await reordered.enhance({segments:[segment],note:'first\nsecond'})).blocks.map(b=>b.text),['first','second']);
 });
 test('retrieval keeps original ordering and contradictory evidence, rejects foreign source IDs',async()=>{
   const segments=Array.from({length:4},(_,i)=>({...segment,id:'s'+i,text:(i%2?'Do not launch. ':'Launch. ')+ 'x'.repeat(30000)}));

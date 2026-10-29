@@ -196,6 +196,38 @@ final class ChupCoreTests: XCTestCase {
       notes.markdown(title: "Sync"),
       "# Sync\n\n## Launch\n- Beta ships Friday.\n\n## Action items\n- pricing??\n")
   }
+  func testMeetingMCPIsReadOnlyAndOmitsPrivateThoughts() throws {
+    let store = try WorkspaceStore(url: directory().appendingPathComponent("mcp.sqlite"))
+    let meeting = Meeting(id: "m1", title: "Beta sync")
+    try store.put(meeting, kind: "meeting", id: "m1", searchable: "Beta sync")
+    try store.writeNote(meetingID: "m1", text: "pricing??", expectedVersion: 0, requestID: "r1")
+    try store.writeNote(
+      meetingID: "private-thoughts/m1", text: "SECRET thought", expectedVersion: 0, requestID: "r2")
+    try store.put(
+      EnhancedNotes(meetingID: "m1", template: "general", blocks: [
+        NoteBlock(id: "1", kind: "user", text: "pricing??"),
+        NoteBlock(id: "2", kind: "ai", text: "Pricing is open.", sources: [.init(segmentID: "s", quote: "q")]),
+      ]), kind: "enhancedNotes", id: "m1", parent: "m1")
+    let mcp = MeetingMCP(store: store)
+    func send(_ json: String) throws -> [String: Any] {
+      let out = try XCTUnwrap(mcp.handle(Data(json.utf8)))
+      return try XCTUnwrap(JSONSerialization.jsonObject(with: out) as? [String: Any])
+    }
+    XCTAssertNil(mcp.handle(Data(#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#.utf8)))
+    let tools = try send(#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#)
+    let names = ((tools["result"] as? [String: Any])?["tools"] as? [[String: Any]])?.compactMap { $0["name"] as? String }
+    XCTAssertEqual(names, ["list_meetings", "search_meetings", "get_meeting_notes", "get_transcript"])
+    let notes = try send(
+      #"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_meeting_notes","arguments":{"meeting_id":"m1"}}}"#)
+    let text = (((notes["result"] as? [String: Any])?["content"] as? [[String: Any]])?.first?["text"] as? String) ?? ""
+    XCTAssertTrue(text.contains("[you] pricing??"))
+    XCTAssertTrue(text.contains("- Pricing is open."))
+    XCTAssertFalse(text.contains("SECRET"))
+    let missing = try send(
+      #"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_transcript","arguments":{"meeting_id":"nope"}}}"#)
+    XCTAssertEqual((missing["result"] as? [String: Any])?["isError"] as? Bool, true)
+    XCTAssertNotNil(try send(#"{"jsonrpc":"2.0","id":4,"method":"resources/write"}"#)["error"])
+  }
   func testWrongFieldInsertionAndClipboardRaceFailClosed() {
     let original = DestinationFingerprint(
       pid: 1, elementID: "field-A", selectionLocation: 2, selectionLength: 0, value: "hello",
