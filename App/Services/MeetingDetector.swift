@@ -1,5 +1,4 @@
 import AppKit
-import CoreAudio
 import SwiftUI
 import ChupCore
 
@@ -75,47 +74,27 @@ import ChupCore
     state.startMeeting()
     state.reveal?()
   }
+  private static let browsers: Set<String> = [
+    "com.apple.Safari", "com.google.Chrome", "org.mozilla.firefox", "com.microsoft.edgemac",
+    "company.thebrowser.Browser", "com.brave.Browser", "com.vivaldi.Vivaldi",
+    "com.operasoftware.Opera",
+  ]
+  private static let callApps: Set<String> = [
+    "us.zoom.xos", "com.microsoft.teams2", "com.microsoft.teams", "com.cisco.webexmeetingsapp",
+    "Cisco-Systems.Spark", "com.tinyspeck.slackmacgap", "com.apple.FaceTime", "com.hnc.Discord",
+    "net.whatsapp.WhatsApp",
+  ]
   private func candidates() -> [MeetingCandidate] {
-    var address = AudioObjectPropertyAddress(
-      mSelector: kAudioHardwarePropertyProcessObjectList, mScope: kAudioObjectPropertyScopeGlobal,
-      mElement: kAudioObjectPropertyElementMain)
-    var size: UInt32 = 0
-    guard
-      AudioObjectGetPropertyDataSize(
-        AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size) == noErr
-    else { return [] }
-    var ids = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
-    guard
-      AudioObjectGetPropertyData(
-        AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &ids) == noErr
-    else { return [] }
-    var found = [MeetingCandidate]()
-    for id in ids {
-      var pid: pid_t = 0
-      address.mSelector = kAudioProcessPropertyPID
-      size = UInt32(MemoryLayout<pid_t>.size)
-      guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &pid) == noErr,
+    // Attribute helper processes to their app, so Meet in a browser and Slack huddles count.
+    let pids = Set(AudioProcesses.list().filter(\.input).map(\.appPID))
+    return pids.sorted().compactMap { pid in
+      guard pid != ProcessInfo.processInfo.processIdentifier,
         let app = NSRunningApplication(processIdentifier: pid), let bundle = app.bundleIdentifier
-      else { continue }
-      let browser = [
-        "com.apple.Safari", "com.google.Chrome", "org.mozilla.firefox", "com.microsoft.edgemac",
-        "company.thebrowser.Browser",
-      ].contains(bundle)
-      guard
-        browser
-          || [
-            "us.zoom.xos", "com.microsoft.teams2", "com.microsoft.teams",
-            "com.cisco.webexmeetingsapp", "com.tinyspeck.slackmacgap",
-          ].contains(bundle)
-      else { continue }
-      var running: UInt32 = 0
-      address.mSelector = kAudioProcessPropertyIsRunningInput
-      size = UInt32(MemoryLayout<UInt32>.size)
-      guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &running) == noErr, running != 0
-      else { continue }
-      found.append(MeetingCandidate(pid: pid, name: app.localizedName ?? bundle, browser: browser))
+      else { return nil }
+      let browser = Self.browsers.contains(bundle)
+      guard browser || Self.callApps.contains(bundle) else { return nil }
+      return MeetingCandidate(pid: pid, name: app.localizedName ?? bundle, browser: browser)
     }
-    return found.sorted { $0.pid < $1.pid }
   }
 }
 struct MeetingPrompt: View {

@@ -1,6 +1,56 @@
+import AppKit
 import AVFoundation
 import CoreAudio
 import ChupCore
+
+/// CoreAudio process objects attributed to the app responsible for them. Browsers and Electron
+/// apps do audio in helpers (com.apple.WebKit.GPU, com.google.Chrome.helper), so a helper's own
+/// bundle ID never names the meeting app.
+enum AudioProcesses {
+  struct Entry {
+    var object: AudioObjectID
+    var appPID: pid_t
+    var input: Bool
+  }
+  // ponytail: private libsystem call (used by OverSight-style tools); falls back to the
+  // helper's own PID if Apple removes it, which degrades to the old per-process behaviour.
+  private typealias Responsible = @convention(c) (pid_t) -> pid_t
+  private static let responsible: Responsible? = dlsym(
+    UnsafeMutableRawPointer(bitPattern: -2), "responsibility_get_pid_responsible_for_pid"
+  ).map { unsafeBitCast($0, to: Responsible.self) }
+
+  static func list() -> [Entry] {
+    var address = AudioObjectPropertyAddress(
+      mSelector: kAudioHardwarePropertyProcessObjectList, mScope: kAudioObjectPropertyScopeGlobal,
+      mElement: kAudioObjectPropertyElementMain)
+    var size: UInt32 = 0
+    guard
+      AudioObjectGetPropertyDataSize(
+        AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size) == noErr
+    else { return [] }
+    var ids = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
+    guard
+      AudioObjectGetPropertyData(
+        AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &ids) == noErr
+    else { return [] }
+    return ids.compactMap { id in
+      var pid: pid_t = 0
+      address.mSelector = kAudioProcessPropertyPID
+      size = UInt32(MemoryLayout<pid_t>.size)
+      guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &pid) == noErr else {
+        return nil
+      }
+      var running: UInt32 = 0
+      address.mSelector = kAudioProcessPropertyIsRunningInput
+      size = UInt32(MemoryLayout<UInt32>.size)
+      _ = AudioObjectGetPropertyData(id, &address, 0, nil, &size, &running)
+      // Regular apps keep their own PID; one launched from Terminal is "responsible" to Terminal.
+      let isApp = NSRunningApplication(processIdentifier: pid)?.activationPolicy == .regular
+      let owner = isApp ? pid : responsible?(pid) ?? pid
+      return Entry(object: id, appPID: owner > 0 ? owner : pid, input: running != 0)
+    }
+  }
+}
 
 final class ProcessAudioCapture: RemoteAudioCapture {
   private var tap: AudioObjectID = 0
@@ -15,21 +65,18 @@ final class ProcessAudioCapture: RemoteAudioCapture {
     failure: @escaping (String) -> Void
   ) async throws {
     var address = AudioObjectPropertyAddress(
-      mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject,
+      mSelector: kAudioTapPropertyFormat,
       mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
-    var process: AudioObjectID = 0
-    var size = UInt32(MemoryLayout<AudioObjectID>.size)
-    var processID = pid
-    try check(
-      AudioObjectGetPropertyData(
-        AudioObjectID(kAudioObjectSystemObject), &address, UInt32(MemoryLayout<pid_t>.size),
-        &processID, &size, &process), "Find audio process")
-    guard process != 0 else {
+    var size: UInt32 = 0
+    // ponytail: helpers that first appear after start aren't tapped; re-tap on process-list
+    // change if a call app spawns its audio helper mid-call.
+    let processes = AudioProcesses.list().filter { $0.appPID == pid }.map(\.object)
+    guard !processes.isEmpty else {
       throw WorkspaceError.message(
-        "The selected app has no active audio process. Start call audio, then retry. Browser helper processes may need separate selection."
+        "The selected app has no active audio process. Start call audio, then retry."
       )
     }
-    let description = CATapDescription(stereoMixdownOfProcesses: [process])
+    let description = CATapDescription(stereoMixdownOfProcesses: processes)
     description.name = "Chup! call capture"
     description.isPrivate = true
     description.muteBehavior = .unmuted
