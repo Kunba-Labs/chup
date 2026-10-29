@@ -8,7 +8,7 @@ import ChupCore
   @Published var ended = false
   private var policy = MeetingDetectionPolicy()
   private var endPolicy = MeetingEndPolicy()
-  private var browserCalls: [pid_t: (inCall: Bool?, checked: Double)] = [:]
+  private var browserCalls: [pid_t: (call: BrowserMeetingAX.Call?, checked: Double)] = [:]
   private var timer: Timer?
   private let panel = NonactivatingPanel(
     contentRect: NSRect(x: 0, y: 0, width: 336, height: 230),
@@ -32,7 +32,7 @@ import ChupCore
     let now = ProcessInfo.processInfo.systemUptime
     guard state.meetingDetectionEnabled && state.activeMeetingID == nil else {
       policy.dismiss(now: now)
-      candidate = nil
+      if !ended { candidate = nil }  // The end prompt keeps the recorded app's name.
       if state.meetingDetectionEnabled && state.activeMeetingID != nil {
         if !ended { panel.orderOut(nil) }  // A start prompt is stale once recording begins.
         watchEnd(state, now: now)
@@ -89,7 +89,7 @@ import ChupCore
     let active =
       app?.isTerminated == false
       && (AudioProcesses.list().contains { $0.appPID == pid && $0.input }
-        || (browser && browserInCall(pid, now: now) == true))
+        || (browser && browserCall(pid, now: now)?.live == true))
     if endPolicy.observe(active: active, now: now) {
       candidate = MeetingCandidate(
         pid: pid, name: app?.localizedName ?? "The call app", browser: browser)
@@ -105,16 +105,16 @@ import ChupCore
   }
   func keepRecording() { hide() }
   /// Cached Accessibility read, refreshed off the main thread at most every 3 s; nil = unknown.
-  private func browserInCall(_ pid: pid_t, now: Double) -> Bool? {
+  private func browserCall(_ pid: pid_t, now: Double) -> BrowserMeetingAX.Call? {
     let cached = browserCalls[pid]
     if cached == nil || now - cached!.checked >= 3 {
-      browserCalls[pid] = (cached?.inCall, now)
+      browserCalls[pid] = (cached?.call, now)
       Task.detached(priority: .utility) {
-        let inCall = BrowserMeetingAX.inCall(pid: pid)
-        await MainActor.run { [weak self] in self?.browserCalls[pid]?.inCall = inCall }
+        let call = BrowserMeetingAX.call(pid: pid)
+        await MainActor.run { [weak self] in self?.browserCalls[pid]?.call = call }
       }
     }
-    return cached?.inCall
+    return cached?.call
   }
   func dismiss(snooze: Bool = false) {
     policy.dismiss(now: ProcessInfo.processInfo.systemUptime, snooze: snooze ? 120 : 0)
@@ -154,7 +154,7 @@ import ChupCore
       let browser = Self.browsers.contains(bundle)
       guard browser || Self.callApps.contains(bundle) else { return nil }
       // Without Accessibility access, any browser using the mic still prompts.
-      if browser, BrowserMeetingAX.trusted, browserInCall(pid, now: now) != true { return nil }
+      if browser, BrowserMeetingAX.trusted, browserCall(pid, now: now)?.meeting != true { return nil }
       return MeetingCandidate(pid: pid, name: app.localizedName ?? bundle, browser: browser)
     }
   }
@@ -162,8 +162,13 @@ import ChupCore
 /// Reads a browser's windows through Accessibility: titles, document/web-area URLs and button
 /// labels, within Hyprnote's bounds (depth 32, 4000 nodes).
 enum BrowserMeetingAX {
+  /// `meeting`: some window looks like a call. `live`: some window shows a Leave control.
+  struct Call {
+    var meeting = false
+    var live = false
+  }
   static var trusted: Bool { AXIsProcessTrusted() }
-  static func inCall(pid: pid_t) -> Bool? {
+  static func call(pid: pid_t) -> Call? {
     guard trusted else { return nil }
     let app = AXUIElementCreateApplication(pid)
     var urls = [String](), titles = [String](), controls = [String]()
@@ -196,10 +201,19 @@ enum BrowserMeetingAX {
         walk(child, depth: depth + 1)
       }
     }
+    var call = Call()
     for window in (value(app, kAXWindowsAttribute) as? [AXUIElement]) ?? [] {
+      urls = []
+      titles = []
+      controls = []
       walk(window, depth: 0)
+      call.meeting = call.meeting
+        || BrowserMeetingEvidence.inCall(urls: urls, titles: titles, controls: controls)
+      call.live = call.live
+        || BrowserMeetingEvidence.inCall(
+          urls: urls, titles: titles, controls: controls, requireControl: true)
     }
-    return BrowserMeetingEvidence.inCall(urls: urls, titles: titles, controls: controls)
+    return call
   }
 }
 struct MeetingPrompt: View {

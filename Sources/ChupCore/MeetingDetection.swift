@@ -86,10 +86,16 @@ public enum BrowserMeetingEvidence {
     let code = lower.dropFirst(7).prefix { !$0.isWhitespace }.split(separator: "-")
     return code.map(\.count) == [3, 4, 3] && code.joined().allSatisfy { $0.isLetter }
   }
-  public static func inCall(urls: [String], titles: [String], controls: [String]) -> Bool {
-    titles.contains(where: isMeetTitle)
-      || (urls.contains(where: isMeetingURL)
-        && controls.contains { leaveControls.contains($0.trimmingCharacters(in: .whitespaces).lowercased()) })
+  /// Evaluate one window at a time. `requireControl` is for "still in the call?": a Meet title
+  /// can outlive the call, a visible Leave control can't.
+  public static func inCall(
+    urls: [String], titles: [String], controls: [String], requireControl: Bool = false
+  ) -> Bool {
+    let meetTitle = titles.contains(where: isMeetTitle)
+    let leave = controls.contains {
+      leaveControls.contains($0.trimmingCharacters(in: .whitespaces).lowercased())
+    }
+    return (meetTitle && !requireControl) || (leave && (meetTitle || urls.contains(where: isMeetingURL)))
   }
 }
 /// Asks once per quiet spell whether the call ended; never stops a recording by itself.

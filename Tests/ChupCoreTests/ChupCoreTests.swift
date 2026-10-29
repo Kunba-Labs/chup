@@ -162,6 +162,13 @@ final class ChupCoreTests: XCTestCase {
     XCTAssertFalse(
       BrowserMeetingEvidence.inCall(
         urls: ["https://example.com"], titles: ["Voice memo"], controls: ["Leave"]))
+    let meet = ["Meet - abc-defg-hij"]
+    XCTAssertTrue(BrowserMeetingEvidence.inCall(urls: [], titles: meet, controls: []))
+    XCTAssertFalse(
+      BrowserMeetingEvidence.inCall(urls: [], titles: meet, controls: [], requireControl: true))
+    XCTAssertTrue(
+      BrowserMeetingEvidence.inCall(
+        urls: [], titles: meet, controls: ["Leave call"], requireControl: true))
   }
   func testMeetingEndAsksOncePerQuietSpell() {
     var policy = MeetingEndPolicy()
