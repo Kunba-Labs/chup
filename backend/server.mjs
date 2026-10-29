@@ -41,7 +41,7 @@ async function structured(name, schema, instructions, input, signal) {
   if (!text) throw new Error('The provider returned no structured result.');
   return JSON.parse(text);
 }
-const {verifyFacts,summarize,retrieve} = createIntelligence(structured);
+const {verifyFacts,summarize,retrieve,enhance,followup} = createIntelligence(structured);
 const server = http.createServer(async (request,response) => {
   if (!authorized(request)) { json(response,401,{error:'Invalid app authentication token.'}); return; }
   if (request.method !== 'POST') { json(response,405,{error:'POST required.'}); return; }
@@ -87,6 +87,8 @@ async function handleRoute(url,input,signal) {
       }
       case '/outline': { const segments = outlineEvidence(input); return await summarize(segments,signal); }
       case '/summary' : { const segments = validateSegments(input); return await summarize(segments,signal); }
+      case '/enhance': return await enhance(input,signal);
+      case '/followup': return await followup(input,signal);
       case '/ask': {
         if (typeof input.question !== 'string' || input.question.length > 10000) throw new Error('Invalid question.');
         const full = validateSegments(input.segments);

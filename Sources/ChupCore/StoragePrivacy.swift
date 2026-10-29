@@ -76,7 +76,7 @@ extension WorkspaceStore {
       throw WorkspaceError.message("Meeting not found.")
     }
     let allowed =
-      ["segment", "summary", "summaryVersion", "summaryEdit", "liveOutline", "action", "gap"]
+      ["segment", "summary", "summaryVersion", "summaryEdit", "liveOutline", "enhancedNotes", "action", "gap"]
       + (includePrivate ? ["assistantExchange"] : [])
     var records = try rows("SELECT kind,id,json FROM objects WHERE parent=?", [id]).filter {
       allowed.contains($0[0])

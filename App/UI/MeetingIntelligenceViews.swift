@@ -84,15 +84,14 @@ struct PrivateThoughtsView: View {
 }
 struct LiveOutlineView: View {
   @EnvironmentObject var state: WorkspaceState
-  let outline: SummaryRevision
+  let outlines: [SummaryRevision]
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Label("Provisional live outline", systemImage: "sparkle").font(
-        .system(size: 22, design: .serif))
+      Label("Live notes", systemImage: "sparkle").font(.system(size: 22, design: .serif))
       Text(
-        "Based on completed live text through the most recent ten minutes. Timing and wording may change after final refinement."
+        "Written from completed live text as the meeting goes. Wording may change after final refinement."
       ).font(.caption).foregroundStyle(Palette.secondary)
-      ForEach(outline.summary.items) { item in
+      ForEach(outlines.flatMap(\.summary.items)) { item in
         VStack(alignment: .leading, spacing: 6) {
           Text(item.text)
           ForEach(item.sources.indices, id: \.self) { i in
@@ -126,5 +125,80 @@ struct SummaryEditView: View {
         }.buttonStyle(.borderedProminent)
       }
     }.padding(28).frame(width: 560).background(Palette.workspace)
+  }
+}
+/// Granola-style notes: the user's lines in ink, AI additions in grey with transcript sources.
+struct EnhancedNotesView: View {
+  @EnvironmentObject var state: WorkspaceState
+  var showTab: (String) -> Void = { _ in }
+  var body: some View {
+    VStack(alignment: .leading, spacing: 14) {
+      HStack {
+        Text("Your notes, filled in").font(.system(size: 22, design: .serif))
+        Spacer()
+        if state.writingNotes || state.processingMeeting {
+          ProgressView().controlSize(.small)
+          Text("Writing your notes…").font(.caption).foregroundStyle(Palette.secondary)
+        }
+        Menu(templateName) {
+          ForEach(EnhancedNotes.templates, id: \.id) { template in
+            Button(template.name) { state.regenerateNotes(template: template.id) }
+          }
+        }.fixedSize().disabled(state.writingNotes || state.activeMeetingID == state.selectedMeetingID)
+          .help("Rewrite the notes with this template")
+        Menu("Share") {
+          Button("Copy as Markdown") { state.copyNotesMarkdown() }
+          Button("Draft follow-up email") { state.draftFollowup() }
+        }.fixedSize().disabled(state.enhancedNotes?.blocks.isEmpty ?? true)
+      }.padding(.top, 24)
+      if let notes = state.enhancedNotes, !notes.blocks.isEmpty {
+        Text("Black is what you wrote. Grey is filled in from the transcript.")
+          .font(.caption).foregroundStyle(Palette.secondary)
+        ScrollView {
+          VStack(alignment: .leading, spacing: 8) {
+            ForEach(notes.blocks) { block in row(block) }
+          }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
+        }.workspaceSurface()
+      } else {
+        QuietEmpty(
+          icon: "doc.text",
+          title: state.activeMeetingID == state.selectedMeetingID
+            ? "Notes are written when the meeting ends" : "No notes yet",
+          subtitle:
+            "Jot anything in My notes or the sidebar. When you stop, Chup! keeps your lines and fills in the rest from the transcript."
+        )
+        if state.activeMeetingID != state.selectedMeetingID, !state.writingNotes {
+          Button("Write notes") { state.regenerateNotes(template: state.enhancedNotes?.template ?? "general") }
+            .buttonStyle(.borderedProminent)
+        }
+      }
+    }
+  }
+  private var templateName: String {
+    let id = state.enhancedNotes?.template ?? "general"
+    return "Template: " + (EnhancedNotes.templates.first { $0.id == id }?.name ?? "General")
+  }
+  @ViewBuilder private func row(_ block: NoteBlock) -> some View {
+    if block.isHeading {
+      Text(block.plainText).font(.system(size: 18, weight: .semibold)).padding(.top, 10)
+        .foregroundStyle(block.kind == "user" ? Palette.ink : Palette.secondary)
+        .accessibilityAddTraits(.isHeader)
+    } else {
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Text("•").foregroundStyle(Palette.secondary)
+        Text(block.text).font(.system(size: 16)).textSelection(.enabled)
+          .foregroundStyle(block.kind == "user" ? Palette.ink : Palette.secondary)
+          .accessibilityLabel((block.kind == "user" ? "Your note: " : "Added: ") + block.text)
+        if let source = block.sources.first {
+          Button {
+            state.revealSource(source)
+            showTab("Transcript")
+          } label: {
+            Image(systemName: "quote.bubble")
+          }.buttonStyle(.borderless).font(.caption).help(source.quote)
+            .accessibilityLabel("Show source in transcript")
+        }
+      }
+    }
   }
 }

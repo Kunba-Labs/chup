@@ -318,7 +318,7 @@ struct MeetingDetailView: View {
         Palette.paper, in: RoundedRectangle(cornerRadius: 8)
       ).padding(.top, 26).padding(.bottom, 22)
       HStack(spacing: 25) {
-        ForEach(["Summary", "My notes", "Transcript", "Actions", "Private thoughts"], id: \.self) {
+        ForEach(["Notes", "Summary", "My notes", "Transcript", "Actions", "Private thoughts"], id: \.self) {
           label in
           Button {
             tab = label
@@ -361,6 +361,8 @@ struct MeetingDetailView: View {
           PrivateThoughtsView()
         } else if tab == "Summary" {
           summaryBody
+        } else if tab == "Notes" {
+          EnhancedNotesView { tab = $0 }
         } else {
           transcriptBody
         }
@@ -438,8 +440,8 @@ struct MeetingDetailView: View {
           state.generateSummary()
         }.disabled(state.segments.isEmpty || state.processingMeeting)
       }.padding(.vertical, 24)
-      if let outline = state.liveOutline, state.activeMeetingID == state.selectedMeetingID {
-        LiveOutlineView(outline: outline)
+      if !state.liveOutlines.isEmpty, state.activeMeetingID == state.selectedMeetingID {
+        LiveOutlineView(outlines: state.liveOutlines)
       }
       if !state.summaryVersions.isEmpty {
         Menu("Saved summary versions") {

@@ -118,6 +118,28 @@ struct AssistantReply: Decodable {
   func summarize(_ segments: [TranscriptSegment]) async throws -> MeetingSummary {
     try await request("summary", body: JSONEncoder().encode(segments))
   }
+  func enhance(_ segments: [TranscriptSegment], note: String, template: String) async throws
+    -> [NoteBlock]
+  {
+    struct Result: Decodable { var blocks: [NoteBlock] }
+    let body: [String: Any] = [
+      "segments": try JSONSerialization.jsonObject(with: JSONEncoder().encode(segments)),
+      "note": note, "template": template,
+    ]
+    let result: Result = try await request(
+      "enhance", body: JSONSerialization.data(withJSONObject: body))
+    return result.blocks
+  }
+  func followup(title: String, blocks: [NoteBlock]) async throws -> (subject: String, body: String)
+  {
+    struct Result: Decodable { var subject: String; var body: String }
+    let body: [String: Any] = [
+      "title": title, "blocks": blocks.map { ["kind": $0.kind, "text": $0.text] },
+    ]
+    let result: Result = try await request(
+      "followup", body: JSONSerialization.data(withJSONObject: body))
+    return (result.subject, result.body)
+  }
   func ask(
     _ question: String, segments: [TranscriptSegment], note: Note, history: [AssistantExchange] = []
   ) async throws

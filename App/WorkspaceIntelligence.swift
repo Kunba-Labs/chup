@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import ChupCore
 
@@ -9,10 +10,14 @@ extension WorkspaceState {
       do {
         try await Task.sleep(for: .seconds(20))
         guard cloudEnabled, liveOutlineEnabled else { return }
+        // Live notes accumulate: each pass covers only completed text after the last one.
         let source = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID)
-        let recent = TranscriptScope.recent(source, seconds: 600)
-        guard !recent.isEmpty else { return }
+        let covered = outlineCovered[meetingID] ?? []
+        let recent = source.filter { !covered.contains($0.id) }.sorted { $0.start < $1.start }
+        guard let end = recent.map(\.end).max(), end - (recent.first?.start ?? end) >= 60
+        else { return }
         let result = try await backend(scope: meetingID).outline(recent)
+        outlineCovered[meetingID, default: []].formUnion(recent.map(\.id))
         try Task.checkCancellation()
         try EvidenceValidator.validate(
           result, meetingID: meetingID, segments: TranscriptScope.outlineEvidence(recent))
@@ -52,6 +57,61 @@ extension WorkspaceState {
     } catch {
       finishUsage(usageID, status: "failed")
       throw error
+    }
+  }
+  /// Merges the user's notes with the refined transcript. Private thoughts are never included.
+  func writeNotes(meetingID: String, template: String? = nil) async throws {
+    let source = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID).filter {
+      !$0.provisional
+    }
+    let note = try db().note(meetingID).text
+    let previous = try db().list(EnhancedNotes.self, kind: "enhancedNotes", parent: meetingID).last
+    let chosen = template ?? previous?.template ?? "general"
+    writingNotes = true
+    defer { writingNotes = false }
+    let usageID = startUsage(category: "backend.notes", meetingID: meetingID)
+    do {
+      let blocks = try await backend(scope: meetingID).enhance(source, note: note, template: chosen)
+      let current = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID)
+        .filter { !$0.provisional }
+      guard TranscriptScope.fingerprint(current) == TranscriptScope.fingerprint(source),
+        try db().note(meetingID).text == note
+      else { throw WorkspaceError.staleVersion }
+      try db().put(
+        EnhancedNotes(meetingID: meetingID, template: chosen, blocks: blocks),
+        kind: "enhancedNotes", id: meetingID, parent: meetingID)
+      finishUsage(usageID, status: "completed")
+      if selectedMeetingID == meetingID { try refreshDetail() }
+    } catch {
+      finishUsage(usageID, status: "failed")
+      throw error
+    }
+  }
+  func regenerateNotes(template: String) {
+    guard let id = selectedMeetingID, !writingNotes else { return }
+    Task {
+      do { try await writeNotes(meetingID: id, template: template) } catch {
+        notice = "Notes weren’t written: " + error.localizedDescription
+      }
+    }
+  }
+  func copyNotesMarkdown() {
+    guard let notes = enhancedNotes else { return }
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(
+      notes.markdown(title: selectedMeeting?.title ?? "Meeting"), forType: .string)
+    notice = "Notes copied as Markdown."
+  }
+  func draftFollowup() {
+    guard let id = selectedMeetingID, let notes = enhancedNotes else { return }
+    let title = selectedMeeting?.title ?? "Meeting"
+    Task {
+      do {
+        let draft = try await backend(scope: id).followup(title: title, blocks: notes.blocks)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("Subject: \(draft.subject)\n\n\(draft.body)", forType: .string)
+        notice = "Follow-up email draft copied. Nothing was sent."
+      } catch { notice = "Follow-up not drafted: " + error.localizedDescription }
     }
   }
   func saveThoughts(_ text: String) {

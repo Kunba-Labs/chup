@@ -11,9 +11,29 @@ test('live outline uses independent evidence copies; final transcript remains pr
   assert.equal(live.provisional,true);
   assert.throws(()=>outlineEvidence([{...live,start:-1}]));
 });
-test('semantic rejection prevents saving a claim even when its quotation exists',async()=>{
-  const engine=createIntelligence(async(name)=>name==='evidence_check'?{supported:false}:summary);
-  await assert.rejects(engine.summarize([segment]),/unsupported generated claim/);
+test('semantic rejection drops a claim even when its quotation exists, keeping the rest',async()=>{
+  const two={items:[summary.items[0],{...summary.items[0],id:'kept'}]};
+  const engine=createIntelligence(async(name)=>name==='evidence_check'?{verdicts:[{id:'fact',supported:false},{id:'kept',supported:true}]}:two);
+  assert.deepEqual((await engine.summarize([segment])).items.map(i=>i.id),['kept']);
+});
+test('enhanced notes keep user lines verbatim, drop reworded or unsupported AI lines',async()=>{
+  const note='# Launch\n  pricing??\nSam owns rollout\nSam owns rollout';
+  const engine=createIntelligence(async(name)=>name==='evidence_check'
+    ?{verdicts:[{id:'a1',supported:true},{id:'a2',supported:false}]}
+    :{blocks:[
+      {id:'h',kind:'user',text:'# Launch',sources:[]},
+      {id:'u',kind:'user',text:'Pricing questions',sources:[]},
+      {id:'x',kind:'heading',text:'Migration completed by Sam',sources:[]},
+      {id:'bad',kind:'ai',text:'Fabricated.',sources:[{segmentID:'other',quote:'nope'}]},
+      {id:'a1',kind:'ai',text:'No Friday launch was agreed.',sources:[{segmentID:segment.id,quote:segment.text}]},
+      {id:'a2',kind:'ai',text:'Launch is Friday.',sources:[{segmentID:segment.id,quote:segment.text}]},
+    ]});
+  const {blocks}=await engine.enhance({segments:[segment],note,template:'general'});
+  assert.deepEqual(blocks.map(b=>[b.kind,b.text]),[
+    ['user','# Launch'],['ai','No Friday launch was agreed.'],
+    ['heading','From your notes'],['user','  pricing??'],['user','Sam owns rollout'],['user','Sam owns rollout'],
+  ]);
+  await assert.rejects(engine.enhance({segments:[segment],note,template:'nope'}),/Unknown notes template/);
 });
 test('retrieval keeps original ordering and contradictory evidence, rejects foreign source IDs',async()=>{
   const segments=Array.from({length:4},(_,i)=>({...segment,id:'s'+i,text:(i%2?'Do not launch. ':'Launch. ')+ 'x'.repeat(30000)}));

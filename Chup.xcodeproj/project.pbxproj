@@ -68,6 +68,7 @@
 		A5E9F7AB0EC62D226742127B /* DynamicIsland.swift in Sources */ = {isa = PBXBuildFile; fileRef = A35EDA935A69CF35122BA0A7 /* DynamicIsland.swift */; };
 		ABBE8555E4361309FFD73A93 /* AudioOwner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEFE8D5EB0086680604066A4 /* AudioOwner.swift */; };
 		AC08E7C8FAF0502D84A197CD /* MeetingIntelligenceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C35CA4A4CDD71EBBE32F6A4 /* MeetingIntelligenceViews.swift */; };
+		AD5844E6F5E9AE7DB5124A67 /* MeetingSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EEFFB6C01A9E919A79D567E /* MeetingSidebar.swift */; };
 		AFA53A02E685CDBEB31BF93D /* FluidAudio-Apache-2.0.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5DC121DEEF25143029C64C3F /* FluidAudio-Apache-2.0.txt */; };
 		B19BEF22313BF17A95559D76 /* AudioDevices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36298A9EDCA24223085BBE8E /* AudioDevices.swift */; };
 		B57191E4541EC0D1BD038377 /* ChupIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = A01F56E0423B016C0BDADB70 /* ChupIcon.icon */; };
@@ -114,6 +115,7 @@
 		222145F9B4D63BF301B064CA /* LibraryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViews.swift; sourceTree = "<group>"; };
 		254DBA09AC8B291A4FF035F7 /* VoiceWaveform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceWaveform.swift; sourceTree = "<group>"; };
 		2E7E4DB82F90E8811E2C8510 /* ShortDictationFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortDictationFilter.swift; sourceTree = "<group>"; };
+		2EEFFB6C01A9E919A79D567E /* MeetingSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingSidebar.swift; sourceTree = "<group>"; };
 		2EFB557A7A12064321D5DB97 /* LocalSpeechModel.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = LocalSpeechModel.json; sourceTree = "<group>"; };
 		30D87B2AFA2A99341C9D698E /* WorkspacePrivacy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePrivacy.swift; sourceTree = "<group>"; };
 		318193F986D8DD370C887576 /* ReliabilityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReliabilityViews.swift; sourceTree = "<group>"; };
@@ -268,6 +270,7 @@
 				222145F9B4D63BF301B064CA /* LibraryViews.swift */,
 				AFC0F9A366CB410ADC333269 /* LocalSpeechSettings.swift */,
 				7C35CA4A4CDD71EBBE32F6A4 /* MeetingIntelligenceViews.swift */,
+				2EEFFB6C01A9E919A79D567E /* MeetingSidebar.swift */,
 				CA6515593DFB0FC88682A64D /* NotificationCard.swift */,
 				5B49CB687CA7A4F84742FBE9 /* OnboardingView.swift */,
 				A2B30195BB5F83690D5D5EEC /* ProcessingCircle.swift */,
@@ -501,6 +504,7 @@
 				31E53031C572D7731AB6C589 /* MeetingDetector.swift in Sources */,
 				AC08E7C8FAF0502D84A197CD /* MeetingIntelligenceViews.swift in Sources */,
 				E7F51604B98A6C32A8B5AB9C /* MeetingPlayback.swift in Sources */,
+				AD5844E6F5E9AE7DB5124A67 /* MeetingSidebar.swift in Sources */,
 				9B85FEEEE7908B3387287559 /* MicrophoneHealthValidation.swift in Sources */,
 				CB113AB7771DFF574073DBAA /* NotificationCard.swift in Sources */,
 				5FE277921552C2E49CE87209 /* OnboardingView.swift in Sources */,

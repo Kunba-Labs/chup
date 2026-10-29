@@ -183,6 +183,19 @@ final class ChupCoreTests: XCTestCase {
     XCTAssertFalse(policy.observe(active: false, now: 42))
     XCTAssertTrue(policy.observe(active: false, now: 52))
   }
+  func testEnhancedNotesMarkdownKeepsUserHeadings() {
+    let notes = EnhancedNotes(
+      meetingID: "m", template: "general",
+      blocks: [
+        NoteBlock(id: "1", kind: "user", text: "# Launch"),
+        NoteBlock(id: "2", kind: "ai", text: "Beta ships Friday.", sources: [.init(segmentID: "s", quote: "q")]),
+        NoteBlock(id: "3", kind: "heading", text: "Action items"),
+        NoteBlock(id: "4", kind: "user", text: "pricing??"),
+      ])
+    XCTAssertEqual(
+      notes.markdown(title: "Sync"),
+      "# Sync\n\n## Launch\n- Beta ships Friday.\n\n## Action items\n- pricing??\n")
+  }
   func testWrongFieldInsertionAndClipboardRaceFailClosed() {
     let original = DestinationFingerprint(
       pid: 1, elementID: "field-A", selectionLocation: 2, selectionLength: 0, value: "hello",

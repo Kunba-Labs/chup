@@ -86,3 +86,40 @@ public struct UsageRecord: Codable, Identifiable {
     self.status = "running"
   }
 }
+/// Granola-style merged notes: the user's own lines (verbatim) and AI lines backed by transcript
+/// sources. Written once per meeting/template; regenerating replaces it.
+public struct NoteBlock: Codable, Identifiable, Equatable {
+  public var id: String
+  public var kind: String  // "heading", "user" or "ai"
+  public var text: String
+  public var sources: [Evidence]
+  public init(id: String, kind: String, text: String, sources: [Evidence] = []) {
+    self.id = id
+    self.kind = kind
+    self.text = text
+    self.sources = sources
+  }
+  public var isHeading: Bool { kind == "heading" || (kind == "user" && text.hasPrefix("#")) }
+  public var plainText: String {
+    isHeading ? String(text.drop { $0 == "#" }).trimmingCharacters(in: .whitespaces) : text
+  }
+}
+public struct EnhancedNotes: Codable, Equatable {
+  public var meetingID: String
+  public var template: String
+  public var created: Date = Date()
+  public var blocks: [NoteBlock]
+  public init(meetingID: String, template: String, blocks: [NoteBlock]) {
+    self.meetingID = meetingID
+    self.template = template
+    self.blocks = blocks
+  }
+  public static let templates: [(id: String, name: String)] = [
+    ("general", "General"), ("one_on_one", "1:1"), ("sales", "Sales / customer"),
+    ("standup", "Standup"), ("interview", "Interview"),
+  ]
+  public func markdown(title: String) -> String {
+    (["# " + title] + blocks.map { $0.isHeading ? "\n## " + $0.plainText : "- " + $0.text })
+      .joined(separator: "\n") + "\n"
+  }
+}

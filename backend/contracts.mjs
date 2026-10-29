@@ -67,3 +67,53 @@ export function validateHistory(history = []) {
     return {question:item.question,answer:item.answer};
   });
 }
+
+export const noteBlockSchema = {
+  type: 'object', additionalProperties: false,
+  properties: { id: { type: 'string' }, kind: { type: 'string', enum: ['heading','user','ai'] }, text: { type: 'string' }, sources: { type: 'array', items: evidenceSchema } },
+  required: ['id','kind','text','sources']
+};
+export const enhancedSchema = { type: 'object', additionalProperties: false, properties: { blocks: { type: 'array', items: noteBlockSchema } }, required: ['blocks'] };
+export const followupSchema = { type: 'object', additionalProperties: false, properties: { subject: { type: 'string' }, body: { type: 'string' } }, required: ['subject','body'] };
+// ponytail: built-in set only; a custom template editor was deferred (docs/PLAN.md, increment 9).
+export const templates = {
+  general: ['Summary','Discussion','Decisions','Action items'],
+  one_on_one: ['Updates','Feedback','Blockers','Action items'],
+  sales: ['Context','Pain points','Requirements and budget','Objections','Next steps'],
+  standup: ['Yesterday','Today','Blockers'],
+  interview: ['Background','Strengths','Concerns','Follow-ups'],
+};
+export const noteLines = note => (typeof note === 'string' ? note : '').split('\n').filter(line => line.trim());
+/// Structurally valid summary items only; one bad citation drops that item, not the summary.
+export function validItems(items, segments) {
+  const ids = new Set();
+  return (Array.isArray(items) ? items : []).filter(item => {
+    try { if (ids.has(item.id)) return false; validateSummary({items:[item]}, segments); ids.add(item.id); return true; } catch { return false; }
+  });
+}
+/// The user's own lines come back verbatim (original spacing, every occurrence); anything the
+/// model dropped is appended so no note is lost. Headings must be the user's or the template's.
+export function validateEnhanced(result, note, segments, sections = []) {
+  if (!Array.isArray(result?.blocks)) throw new Error('Invalid notes.');
+  const remaining = noteLines(note), allowedHeadings = new Set(sections.map(s => s.toLowerCase())), ids = new Set();
+  const kept = [];
+  for (const raw of result.blocks) {
+    const text = String(raw?.text ?? '').trim();
+    if (!text || ids.has(raw.id) || !Array.isArray(raw.sources)) continue;
+    if (raw.kind === 'user') {
+      const index = remaining.findIndex(line => line.trim() === text);
+      if (index < 0) continue;  // A reworded "user" line is not the user's: drop, never misattribute.
+      kept.push({id: raw.id, kind: 'user', text: remaining.splice(index, 1)[0], sources: []});
+    } else if (raw.kind === 'heading') {
+      if (raw.sources.length || !allowedHeadings.has(text.toLowerCase())) continue;
+      kept.push({id: raw.id, kind: 'heading', text, sources: []});
+    } else if (raw.kind === 'ai') {
+      const block = {id: raw.id, kind: 'ai', text: text.replace(/^[-•*]\s+/, ''), sources: raw.sources};
+      try { if (!block.sources.length) continue; validateSources(block.sources, segments); } catch { continue; }
+      kept.push(block);
+    } else continue;
+    ids.add(raw.id);
+  }
+  if (remaining.length) kept.push({id:'from-your-notes',kind:'heading',text:'From your notes',sources:[]}, ...remaining.map((text,i)=>({id:'note-'+i,kind:'user',text,sources:[]})));
+  return {blocks: kept};
+}

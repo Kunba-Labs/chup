@@ -75,6 +75,44 @@ import ChupCore
         print("Attention design board exported. Proposal mocks only; no checks run, no capture.")
         return
       }
+      if ProcessInfo.processInfo.environment["CHUP_NOTES_PREVIEW"] == "1" {
+        let ev = [Evidence(segmentID: "s1", quote: "We agreed to ship the beta on Friday.")]
+        state.selectedMeetingID = "preview-notes"
+        state.activeMeetingID = "preview-notes"
+        state.meetingStatus = .recording
+        state.elapsed = 754
+        state.noteDraft = "# Beta launch\npricing??\nSam owns rollout"
+        state.liveOutlines = [
+          SummaryRevision(
+            meetingID: "preview-notes", provisional: true, segments: [],
+            summary: MeetingSummary(items: [
+              SummaryItem(category: "decision", text: "Beta ships on Friday.", status: "unknown", sources: ev),
+              SummaryItem(category: "action", text: "Sam writes the release notes by Thursday.", sources: ev),
+              SummaryItem(category: "question", text: "Pricing is still open.", status: "unknown", sources: ev),
+            ]))
+        ]
+        let sidebar = MeetingSidebar(state: state)
+        try renderNative(
+          MeetingSidebarView(sidebar: sidebar).environmentObject(state).environment(\.colorScheme, .dark),
+          size: CGSize(width: 320, height: 560), to: destination.appendingPathComponent("33-notes-sidebar.png"))
+        state.activeMeetingID = nil
+        state.enhancedNotes = EnhancedNotes(
+          meetingID: "preview-notes", template: "general",
+          blocks: [
+            NoteBlock(id: "1", kind: "user", text: "# Beta launch"),
+            NoteBlock(id: "2", kind: "ai", text: "The beta launch was agreed for Friday.", sources: ev),
+            NoteBlock(id: "3", kind: "ai", text: "Sam will write the release notes by Thursday.", sources: ev),
+            NoteBlock(id: "4", kind: "user", text: "pricing??"),
+            NoteBlock(id: "5", kind: "ai", text: "Pricing is still open; no number was settled.", sources: ev),
+            NoteBlock(id: "6", kind: "heading", text: "Action items"),
+            NoteBlock(id: "7", kind: "ai", text: "Sam: release notes, due Thursday.", sources: ev),
+          ])
+        try renderNative(
+          EnhancedNotesView().environmentObject(state).padding(28).background(Palette.workspace),
+          size: CGSize(width: 820, height: 560), to: destination.appendingPathComponent("34-enhanced-notes.png"))
+        print("Notes previews exported. Preview data only; no capture or provider calls.")
+        return
+      }
       let now = Date(timeIntervalSince1970: 1_789_387_200)
       state.meetings = [
         Meeting(

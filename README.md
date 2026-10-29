@@ -77,6 +77,8 @@ cp .env.example .env
 npm start
 ```
 
+To keep it running, load it as a login LaunchAgent (`~/Library/LaunchAgents/com.chup.backend.plist` running `node --env-file=.env server.mjs` in `backend/`, with `KeepAlive`, logging to `~/Library/Logs/Chup/backend.log`). Restart it after backend changes with `launchctl kickstart -k gui/$(id -u)/com.chup.backend`.
+
 In the app, open Settings → Advanced, enter `http://127.0.0.1:8787` and the **app token**, then save the token in the Keychain. The OpenAI project secret stays in the backend's `.env` and never goes into the app. Turn on cloud processing under Privacy. Live captions have their own toggle under Meetings. The included service binds loopback only and is a development relay, so a production deployment needs HTTPS, real per-user authentication, quotas and monitoring.
 
 Models: `gpt-live-1` for the Live transport spike, `gpt-live-transcribe` for live captions, `gpt-4o-transcribe-diarize` for final file segments, `gpt-transcribe` for dictation, and a configurable `gpt-5.6-luna` for cleanup, summaries and questions. The names and contracts were checked against the current official documentation. No account-level requests were made here. See [API research](docs/API-RESEARCH.md).
@@ -84,7 +86,8 @@ Models: `gpt-live-1` for the Live transport spike, `gpt-live-transcribe` for liv
 ## Try it
 
 - Create a meeting note. Type notes and every write commits immediately. Record opens a picker for the microphone alone or a specific application. Tell the participants. Pause does not mute the conference app.
-- Stop, then choose Transcribe saved audio. Completed chunk jobs survive a retry. Rename or correct speakers in the transcript, then generate a summary that cites its sources.
+- While recording, a floating notes sidebar (hidden from screen sharing) holds your notepad and live AI notes that build up about once a minute. Live captions and live notes are on by default and need cloud processing.
+- Stop & save starts the refined transcript, then the summary and your notes, automatically when cloud processing is on. The Notes tab keeps every line you wrote verbatim, in black, and fills in grey bullets from the transcript, each linked to its source. Pick a template (General, 1:1, Sales / customer, Standup, Interview) to rewrite the notes; Share copies them as Markdown or drafts a follow-up email to the clipboard (nothing is sent). Completed chunk jobs survive a retry. Rename or correct speakers in the transcript and regenerate.
 - Settings → Shortcuts holds several bindings per action: keep Fn and add Control–Shift for an external keyboard. Edit or remove each binding on its own and the change persists at once. Grant Input Monitoring and Accessibility from Settings. Use the default preset or the one without Fn, and set the Fn key's macOS behaviour to match. Dictation writes into the original field only while its identity, focus epoch, content and selection still match.
 - Meeting detection reads Core Audio microphone activity for known call apps and browsers, attributing helper processes (Chrome helpers, Safari's WebKit GPU process) to their app. With Accessibility access, a browser counts only when a window shows a call site with a Leave/Hang up control, or a Meet code title. The prompt takes no focus, dismisses after ten seconds, deduplicates and can snooze for two minutes. Accepting starts recording. While recording, if the call app stops using the microphone for ten seconds and no Leave control is visible, Chup! asks whether the call ended; it never stops a recording by itself.
 - Ask a meeting a question in private text. Proposed note writes are shown before they land. Save commits with a request ID and an expected version, and Undo never overwrites newer edits.

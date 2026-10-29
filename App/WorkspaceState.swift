@@ -37,7 +37,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var selectedMeetingID: String? { didSet { defaults.set(selectedMeetingID, forKey: "lastMeetingID") } }
   @Published var segments: [TranscriptSegment] = []
   @Published var summary: MeetingSummary?
-  @Published var liveOutline: SummaryRevision?
+  @Published var liveOutlines: [SummaryRevision] = []
+  @Published var enhancedNotes: EnhancedNotes?
+  @Published var writingNotes = false
   @Published var summaryVersions: [SummaryRevision] = []
   @Published var summaryEdits: [SummaryItem] = []
   @Published var actions: [ActionRecord] = []
@@ -47,13 +49,17 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var meetingTab = "Summary" { didSet { defaults.set(meetingTab, forKey: "lastMeetingTab") } }
   @Published var selectedTranscriptSource: String?
   @Published var usageRecords: [UsageRecord] = []
-  @Published var liveOutlineEnabled = UserDefaults.standard.bool(forKey: "liveOutlineEnabled") {
+  @Published var liveOutlineEnabled =
+    UserDefaults.standard.object(forKey: "liveOutlineEnabled") as? Bool ?? true
+  {
     didSet { defaults.set(liveOutlineEnabled, forKey: "liveOutlineEnabled") }
   }
   @Published var autoSummaryEnabled =
     UserDefaults.standard.object(forKey: "autoSummaryEnabled") as? Bool ?? true
   { didSet { defaults.set(autoSummaryEnabled, forKey: "autoSummaryEnabled") } }
   var outlineTask: Task<Void, Never>?
+  var outlineCovered: [String: Set<String>] = [:]
+  var notesQueue: [String] = []
   @Published var captureGaps: [CaptureGap] = []
   @Published var note = Note()
   @Published var noteDraft = ""
@@ -217,6 +223,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   var audio: AudioOwner?
   var rail: HoverRailController?
   var detector: MeetingDetector?
+  var sidebar: MeetingSidebar?
   var liveStreams: [TrackKind: LiveTranscription] = [:]
   var liveFeed: Task<Void, Never>?
   var liveContinuation: AsyncStream<(TrackKind, AudioPacket)>.Continuation?
@@ -286,7 +293,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     isPreview = preview
     let d = defaults
     workspaceKeySuffix = preview ? "" : (d.string(forKey: "workspaceKeySuffix") ?? "")
-    liveCaptionsEnabled = d.bool(forKey: "liveCaptionsEnabled")
+    liveCaptionsEnabled = d.object(forKey: "liveCaptionsEnabled") as? Bool ?? true
     meetingDetectionEnabled = d.object(forKey: "meetingDetectionEnabled") as? Bool ?? true
     cloudEnabled = d.bool(forKey: "cloudEnabled")
     language = d.string(forKey: "language") ?? "en"
@@ -493,6 +500,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     guard !isPreview else { return }
     localSpeech.checkInstalled()
     if detector == nil { detector = MeetingDetector(state: self) }
+    if sidebar == nil { sidebar = MeetingSidebar(state: self) }
     if rail == nil { rail = HoverRailController(state: self) }
     if dynamicIsland == nil { dynamicIsland = DynamicIslandController(state: self) }
     if updater == nil { updater = AppUpdater(state: self) }
@@ -653,7 +661,10 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   }
   func refreshDetail() throws {
     guard let id = selectedMeetingID else { return }
-    liveOutline = try db().list(SummaryRevision.self, kind: "liveOutline", parent: id).last
+    liveOutlines = try db().list(SummaryRevision.self, kind: "liveOutline", parent: id).sorted {
+      $0.created < $1.created
+    }
+    enhancedNotes = try db().list(EnhancedNotes.self, kind: "enhancedNotes", parent: id).last
     summaryVersions = try db().list(SummaryRevision.self, kind: "summaryVersion", parent: id)
     summaryEdits = try db().list(SummaryItem.self, kind: "summaryEdit", parent: id)
     actions = try db().list(ActionRecord.self, kind: "action", parent: id)
@@ -881,6 +892,12 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       if selectedMeetingID == id {
         try refreshDetail()
         preparePlayback()
+      }
+      // Every leading notetaker writes the notes on stop; cloud off keeps recordings local.
+      if cloudEnabled && !backendToken.isEmpty {
+        notice = "Writing your notes…"
+        if selectedMeetingID == id { meetingTab = "Notes" }
+        if processingMeeting { notesQueue.append(id) } else { transcribeMeeting(meetingID: id) }
       }
     } catch {
       notice = error.localizedDescription
@@ -1335,8 +1352,10 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     liveStreams = [:]
   }
   func cancelTranscription() { transcriptionTask?.cancel() }
-  func transcribeMeeting(reprocess: Bool = false) {
-    guard let id = selectedMeetingID, id != activeMeetingID, !processingMeeting, let key else {
+  func transcribeMeeting(reprocess: Bool = false, meetingID: String? = nil) {
+    guard let id = meetingID ?? selectedMeetingID, id != activeMeetingID, !processingMeeting,
+      let key
+    else {
       return
     }
     processingMeeting = true
@@ -1344,6 +1363,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       defer {
         processingMeeting = false
         transcriptionProgress = ""
+        // A meeting stopped while another was processing gets its notes next.
+        if !notesQueue.isEmpty { transcribeMeeting(meetingID: notesQueue.removeFirst()) }
       }
       var activeJob: TranscriptionJob?
       do {
@@ -1428,9 +1449,18 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         for provisional in try db().list(TranscriptSegment.self, kind: "segment", parent: id)
         where provisional.provisional { try db().remove(kind: "segment", id: provisional.id) }
         if selectedMeetingID == id { try refreshDetail() }
-        if autoSummaryEnabled { try await finalizeSummary(meetingID: id) }
         notice =
           "Transcript refinement saved. Review voice matches and any pending correction conflicts."
+        if autoSummaryEnabled {
+          // The transcript is saved; a failed summary or notes pass must not read as a failed refine.
+          do {
+            try await finalizeSummary(meetingID: id)
+            try await writeNotes(meetingID: id)
+            notice = "Your notes are ready."
+          } catch {
+            notice = "Transcript saved. Notes weren’t written: " + error.localizedDescription
+          }
+        }
       } catch {
         if var job = activeJob {
           job.status = Task.isCancelled ? "pending" : "failed"
