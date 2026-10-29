@@ -172,6 +172,8 @@ final class ChupCoreTests: XCTestCase {
   }
   func testMeetingEndAsksOncePerQuietSpell() {
     var policy = MeetingEndPolicy()
+    XCTAssertFalse(policy.observe(active: false, now: -30))
+    XCTAssertFalse(policy.observe(active: false, now: -15))  // Never seen in the call: not armed.
     XCTAssertFalse(policy.observe(active: true, now: 0))
     XCTAssertFalse(policy.observe(active: false, now: 1))
     XCTAssertFalse(policy.observe(active: false, now: 10))

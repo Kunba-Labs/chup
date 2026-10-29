@@ -98,18 +98,22 @@ public enum BrowserMeetingEvidence {
     return (meetTitle && !requireControl) || (leave && (meetTitle || urls.contains(where: isMeetingURL)))
   }
 }
-/// Asks once per quiet spell whether the call ended; never stops a recording by itself.
+/// Asks once per quiet spell whether the call ended; never stops a recording by itself. Arms
+/// only after the call app has been seen in the call, so a listen-only recording never asks.
 public struct MeetingEndPolicy {
+  private var armed = false
   private var quietSince: Double?
   private var asked = false
   public init() {}
   /// Returns true when the "did the call end?" prompt should appear.
   public mutating func observe(active: Bool, now: Double, after quiet: Double = 10) -> Bool {
     if active {
+      armed = true
       quietSince = nil
       asked = false
       return false
     }
+    guard armed else { return false }
     let since = quietSince ?? now
     quietSince = since
     guard !asked, now - since >= quiet else { return false }

@@ -153,8 +153,11 @@ import ChupCore
       else { return nil }
       let browser = Self.browsers.contains(bundle)
       guard browser || Self.callApps.contains(bundle) else { return nil }
-      // Without Accessibility access, any browser using the mic still prompts.
-      if browser, BrowserMeetingAX.trusted, browserCall(pid, now: now)?.meeting != true { return nil }
+      // Wait for the first scan; if the browser can't be inspected, mic use alone still prompts.
+      if browser {
+        guard let call = browserCall(pid, now: now) else { return nil }
+        if call.inspected && !call.meeting { return nil }
+      }
       return MeetingCandidate(pid: pid, name: app.localizedName ?? bundle, browser: browser)
     }
   }
@@ -163,16 +166,18 @@ import ChupCore
 /// labels, within Hyprnote's bounds (depth 32, 4000 nodes).
 enum BrowserMeetingAX {
   /// `meeting`: some window looks like a call. `live`: some window shows a Leave control.
+  /// `inspected` is false when Accessibility is off, the windows can't be read, or a window was
+  /// too large to scan fully without finding a call.
   struct Call {
+    var inspected = true
     var meeting = false
     var live = false
   }
-  static var trusted: Bool { AXIsProcessTrusted() }
-  static func call(pid: pid_t) -> Call? {
-    guard trusted else { return nil }
+  static func call(pid: pid_t) -> Call {
+    guard AXIsProcessTrusted() else { return Call(inspected: false) }
     let app = AXUIElementCreateApplication(pid)
     var urls = [String](), titles = [String](), controls = [String]()
-    var budget = 4000
+    var budget = 0
     func value(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
       var ref: CFTypeRef?
       return AXUIElementCopyAttributeValue(element, attribute as CFString, &ref) == .success
@@ -201,18 +206,25 @@ enum BrowserMeetingAX {
         walk(child, depth: depth + 1)
       }
     }
+    guard let windows = value(app, kAXWindowsAttribute) as? [AXUIElement] else {
+      return Call(inspected: false)
+    }
     var call = Call()
-    for window in (value(app, kAXWindowsAttribute) as? [AXUIElement]) ?? [] {
+    var truncated = false
+    for window in windows {
       urls = []
       titles = []
       controls = []
+      budget = 4000  // Per window, so one large window can't hide the call window.
       walk(window, depth: 0)
+      truncated = truncated || budget <= 0
       call.meeting = call.meeting
         || BrowserMeetingEvidence.inCall(urls: urls, titles: titles, controls: controls)
       call.live = call.live
         || BrowserMeetingEvidence.inCall(
           urls: urls, titles: titles, controls: controls, requireControl: true)
     }
+    if truncated && !call.meeting { call.inspected = false }
     return call
   }
 }
