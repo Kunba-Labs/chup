@@ -5,7 +5,10 @@ import ChupCore
 @MainActor final class MeetingDetector: ObservableObject {
   @Published var candidate: MeetingCandidate?
   @Published var remaining = 10
+  @Published var ended = false
   private var policy = MeetingDetectionPolicy()
+  private var endPolicy = MeetingEndPolicy()
+  private var browserCalls: [pid_t: (inCall: Bool?, checked: Double)] = [:]
   private var timer: Timer?
   private let panel = NonactivatingPanel(
     contentRect: NSRect(x: 0, y: 0, width: 336, height: 230),
@@ -30,25 +33,20 @@ import ChupCore
     guard state.meetingDetectionEnabled && state.activeMeetingID == nil else {
       policy.dismiss(now: now)
       candidate = nil
-      panel.orderOut(nil)
+      if state.meetingDetectionEnabled && state.activeMeetingID != nil {
+        if !ended { panel.orderOut(nil) }  // A start prompt is stale once recording begins.
+        watchEnd(state, now: now)
+      } else {
+        endPolicy.reset()
+        hide()
+      }
       return
     }
-    if let found = policy.observe(candidates(), now: now, recording: false) {
+    endPolicy.reset()
+    if ended { hide() }
+    if let found = policy.observe(candidates(now: now), now: now, recording: false) {
       candidate = found
-      Task { @MainActor [weak self] in
-        await Task.yield() // Allow the candidate's SwiftUI layout to settle.
-        guard let self, candidate?.pid == found.pid else { return }
-        let frame = (NSScreen.main ?? NSScreen.screens[0]).visibleFrame
-        let size = panel.contentView?.fittingSize ?? NSSize(width: 336, height: 230)
-        panel.setFrame(NSRect(x: frame.maxX - size.width - 16, y: frame.maxY - size.height - 16,
-          width: size.width, height: size.height), display: true)
-        panel.alphaValue = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 1 : 0
-        panel.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup({ context in
-          context.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.14
-          self.panel.animator().alphaValue = 1
-        }, completionHandler: nil)
-      }
+      show { [weak self] in self?.candidate?.pid == found.pid }
     }
     if let deadline = policy.deadline {
       remaining = max(0, Int(ceil(deadline - now)))
@@ -56,6 +54,67 @@ import ChupCore
       candidate = nil
       panel.orderOut(nil)
     }
+  }
+  private func show(when stillWanted: @escaping () -> Bool) {
+    Task { @MainActor [weak self] in
+      await Task.yield() // Allow the prompt's SwiftUI layout to settle.
+      guard let self, stillWanted() else { return }
+      let frame = (NSScreen.main ?? NSScreen.screens[0]).visibleFrame
+      let size = panel.contentView?.fittingSize ?? NSSize(width: 336, height: 230)
+      panel.setFrame(NSRect(x: frame.maxX - size.width - 16, y: frame.maxY - size.height - 16,
+        width: size.width, height: size.height), display: true)
+      panel.alphaValue = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 1 : 0
+      panel.orderFrontRegardless()
+      NSAnimationContext.runAnimationGroup({ context in
+        context.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.14
+        self.panel.animator().alphaValue = 1
+      }, completionHandler: nil)
+    }
+  }
+  private func hide() {
+    ended = false
+    panel.orderOut(nil)
+  }
+  /// While recording an app's call, ask once it stops using the microphone (and a browser shows
+  /// no Leave control). The user decides; nothing stops on its own.
+  private func watchEnd(_ state: WorkspaceState, now: Double) {
+    let pid = state.meetingPID
+    guard pid != 0, state.meetingStatus == .recording else {
+      endPolicy.reset()
+      if ended { hide() }
+      return
+    }
+    let app = NSRunningApplication(processIdentifier: pid)
+    let browser = Self.browsers.contains(app?.bundleIdentifier ?? "")
+    let active =
+      app?.isTerminated == false
+      && (AudioProcesses.list().contains { $0.appPID == pid && $0.input }
+        || (browser && browserInCall(pid, now: now) == true))
+    if endPolicy.observe(active: active, now: now) {
+      candidate = MeetingCandidate(
+        pid: pid, name: app?.localizedName ?? "The call app", browser: browser)
+      ended = true
+      show { [weak self] in self?.ended == true }
+    } else if active && ended {
+      hide()
+    }
+  }
+  func stopEndedMeeting() {
+    hide()
+    state?.stopMeeting()
+  }
+  func keepRecording() { hide() }
+  /// Cached Accessibility read, refreshed off the main thread at most every 3 s; nil = unknown.
+  private func browserInCall(_ pid: pid_t, now: Double) -> Bool? {
+    let cached = browserCalls[pid]
+    if cached == nil || now - cached!.checked >= 3 {
+      browserCalls[pid] = (cached?.inCall, now)
+      Task.detached(priority: .utility) {
+        let inCall = BrowserMeetingAX.inCall(pid: pid)
+        await MainActor.run { [weak self] in self?.browserCalls[pid]?.inCall = inCall }
+      }
+    }
+    return cached?.inCall
   }
   func dismiss(snooze: Bool = false) {
     policy.dismiss(now: ProcessInfo.processInfo.systemUptime, snooze: snooze ? 120 : 0)
@@ -84,22 +143,77 @@ import ChupCore
     "Cisco-Systems.Spark", "com.tinyspeck.slackmacgap", "com.apple.FaceTime", "com.hnc.Discord",
     "net.whatsapp.WhatsApp",
   ]
-  private func candidates() -> [MeetingCandidate] {
+  private func candidates(now: Double) -> [MeetingCandidate] {
     // Attribute helper processes to their app, so Meet in a browser and Slack huddles count.
     let pids = Set(AudioProcesses.list().filter(\.input).map(\.appPID))
+    browserCalls = browserCalls.filter { pids.contains($0.key) || $0.key == state?.meetingPID }
     return pids.sorted().compactMap { pid in
       guard pid != ProcessInfo.processInfo.processIdentifier,
         let app = NSRunningApplication(processIdentifier: pid), let bundle = app.bundleIdentifier
       else { return nil }
       let browser = Self.browsers.contains(bundle)
       guard browser || Self.callApps.contains(bundle) else { return nil }
+      // Without Accessibility access, any browser using the mic still prompts.
+      if browser, BrowserMeetingAX.trusted, browserInCall(pid, now: now) != true { return nil }
       return MeetingCandidate(pid: pid, name: app.localizedName ?? bundle, browser: browser)
     }
+  }
+}
+/// Reads a browser's windows through Accessibility: titles, document/web-area URLs and button
+/// labels, within Hyprnote's bounds (depth 32, 4000 nodes).
+enum BrowserMeetingAX {
+  static var trusted: Bool { AXIsProcessTrusted() }
+  static func inCall(pid: pid_t) -> Bool? {
+    guard trusted else { return nil }
+    let app = AXUIElementCreateApplication(pid)
+    var urls = [String](), titles = [String](), controls = [String]()
+    var budget = 4000
+    func value(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
+      var ref: CFTypeRef?
+      return AXUIElementCopyAttributeValue(element, attribute as CFString, &ref) == .success
+        ? ref : nil
+    }
+    func text(_ element: AXUIElement, _ attribute: String) -> String? {
+      let ref = value(element, attribute)
+      return (ref as? String) ?? (ref as? URL)?.absoluteString
+    }
+    func walk(_ element: AXUIElement, depth: Int) {
+      guard depth < 32, budget > 0 else { return }
+      budget -= 1
+      switch text(element, kAXRoleAttribute) {
+      case kAXWindowRole:
+        titles += [text(element, kAXTitleAttribute)].compactMap { $0 }
+        urls += [text(element, kAXDocumentAttribute)].compactMap { $0 }
+      case "AXWebArea":
+        urls += [text(element, "AXURL")].compactMap { $0 }
+      case kAXButtonRole, kAXMenuItemRole, kAXPopUpButtonRole:
+        if (value(element, kAXEnabledAttribute) as? Bool) != false {
+          controls += [kAXTitleAttribute, kAXDescriptionAttribute].compactMap { text(element, $0) }
+        }
+      default: break
+      }
+      for child in (value(element, kAXChildrenAttribute) as? [AXUIElement]) ?? [] {
+        walk(child, depth: depth + 1)
+      }
+    }
+    for window in (value(app, kAXWindowsAttribute) as? [AXUIElement]) ?? [] {
+      walk(window, depth: 0)
+    }
+    return BrowserMeetingEvidence.inCall(urls: urls, titles: titles, controls: controls)
   }
 }
 struct MeetingPrompt: View {
   @ObservedObject var detector: MeetingDetector
   var body: some View {
+    if detector.ended {
+      NotificationCard(
+        kind: .meetingEnded, appName: detector.candidate?.name ?? "the call",
+        primary: { detector.stopEndedMeeting() }, secondary: { detector.keepRecording() })
+    } else {
+      callPrompt
+    }
+  }
+  private var callPrompt: some View {
     NotificationCard(
       kind: detector.candidate?.browser == true ? .browserDetected : .callDetected,
       appName: detector.candidate?.name ?? "Meeting", countdown: detector.remaining,

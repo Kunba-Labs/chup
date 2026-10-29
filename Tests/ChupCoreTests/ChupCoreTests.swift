@@ -148,6 +148,32 @@ final class ChupCoreTests: XCTestCase {
     XCTAssertNotNil(policy.observe([c], now: 126, recording: false))
     XCTAssertEqual(policy.accept(now: 130), c)
   }
+  func testBrowserMeetingEvidenceNeedsSiteAndCallControl() {
+    XCTAssertTrue(BrowserMeetingEvidence.isMeetTitle("Meet - abc-defg-hij - Google Chrome"))
+    XCTAssertFalse(BrowserMeetingEvidence.isMeetTitle("Meet - landing page"))
+    XCTAssertTrue(BrowserMeetingEvidence.isMeetingURL("https://acme.zoom.us/wc/123"))
+    XCTAssertFalse(BrowserMeetingEvidence.isMeetingURL("https://notzoom.us/"))
+    XCTAssertTrue(
+      BrowserMeetingEvidence.inCall(
+        urls: ["https://teams.microsoft.com/v2/"], titles: ["Teams"], controls: ["Hang up "]))
+    XCTAssertFalse(
+      BrowserMeetingEvidence.inCall(
+        urls: ["https://teams.microsoft.com/v2/"], titles: ["Teams"], controls: ["Chat"]))
+    XCTAssertFalse(
+      BrowserMeetingEvidence.inCall(
+        urls: ["https://example.com"], titles: ["Voice memo"], controls: ["Leave"]))
+  }
+  func testMeetingEndAsksOncePerQuietSpell() {
+    var policy = MeetingEndPolicy()
+    XCTAssertFalse(policy.observe(active: true, now: 0))
+    XCTAssertFalse(policy.observe(active: false, now: 1))
+    XCTAssertFalse(policy.observe(active: false, now: 10))
+    XCTAssertTrue(policy.observe(active: false, now: 11))
+    XCTAssertFalse(policy.observe(active: false, now: 40))
+    XCTAssertFalse(policy.observe(active: true, now: 41))
+    XCTAssertFalse(policy.observe(active: false, now: 42))
+    XCTAssertTrue(policy.observe(active: false, now: 52))
+  }
   func testWrongFieldInsertionAndClipboardRaceFailClosed() {
     let original = DestinationFingerprint(
       pid: 1, elementID: "field-A", selectionLocation: 2, selectionLength: 0, value: "hello",

@@ -5,7 +5,7 @@ struct NotificationCard: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   enum Kind {
     case callDetected, browserDetected, recording, paused, dictating, recovered, privateAssistant,
-      routeBlocked
+      routeBlocked, meetingEnded
   }
   let kind: Kind
   var appName = "Zoom"
@@ -27,6 +27,7 @@ struct NotificationCard: View {
     case .recovered: return "text.badge.checkmark"
     case .privateAssistant: return "sparkle"
     case .routeBlocked: return "mic.slash"
+    case .meetingEnded: return "phone.down"
     }
   }
   private var title: String {
@@ -39,6 +40,7 @@ struct NotificationCard: View {
     case .recovered: return "Your words are safe"
     case .privateAssistant: return "Just between us"
     case .routeBlocked: return "Let’s keep this private"
+    case .meetingEnded: return "Did the call end?"
     }
   }
   private var detail: String {
@@ -53,6 +55,7 @@ struct NotificationCard: View {
       return "Ask about this meeting in private text. Only its context is shared with AI."
     case .routeBlocked:
       return "Your call may still hear this microphone. A verified private input route is required."
+    case .meetingEnded: return "\(appName) stopped using the microphone. Chup! is still recording."
     }
   }
   private var primaryTitle: String {
@@ -63,6 +66,7 @@ struct NotificationCard: View {
     case .dictating: return "Finish"
     case .recovered: return "Copy text"
     case .privateAssistant, .routeBlocked: return "Ask in text"
+    case .meetingEnded: return "Stop & save"
     }
   }
   var body: some View {
@@ -104,7 +108,9 @@ struct NotificationCard: View {
             RailPalette.secondary)
         } else {
           Button(
-            kind == .recording ? "Pause" : kind == .paused ? "Stop & save" : "Dismiss",
+            kind == .recording
+              ? "Pause"
+              : kind == .paused ? "Stop & save" : kind == .meetingEnded ? "Keep recording" : "Dismiss",
             action: secondary
           ).buttonStyle(.plain).foregroundStyle(RailPalette.secondary)
         }

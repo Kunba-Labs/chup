@@ -63,3 +63,52 @@ public struct MeetingDetectionPolicy {
     return candidate
   }
 }
+/// Browser tab evidence read through Accessibility (Hyprnote's rule): a meeting needs a call
+/// site plus an in-call control, or a Meet code title, so a browser merely holding the mic
+/// doesn't count.
+public enum BrowserMeetingEvidence {
+  static let hosts = [
+    "meet.google.com", "teams.microsoft.com", "teams.live.com", "zoom.us", "webex.com",
+    "app.slack.com", "discord.com", "whereby.com", "meet.jit.si",
+  ]
+  static let leaveControls: Set<String> = [
+    "leave call", "hang up", "leave", "leave meeting", "end meeting", "end call",
+    "leave huddle", "end huddle", "disconnect",
+  ]
+  public static func isMeetingURL(_ url: String) -> Bool {
+    guard let host = URL(string: url)?.host?.lowercased() else { return false }
+    return hosts.contains { host == $0 || host.hasSuffix("." + $0) }
+  }
+  /// "Meet - abc-defg-hij" (optionally followed by " - Google Chrome" etc).
+  public static func isMeetTitle(_ title: String) -> Bool {
+    let lower = title.lowercased()
+    guard lower.hasPrefix("meet - ") else { return false }
+    let code = lower.dropFirst(7).prefix { !$0.isWhitespace }.split(separator: "-")
+    return code.map(\.count) == [3, 4, 3] && code.joined().allSatisfy { $0.isLetter }
+  }
+  public static func inCall(urls: [String], titles: [String], controls: [String]) -> Bool {
+    titles.contains(where: isMeetTitle)
+      || (urls.contains(where: isMeetingURL)
+        && controls.contains { leaveControls.contains($0.trimmingCharacters(in: .whitespaces).lowercased()) })
+  }
+}
+/// Asks once per quiet spell whether the call ended; never stops a recording by itself.
+public struct MeetingEndPolicy {
+  private var quietSince: Double?
+  private var asked = false
+  public init() {}
+  /// Returns true when the "did the call end?" prompt should appear.
+  public mutating func observe(active: Bool, now: Double, after quiet: Double = 10) -> Bool {
+    if active {
+      quietSince = nil
+      asked = false
+      return false
+    }
+    let since = quietSince ?? now
+    quietSince = since
+    guard !asked, now - since >= quiet else { return false }
+    asked = true
+    return true
+  }
+  public mutating func reset() { self = .init() }
+}
