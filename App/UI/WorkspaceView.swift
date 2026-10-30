@@ -762,7 +762,10 @@ struct PipelineStatus: View {
   }
   /// The backend answers 405 to an authorised GET and 401 to a bad token, so no model call is made.
   private func probe() async -> (Bool, String) {
-    guard let url = URL(string: state.backendURL) else { return (false, "Backend URL is invalid") }
+    // Same rule as BackendClient: the token only goes over HTTPS or to this Mac.
+    guard let url = URL(string: state.backendURL),
+      url.scheme == "https" || ["localhost", "127.0.0.1", "::1"].contains(url.host ?? "")
+    else { return (false, "Backend URL must be HTTPS or local") }
     var request = URLRequest(url: url, timeoutInterval: 5)
     request.setValue("Bearer \(state.backendToken)", forHTTPHeaderField: "Authorization")
     guard let (_, response) = try? await URLSession.shared.data(for: request),

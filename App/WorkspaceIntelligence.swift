@@ -77,9 +77,11 @@ extension WorkspaceState {
       guard TranscriptScope.fingerprint(current) == TranscriptScope.fingerprint(source),
         try db().note(meetingID).text == note
       else { throw WorkspaceError.staleVersion }
+      try EvidenceValidator.validate(blocks, note: note, meetingID: meetingID, segments: current)
       try db().put(
         EnhancedNotes(meetingID: meetingID, template: chosen, blocks: blocks),
         kind: "enhancedNotes", id: meetingID, parent: meetingID)
+      notesQueue.removeAll { $0 == meetingID }
       finishUsage(usageID, status: "completed")
       if selectedMeetingID == meetingID { try refreshDetail() }
     } catch {

@@ -7,7 +7,7 @@ extension WorkspaceState {
   var privacyWorkAllowed: Bool {
     pendingDictations == 0 && !transcriptionLab.busy && !microphonePreviewBusy && activeMeetingID == nil && dictationStatus != .listening && dictationStatus != .processing
       && !processingMeeting && !assistantBusy && voiceScope == nil && delegationTasks.isEmpty
-      && outlineTask == nil && !storageBusy && privacyMaintenanceTask == nil
+      && outlineTask == nil && !writingNotes && !storageBusy && privacyMaintenanceTask == nil
   }
   func refreshPrivacy() throws {
     durableRequests = try db().requestListings().sorted {

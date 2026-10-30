@@ -67,13 +67,16 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     get { defaults.stringArray(forKey: "pendingNotes") ?? [] }
     set { defaults.set(newValue, forKey: "pendingNotes") }
   }
+  var notesSkipped = Set<String>()
   func resumePendingNotes() {
     guard cloudEnabled, !backendToken.isEmpty, !processingMeeting, activeMeetingID == nil else {
       return
     }
     let known = Set(meetings.map(\.id))
     notesQueue = notesQueue.filter { known.contains($0) }
-    if let next = notesQueue.first { transcribeMeeting(meetingID: next) }
+    if let next = notesQueue.first(where: { !notesSkipped.contains($0) }) {
+      transcribeMeeting(meetingID: next)
+    }
   }
   @Published var captureGaps: [CaptureGap] = []
   @Published var note = Note()
@@ -1451,13 +1454,14 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     processingMeeting = true
     processingMeetingID = id
     transcriptionTask = Task {
+      var notesDone = false
       defer {
         processingMeeting = false
         processingMeetingID = nil
         transcriptionProgress = ""
-        // Done (or failed, with a notice): next queued meeting. A quit before this line leaves
-        // the meeting queued for the next launch.
-        notesQueue.removeAll { $0 == id }
+        // Finished: dequeue. Failed or cancelled: stays queued for the next launch, skipped for
+        // the rest of this session so it can't retry in a loop.
+        if !notesDone { notesSkipped.insert(id) }  // writeNotes dequeues on success.
         if !Task.isCancelled { resumePendingNotes() }
       }
       var activeJob: TranscriptionJob?
@@ -1553,7 +1557,10 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
             problems.append("Summary: " + error.localizedDescription)
           }
         }
-        do { try await writeNotes(meetingID: id) } catch {
+        do {
+          try await writeNotes(meetingID: id)
+          notesDone = true
+        } catch {
           problems.append("Notes: " + error.localizedDescription)
         }
         notice =

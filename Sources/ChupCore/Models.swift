@@ -212,6 +212,34 @@ public enum EvidenceValidator {
     }
   }
 }
+extension EvidenceValidator {
+  /// Enhanced notes: a "user" line must be one of the user's own note lines, and every AI line
+  /// must quote a refined segment of this meeting.
+  public static func validate(
+    _ blocks: [NoteBlock], note: String, meetingID: String, segments: [TranscriptSegment]
+  ) throws {
+    // Split like the backend: on "\n" only, so a CRLF line keeps its "\r".
+    let lines = Set(note.components(separatedBy: "\n").filter { !$0.isEmpty })
+    let allowed = Dictionary(
+      segments.filter { $0.meetingID == meetingID && !$0.provisional }.map { ($0.id, $0) },
+      uniquingKeysWith: { a, _ in a })
+    for block in blocks {
+      switch block.kind {
+      case "heading": guard !block.text.isEmpty else { throw WorkspaceError.invalidEvidence }
+      case "user": guard lines.contains(block.text) else { throw WorkspaceError.invalidEvidence }
+      case "ai":
+        guard !block.text.isEmpty, !block.sources.isEmpty else { throw WorkspaceError.invalidEvidence }
+        for source in block.sources {
+          guard let segment = allowed[source.segmentID],
+            !source.quote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            segment.text.contains(source.quote)
+          else { throw WorkspaceError.invalidEvidence }
+        }
+      default: throw WorkspaceError.invalidEvidence
+      }
+    }
+  }
+}
 public enum AssistantMode: String, Codable, CaseIterable {
   case privateText = "Private text"
   case privateVoice = "Private voice"
