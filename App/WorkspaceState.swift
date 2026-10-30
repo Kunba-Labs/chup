@@ -535,8 +535,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           self?.microphoneSignal.receive(peak: level, at: ProcessInfo.processInfo.systemUptime)
           self?.micLevel = level
           self?.micLastPacket = Date()
-          // Any non-zero level means a live input; a wedged one sends exact digital silence.
-          if level > 0 { self?.micHeardAt = Date() }
+          // One 16-bit step: anything the saved audio can represent counts as signal; a wedged
+          // input stays below it.
+          if level >= 1.0 / 32768 { self?.micHeardAt = Date() }
         }
         if track == .remote {
           self?.remoteLevel = level
@@ -1431,7 +1432,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           meetingID: meetingID, track: track, origin: hostOrigin,
           onSegment: { [weak self] segment in
             Task { @MainActor in
-              guard let self else { return }
+              // Captions that arrive after the recording ended (or was discarded) are dropped.
+              guard let self, self.activeMeetingID == meetingID else { return }
               do {
                 try self.db().put(
                   segment, kind: "segment", id: segment.id, parent: meetingID,

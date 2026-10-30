@@ -23,6 +23,8 @@ extension WorkspaceState {
   func discardMeeting() {
     guard let id = activeMeetingID else { return }
     meetingTask?.cancel()
+    outlineTask?.cancel()
+    outlineTask = nil
     stopAssistantRoute()
     closeRemoteGap()
     stopLiveCaptions()

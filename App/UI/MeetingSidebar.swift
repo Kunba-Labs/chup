@@ -72,6 +72,7 @@ struct MeetingSidebarView: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   private var onMeeting: Bool { state.selectedMeetingID == state.activeMeetingID }
   private var paused: Bool { state.meetingStatus == .paused }
+  private var failed: Bool { state.meetingStatus == .error }
   /// Only the recording meeting's captions; a previous meeting's lines never carry over.
   private var lines: [TranscriptSegment] {
     state.liveLines.filter { $0.meetingID == state.activeMeetingID }
@@ -84,7 +85,7 @@ struct MeetingSidebarView: View {
         ScrollView {
           VStack(alignment: .leading, spacing: 12) {
             level
-            if state.inputLost || state.micSilentSeconds != nil { noAudioWarning }
+            if failed { errorBanner } else if state.inputLost || state.micSilentSeconds != nil { noAudioWarning }
             if (state.liveCaptionsEnabled && state.cloudEnabled) || !lines.isEmpty {
               liveText
             }
@@ -105,9 +106,9 @@ struct MeetingSidebarView: View {
 
   private var header: some View {
     HStack(spacing: 8) {
-      Circle().fill(state.meetingStatus == .recording ? RailPalette.red : RailPalette.secondary)
+      Circle().fill(state.meetingStatus == .recording || failed ? RailPalette.red : RailPalette.secondary)
         .frame(width: 8, height: 8).accessibilityHidden(true)
-      Text(paused ? "PAUSED" : state.meetingStatus == .recording ? "REC" : "STARTING").font(.system(size: 10, weight: .semibold)).tracking(1.4)
+      Text(failed ? "ERROR" : paused ? "PAUSED" : state.meetingStatus == .recording ? "REC" : "STARTING").font(.system(size: 10, weight: .semibold)).tracking(1.4)
         .foregroundStyle(RailPalette.secondary)
       Text(WorkspaceState.time(state.elapsed)).font(.system(size: 13, weight: .semibold).monospacedDigit())
       Text("· " + (state.activeMeeting?.title ?? "Meeting")).font(.system(size: 12))
@@ -138,6 +139,19 @@ struct MeetingSidebarView: View {
         }
       }
     }
+  }
+
+  /// Capture failed: say so, and point at the two ways out. Audio saved so far is kept.
+  private var errorBanner: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text("Recording stopped with an error").font(.system(size: 13, weight: .semibold))
+      Text("Audio saved so far is kept. Stop and save to keep this meeting, then start a new recording.")
+        .font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
+      .background(RailPalette.red.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+      .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(RailPalette.red.opacity(0.45)) }
+      .accessibilityElement(children: .combine)
   }
 
   private var noAudioWarning: some View {
