@@ -1568,6 +1568,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         notice =
           problems.isEmpty
           ? "Your notes are ready." : "Transcript saved. " + problems.joined(separator: " ")
+        // Error text only (no transcript), so a failed automatic run can be diagnosed later.
+        if !problems.isEmpty { NSLog("Chup meeting processing: %@", problems.joined(separator: " ")) }
       } catch {
         if var job = activeJob {
           job.status = Task.isCancelled ? "pending" : "failed"
