@@ -206,3 +206,34 @@ struct InstalledAppIcon: View {
     }
   }
 }
+
+/// Page-level actions: 40 pt tall pills. Primary uses the brand gradient, secondary a white
+/// pill with a hairline, both with a pressed state.
+struct PillButtonStyle: ButtonStyle {
+  var primary = false
+  @Environment(\.isEnabled) private var enabled
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .font(.system(size: 14, weight: .semibold)).labelStyle(PillLabelStyle())
+      .padding(.horizontal, 18).frame(minHeight: 40)
+      .foregroundStyle(primary ? Color.white : Palette.ink)
+      .background {
+        if primary { Capsule().fill(Palette.gradient) } else {
+          Capsule().fill(Palette.paper).overlay(Capsule().strokeBorder(Palette.border))
+        }
+      }
+      .shadow(color: .black.opacity(primary ? 0.12 : 0.04), radius: primary ? 6 : 2, y: 1)
+      .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.45)
+      .scaleEffect(configuration.isPressed ? 0.98 : 1)
+      .contentShape(Capsule())
+  }
+}
+private struct PillLabelStyle: LabelStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    HStack(spacing: 8) { configuration.icon.font(.system(size: 13, weight: .semibold)); configuration.title }
+  }
+}
+extension ButtonStyle where Self == PillButtonStyle {
+  static var pill: PillButtonStyle { PillButtonStyle() }
+  static var pillPrimary: PillButtonStyle { PillButtonStyle(primary: true) }
+}

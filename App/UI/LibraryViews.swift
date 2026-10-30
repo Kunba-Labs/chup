@@ -23,7 +23,7 @@ struct DictationView: View {
           showTrash = true
         } label: {
           Label(state.trash.isEmpty ? "Trash" : "Trash (\(state.trash.count))", systemImage: "trash")
-        }
+        }.buttonStyle(.pill)
       }.sheet(isPresented: $showTrash) { TrashView().environmentObject(state) }
       .onAppear(perform: takeListQuery).onChange(of: state.listQuery) { _, _ in takeListQuery() }
       WorkspaceCard {
@@ -168,7 +168,8 @@ struct NotebookView: View {
           eyebrow: "Your notes", title: "Notebook",
           subtitle: "Notes you write yourself, for any meeting.")
         Spacer()
-        Button("New note") { state.newMeeting() }
+        Button { state.newMeeting() } label: { Label("New note", systemImage: "square.and.pencil") }
+          .buttonStyle(.pillPrimary)
       }
       ListSearchField(placeholder: "Search notebook", text: $query)
       if state.meetings.isEmpty {

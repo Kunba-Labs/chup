@@ -297,14 +297,14 @@ struct TodayView: View {
           Button {
             state.handle(.init(action: .meeting, began: true))
           } label: {
-            Label("Record meeting", systemImage: "record.circle").padding(.horizontal, 6)
-          }.buttonStyle(.borderedProminent).controlSize(.large)
+            Label("Record meeting", systemImage: "record.circle")
+          }.buttonStyle(.pillPrimary)
           Button {
             state.toggleDictation()
           } label: {
             Label(state.dictationStatus == .listening ? "Finish dictation" : "Dictate",
-              systemImage: "waveform").padding(.horizontal, 6)
-          }.buttonStyle(.bordered).controlSize(.large)
+              systemImage: "waveform")
+          }.buttonStyle(.pill)
         }
         if state.meetings.isEmpty && state.history.isEmpty {
           WorkspaceCard(

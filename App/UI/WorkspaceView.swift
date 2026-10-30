@@ -230,18 +230,19 @@ struct MeetingsView: View {
             eyebrow: "Record, review, search", title: "Meetings",
             subtitle: "Record a call and get notes when it ends.")
           Spacer()
-          Button("Tags") { showTags = true }.controlSize(.large)
+          Button { showTags = true } label: { Label("Tags", systemImage: "tag") }.buttonStyle(.pill)
           Button {
             showTrash = true
           } label: {
             Label(state.trash.isEmpty ? "Trash" : "Trash (\(state.trash.count))", systemImage: "trash")
-          }.controlSize(.large)
+          }.buttonStyle(.pill)
+          // Creates the meeting and opens recording setup, so it says Record.
           Button {
             state.newMeeting()
             starting = true
           } label: {
-            Label("New note", systemImage: "plus")
-          }.buttonStyle(.borderedProminent).controlSize(.large)
+            Label("Record meeting", systemImage: "record.circle")
+          }.buttonStyle(.pillPrimary)
         }
         HStack {
           Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
@@ -610,12 +611,20 @@ struct MeetingDetailView: View {
       }
       if outline.isEmpty && state.summaryEdits.isEmpty, state.enhancedNotes?.blocks.isEmpty == false {
         // Notes written from the transcript when no summary was made still have a home.
-        ScrollView { EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true).padding(4) }
+        ScrollViewReader { proxy in
+          ScrollView { EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true, highlight: summaryQuery).padding(4) }
+            .onChange(of: summaryFindIndex) { _, index in
+              let ids = summaryMatches(outline)
+              if ids.indices.contains(index) { withAnimation { proxy.scrollTo(ids[index], anchor: .center) } }
+            }
+        }
       } else if outline.isEmpty && state.summaryEdits.isEmpty {
         QuietEmpty(
           icon: "text.alignleft", title: "No summary yet",
-          subtitle: state.segments.isEmpty
-            ? "It’s written when the meeting ends." : "Press Write summary to make one.")
+          subtitle: !state.segments.isEmpty
+            ? "Press Write summary to make one."
+            : state.autoSummaryEnabled && state.cloudEnabled
+              ? "It’s written when the meeting ends." : "After the meeting, press Write summary.")
         addStepField
       } else {
         ScrollViewReader { proxy in
@@ -670,7 +679,7 @@ struct MeetingDetailView: View {
             }
             if state.enhancedNotes?.blocks.isEmpty == false {
               DisclosureGroup {
-                EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true).padding(.top, 8)
+                EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true, highlight: summaryQuery).padding(.top, 8)
               } label: {
                 Text("Notes filled in from the transcript").font(.system(size: 15, weight: .semibold))
               }
@@ -702,6 +711,7 @@ struct MeetingDetailView: View {
     ids += (outline.tldr + outline.points + outline.decisions).map { ($0.id, $0.text) }
     ids += outline.nextSteps.flatMap(\.steps).map { ($0.id, $0.text) }
     ids += outline.questions.map { ($0.id, $0.text) }
+    ids += (state.enhancedNotes?.blocks ?? []).map { ("note-" + $0.id, $0.text) }
     return ids.filter { found($0.1) }.map(\.0)
   }
   private func nextSummaryMatch(_ outline: SummaryOutline) {

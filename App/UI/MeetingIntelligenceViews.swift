@@ -185,6 +185,12 @@ struct EnhancedNotesView: View {
   @EnvironmentObject var state: WorkspaceState
   var showTab: (String) -> Void = { _ in }
   var embedded = false
+  /// Find text from the Summary tab; matching lines are highlighted.
+  var highlight = ""
+  private func found(_ text: String) -> Bool {
+    let query = highlight.trimmingCharacters(in: .whitespaces)
+    return !query.isEmpty && text.localizedCaseInsensitiveContains(query)
+  }
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack {
@@ -211,7 +217,7 @@ struct EnhancedNotesView: View {
         Text("Black is yours. Grey comes from the transcript.")
           .font(.caption).foregroundStyle(Palette.secondary)
         let document = VStack(alignment: .leading, spacing: 8) {
-          ForEach(notes.blocks) { block in row(block) }
+          ForEach(notes.blocks) { block in row(block).id("note-" + block.id) }
         }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
         if embedded { document.workspaceSurface() } else { ScrollView { document }.workspaceSurface() }
       } else {
@@ -242,12 +248,14 @@ struct EnhancedNotesView: View {
     if block.isHeading {
       Text(block.plainText).font(.system(size: 18, weight: .semibold)).padding(.top, 10)
         .foregroundStyle(block.kind == "user" ? Palette.ink : Palette.secondary)
+        .background(found(block.text) ? Palette.accent.opacity(0.15) : .clear)
         .accessibilityAddTraits(.isHeader)
     } else {
       HStack(alignment: .firstTextBaseline, spacing: 8) {
         Text("•").foregroundStyle(Palette.secondary)
         Text(block.text).font(.system(size: 16)).textSelection(.enabled)
           .foregroundStyle(block.kind == "user" ? Palette.ink : Palette.secondary)
+          .background(found(block.text) ? Palette.accent.opacity(0.15) : .clear)
           .accessibilityLabel((block.kind == "user" ? "Your note: " : "Added: ") + block.text)
         if let source = block.sources.first {
           if state.partial.transcript {
