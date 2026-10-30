@@ -8,7 +8,7 @@ On first launch, choose the workflows you want. Nothing records automatically. �
 
 ## macOS access
 
-Settings → Permissions provides a button to open each relevant macOS pane and “Check access again.” Enable Chup! in the listed pane, then return to the app. If macOS requests a restart, finish recording first. Pane links are best effort; follow the printed breadcrumb if macOS opens the general Settings window instead.
+Settings → General → Permissions provides a button to open each relevant macOS pane and “Check access again.” Enable Chup! in the listed pane, then return to the app. If macOS requests a restart, finish recording first. Pane links are best effort; follow the printed breadcrumb if macOS opens the general Settings window instead.
 
 | Feature | macOS setting | When needed |
 | --- | --- | --- |
@@ -20,17 +20,17 @@ Settings → Permissions provides a button to open each relevant macOS pane and 
 
 System-audio-only access has no general public preflight status used by this app. “Checked when capture starts” is intentional. First choose a source in the meeting capture sheet and start recording to invoke that system check. Browsers may include audio from other tabs. Ordinary recording needs no virtual driver. No camera, Full Disk Access or Automation access is requested by these workflows.
 
-macOS ties each grant to the app's code signature. A build signed with a different identity (for example the 24 September 2026 move of local installs from Apple Development to Developer ID) keeps showing Chup! as enabled in these panes while every grant is ignored, so global shortcuts and insertion stop. Remove Chup! from the affected pane (or run `tccutil reset Accessibility com.chup.mac`) and grant it again from Settings → Permissions.
+macOS ties each grant to the app's code signature. A build signed with a different identity (for example the 24 September 2026 move of local installs from Apple Development to Developer ID) keeps showing Chup! as enabled in these panes while every grant is ignored, so global shortcuts and insertion stop. Remove Chup! from the affected pane (or run `tccutil reset Accessibility com.chup.mac`) and grant it again from Settings → General → Permissions.
 
 Chup! does not share your screen. The optional screen permission supports meeting audio capture. Conferencing software continues to control its own screen sharing and microphone mute.
 
 ## Multiple shortcuts and external keyboards
 
-Settings → Shortcuts supports several simultaneous bindings for every action. Under Hold to dictate, keep **Fn**, then use **Add Control–Shift for dictation** or **Add shortcut**. Press Control and Shift together, then release both; no letter or Space is needed. Either binding now starts the same hold-to-dictate action. Changes are saved immediately and remain active after Settings closes and after relaunch.
+Settings → Dictation → Shortcuts supports several simultaneous bindings for every action. Under Hold to dictate, keep **Fn**, then use **Add Control–Shift for dictation** or **Add shortcut**. Press Control and Shift together, then release both; no letter or Space is needed. Either binding now starts the same hold-to-dictate action. Changes are saved immediately and remain active after Settings closes and after relaunch.
 
 Click a binding to edit only that binding. Its minus button removes only that binding. Each action also accepts ordinary modified keys and side mouse buttons. Duplicate gestures are rejected, including duplicates on the same action. A failed macOS registration disables that binding while its other bindings stay available. Presets replace the entire assignment list.
 
-Fn, modifier-only gestures such as Control–Shift, and mouse gestures require Input Monitoring for global use. Enable access in Settings → Permissions, then use Enable / retry registration. These monitored gestures do not suppress their normal macOS behavior. Test shortcuts without performing actions verifies the presses/releases locally; it does not start a microphone. While rebinding, voice actions are suspended. Escape cancels capture except when assigning the Cancel voice action itself.
+Fn, modifier-only gestures such as Control–Shift, and mouse gestures require Input Monitoring for global use. Enable access in Settings → General → Permissions, then use Enable / retry registration. These monitored gestures do not suppress their normal macOS behavior. Test shortcuts without performing actions verifies the presses/releases locally; it does not start a microphone. While rebinding, voice actions are suspended. Escape cancels capture except when assigning the Cancel voice action itself.
 
 ## Open at login
 
@@ -42,7 +42,7 @@ The workspace window reopens at its last size and position, on the display it wa
 
 ## Cloud processing
 
-Follow the backend instructions in the repository README. Save the app token in Settings → Advanced; keep the OpenAI project secret on the trusted backend. Settings → Privacy controls AI uploads. Local recording and typed notes remain usable when cloud processing is off or disconnected. Live captions have an additional Meetings toggle.
+Follow the backend instructions in the repository README. Save the app token in Settings → Advanced; keep the OpenAI project secret on the trusted backend. Settings → Privacy & Data controls AI uploads. Local recording and typed notes remain usable when cloud processing is off or disconnected. Live captions have an additional Meetings toggle.
 
 ## Storage and recovery
 
@@ -54,11 +54,11 @@ Choose an external backup destination and a password of at least 12 characters. 
 
 Readable JSON exports are unencrypted. The ordinary export omits private thoughts/history; the explicitly private export includes them. User-created exports and external backups are outside the app's deletion controls.
 
-Settings → Recovery shows interrupted provider requests. Resume reuses their stable ID; unknown provider acceptance stops automatic retry. “New attempt” may incur another charge. Saved responses can be recovered with cloud processing off. Review note/action proposals before saving. Settings → Usage shows confirmed/partial provider units and optional estimates from rates you enter; it is not a bill.
+Settings → Advanced → Recovery shows interrupted provider requests. Resume reuses their stable ID; unknown provider acceptance stops automatic retry. “New attempt” may incur another charge. Saved responses can be recovered with cloud processing off. Review note/action proposals before saving. Settings → Advanced → Usage shows confirmed/partial provider units and optional estimates from rates you enter; it is not a bill.
 
 ## Recording export, search and diagnostics
 
-Select a stopped meeting, then Settings → Privacy → Export selected meeting as aligned WAV tracks. Choose a new folder. Export runs off the UI thread and can be cancelled; all exported source tracks share a start and duration. Silence represents capture gaps/pauses. The manifest describes chunk intervals. WAV/JSON exports are readable and unencrypted. Private-question recordings are excluded.
+Select a stopped meeting, then Settings → Privacy & Data → Export selected meeting as aligned WAV tracks. Choose a new folder. Export runs off the UI thread and can be cancelled; all exported source tracks share a start and duration. Silence represents capture gaps/pauses. The manifest describes chunk intervals. WAV/JSON exports are readable and unencrypted. Private-question recordings are excluded.
 
 Meeting search includes transcript text and My notes; a transcript hit opens its source. Private thoughts/history are excluded. Opening a stopped recording builds an encrypted waveform index next to its chunks; missing/corrupt caches rebuild without changing recordings.
 
@@ -78,7 +78,7 @@ Artifacts are under `.artifacts/Distribution`. The default command does not uplo
 
 ## Chup! missing from the recording permission list
 
-Opening a Privacy pane does not register capture access. In Settings → Permissions (or onboarding), **Set up meeting audio…** opens the app/source selection without recording. Choose a meeting app and press Start recording deliberately; this creates a new meeting and invokes missing audio capture permissions. Audio-only permission may appear in a separate section below screen recording. In-person/microphone-only recording does not request system-audio access.
+Opening a Privacy pane does not register capture access. In Settings → General → Permissions (or onboarding), **Set up meeting audio…** opens the app/source selection without recording. Choose a meeting app and press Start recording deliberately; this creates a new meeting and invokes missing audio capture permissions. Audio-only permission may appear in a separate section below screen recording. In-person/microphone-only recording does not request system-audio access.
 
 Alternatively, use **+** below the relevant macOS recording list, choose `/Applications/Chup!.app`, and enable it. For the optional ScreenCaptureKit path, **Enable access** requests screen-recording permission explicitly. If macOS asks for a relaunch, finish any recording first.
 
@@ -98,7 +98,7 @@ In Dictation history, use **Play recording** even if transcription failed. Pause
 
 Accidental short clips with silence or very low speech evidence are skipped before cloud processing and hidden from the default history. **Show ignored clips** reveals them for playback, explicit Retry audio or deletion. Recordings are preserved under the normal retention policy; the filter does not remove existing recordings.
 
-Holding a configured dictation shortcut shows an independent dark indicator on the right edge of the display under the pointer. It shows Starting mic, Listening with the actual input level, then Processing. The hover rail can remain disabled. Settings → Shortcuts calls the main preset **Default preset**.
+Holding a configured dictation shortcut shows an independent dark indicator on the right edge of the display under the pointer. It shows Starting mic, Listening with the actual input level, then Processing. The hover rail can remain disabled. Settings → Dictation → Shortcuts calls the main preset **Default preset**.
 
 Offline audio playback and local noise classification work without the backend. Offline transcription is not installed yet; [the local-model investigation](LOCAL-TRANSCRIPTION.md) describes the proposed English/Dutch fallback and readiness requirements.
 
