@@ -152,6 +152,9 @@ def main():
                    validation='codesign --verify --deep --strict; installed native offline audio/localhost Live')
     (ARTIFACTS / 'last-install.json').write_text(json.dumps(receipt, indent=2) + '\n')
     print(f"Installed Chup! {receipt['version']} ({version}) at {target}", flush=True)
+    # Replacing the bundle at the same path leaves Finder and the Dock on the cached icon.
+    os.utime(target)
+    subprocess.run(['/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister', '-f', str(target)], check=False)
     if args.launch:
         receipt['running'] = launch_verified(target)
         (ARTIFACTS / 'last-install.json').write_text(json.dumps(receipt, indent=2) + '\n')
