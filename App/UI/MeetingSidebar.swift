@@ -220,40 +220,43 @@ struct MeetingSidebarView: View {
     VStack(spacing: 8) {
       if confirmDiscard {
         VStack(alignment: .leading, spacing: 8) {
-          Text("Delete this recording and its notes? This can’t be undone.").font(.system(size: 12))
-            .fixedSize(horizontal: false, vertical: true)
+          // Discard removes the whole meeting, including anything saved before this recording.
+          Text("Delete the whole meeting “\(state.activeMeeting?.title ?? "Meeting")”? Its recordings, transcript and notes are removed, including anything saved before this recording. This can’t be undone.")
+            .font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
           HStack(spacing: 8) {
-          Spacer()
-          Button("Keep") { discardFor = nil }.controlSize(.small)
-          Button("Discard", role: .destructive) {
-            discardFor = nil
-            state.discardMeeting()
-          }.buttonStyle(.borderedProminent).tint(RailPalette.red).controlSize(.small)
+            Spacer()
+            Button("Keep") { discardFor = nil }.controlSize(.small)
+            Button("Delete meeting", role: .destructive) {
+              discardFor = nil
+              state.discardMeeting()
+            }.buttonStyle(.borderedProminent).tint(RailPalette.red).controlSize(.small)
           }
         }
       }
+      // The primary action gets the full width so its label never truncates.
+      Button {
+        state.stopMeeting()
+      } label: {
+        // Notes are written on stop only when cloud processing can run; otherwise audio is saved.
+        Label(state.cloudEnabled && !state.backendToken.isEmpty ? "Stop and write notes" : "Stop and save",
+          systemImage: "stop.fill").font(.system(size: 14, weight: .semibold))
+          .frame(maxWidth: .infinity).frame(height: 42).background(Palette.gradient, in: Capsule())
+          .foregroundStyle(.white)
+      }.buttonStyle(.plain)
       HStack(spacing: 8) {
         Button {
           paused ? state.resumeMeeting() : state.pauseMeeting()
         } label: {
-          Image(systemName: paused ? "play.fill" : "pause.fill").frame(width: 40, height: 40)
-            .background(.white.opacity(0.10), in: Circle())
+          Label(paused ? "Resume" : "Pause", systemImage: paused ? "play.fill" : "pause.fill")
+            .font(.system(size: 12, weight: .medium)).frame(maxWidth: .infinity).frame(height: 34)
+            .background(.white.opacity(0.10), in: Capsule())
         }.buttonStyle(.plain).accessibilityLabel(paused ? "Resume recording" : "Pause recording")
           .disabled(state.meetingStatus != .recording && !paused)
-        Button {
-          state.stopMeeting()
-        } label: {
-          // Notes are written on stop only when cloud processing can run; otherwise audio is saved.
-          Label(state.cloudEnabled && !state.backendToken.isEmpty ? "Stop and write notes" : "Stop and save",
-            systemImage: "stop.fill").font(.system(size: 13, weight: .semibold))
-            .frame(maxWidth: .infinity).frame(height: 40).background(Palette.gradient, in: Capsule())
-            .foregroundStyle(.white)
-        }.buttonStyle(.plain)
         Button { discardFor = state.activeMeetingID } label: {
-          Text("Discard").font(.system(size: 12)).padding(.horizontal, 12).frame(height: 40)
-            .background(Capsule().strokeBorder(.white.opacity(0.22)))
-        }.buttonStyle(.plain).fixedSize()
-          .accessibilityHint("Asks before deleting the recording")
+          Text("Discard").font(.system(size: 12)).frame(maxWidth: .infinity).frame(height: 34)
+            .overlay(Capsule().inset(by: 0.5).stroke(.white.opacity(0.22)))
+        }.buttonStyle(.plain).padding(.horizontal, 1)
+          .accessibilityHint("Asks before deleting the whole meeting")
       }
     }
   }
