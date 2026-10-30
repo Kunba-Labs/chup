@@ -58,9 +58,10 @@ actor LiveTranscription {
       if pending.count > 240 { pending.removeFirst() }
       return
     }
-    await send(packet)
+    // A failed packet waits for the reconnect, and later packets queue behind it.
+    if !(await send(packet)) { pending.append(packet) }
   }
-  @discardableResult private func send(_ packet: AudioPacket) async -> Bool {
+  private func send(_ packet: AudioPacket) async -> Bool {
     guard let socket else { return false }
     do {
       let data = try resample(packet)
@@ -79,7 +80,8 @@ actor LiveTranscription {
         try await socket.send(.string("{\"type\":\"input_audio_buffer.commit\"}"))
       }
     } catch {
-      // Dropping the socket makes receive() fail and reconnect.
+      // Buffer from now on; dropping the socket makes receive() fail and reconnect.
+      ready = false
       socket.cancel(with: .goingAway, reason: nil)
       return false
     }

@@ -244,6 +244,7 @@ struct MeetingDetailView: View {
   @State private var source: TranscriptSegment?
   @State private var renaming: TranscriptSegment?
   @State private var newSpeakerName = ""
+  @State private var voiceSample: VoiceSample?
   @State private var captureSheet = false
   @State private var scrubbing = false
   @State private var scrubPosition: Double = 0
@@ -444,16 +445,24 @@ struct MeetingDetailView: View {
         }.padding(28).frame(width: 460)
       }
       .sheet(item: $source) { item in SegmentEditor(segment: item).environmentObject(state) }
+      .sheet(item: $voiceSample) { sample in VoiceSampleConfirmation(sample: sample).environmentObject(state) }
       .alert("Rename speaker", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
         TextField("Name", text: $newSpeakerName)
         Button("Rename") {
           if let renaming { state.renameSpeaker(renaming.speakerID, name: newSpeakerName.trimmingCharacters(in: .whitespaces)) }
         }
-        Button("Rename and remember voice") {
-          let name = newSpeakerName.trimmingCharacters(in: .whitespaces)
-          if let renaming, !name.isEmpty {
-            state.renameSpeaker(renaming.speakerID, name: name)
-            state.rememberVoice(of: renaming.speakerID, name: name)
+        // Enrollment needs finished audio, so it is offered once recording ends.
+        if state.activeMeetingID != state.selectedMeetingID {
+          Button("Rename and remember voice…") {
+            let name = newSpeakerName.trimmingCharacters(in: .whitespaces)
+            if let renaming, !name.isEmpty {
+              state.renameSpeaker(renaming.speakerID, name: name)
+              if let sample = state.voiceSample(for: renaming.speakerID) {
+                voiceSample = VoiceSample(segment: sample, name: name)
+              } else {
+                state.notice = "\(name) has no clean line of two seconds or more to learn their voice from."
+              }
+            }
           }
         }
         Button("Cancel", role: .cancel) {}
@@ -812,5 +821,38 @@ struct PipelineStatus: View {
     case 401: return (false, "Backend rejected the token")
     default: return (false, "Backend answered HTTP \(code)")
     }
+  }
+}
+
+struct VoiceSample: Identifiable {
+  let segment: TranscriptSegment
+  let name: String
+  var id: String { segment.id }
+}
+/// Enrollment sends this clip with future transcriptions, so the user hears it and confirms it is one voice.
+struct VoiceSampleConfirmation: View {
+  @EnvironmentObject var state: WorkspaceState
+  @Environment(\.dismiss) var dismiss
+  let sample: VoiceSample
+  @State private var confirmed = false
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text("Remember \(sample.name)’s voice").font(.system(size: 22, design: .serif))
+      Text("Chup! will save this clip encrypted on this Mac and send it with future transcriptions to recognise \(sample.name).")
+        .foregroundStyle(Palette.secondary)
+      WorkspaceCard("Clip · \(WorkspaceState.time(sample.segment.start))", icon: "waveform") {
+        Text(sample.segment.text).font(.system(size: 15)).textSelection(.enabled)
+        Button("Listen to clip") { state.play(at: sample.segment.start) }
+      }
+      Toggle("This clip contains only \(sample.name)", isOn: $confirmed)
+      HStack {
+        Spacer()
+        Button("Cancel") { dismiss() }
+        Button("Remember voice") {
+          state.enrollVoice(sample.segment, name: sample.name, consent: confirmed, matching: true)
+          dismiss()
+        }.buttonStyle(.borderedProminent).disabled(!confirmed)
+      }
+    }.padding(28).frame(width: 480).background(Palette.workspace)
   }
 }

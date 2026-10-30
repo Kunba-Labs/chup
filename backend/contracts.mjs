@@ -151,12 +151,24 @@ export function cleanupPreserves(source, candidate, preferences = []) {
   const known = (source + ' ' + JSON.stringify(preferences)).toLowerCase();
   const before = spokenNumbers(source), after = spokenNumbers(candidate);
   if ([...after].some(n => !before.has(n))) return false;
-  if ([...before].some(n => !after.has(n)) && !/\b(no|actually|sorry|i mean|scratch that|wait|rather)\b/i.test(source)) return false;
+  const corrected = /\b(no|actually|sorry|i mean|scratch that|wait|rather)\b/i.test(source);
+  if ([...before].some(n => !after.has(n)) && !corrected) return false;
   if (negations(source) !== negations(candidate)) return false;
   // Light cleanup only removes and punctuates. Any new content word (a swapped verb, a reply,
   // a paraphrase) could change meaning, so only connective words may be added.
-  const words = text => text.toLowerCase().replace(/['’](s|ll|re|ve|d|m)\b|n['’]t\b/g,' ').match(/\p{L}+/gu) ?? [];
-  const spoken = new Set(words(known));
-  if (words(candidate).some(word => !spoken.has(word) && !connectives.has(word))) return false;
-  return names(candidate).every(name => known.includes(name.toLowerCase()));
+  const words = text => (text.toLowerCase().replace(/['’](s|ll|re|ve|d|m)\b|n['’]t\b/g,' ').match(/\p{L}+/gu) ?? [])
+    .filter(word => !(word in units || word in tens || word in scales || word === 'hundred'));
+  const said = words(source), preferred = new Set(words(JSON.stringify(preferences)));
+  // Kept words must also keep their order, so "Alice will call Bob" cannot become "Bob will call Alice".
+  let at = 0;
+  for (const word of words(candidate)) {
+    if (connectives.has(word)) continue;
+    const next = said.indexOf(word, at);
+    if (next >= 0) at = next + 1;
+    else if (!preferred.has(word)) return false;  // Preferred spellings may replace a spoken word.
+  }
+  if (!names(candidate).every(name => known.includes(name.toLowerCase()))) return false;
+  // Named people and places stay unless the speaker explicitly corrected themselves.
+  const kept = candidate.toLowerCase();
+  return corrected || names(source).every(name => kept.includes(name.toLowerCase()));
 }

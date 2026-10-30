@@ -1597,20 +1597,15 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       try refreshDetail()
     } catch { notice = error.localizedDescription }
   }
-  /// Enrolls the speaker's clearest single-voice line (2–10 s) and turns on matching for later meetings.
-  func rememberVoice(of speakerID: String, name: String) {
-    let clean = segments.filter { candidate in
+  /// The speaker's longest line of 2+ s that overlaps no other line: the clip offered for voice enrollment.
+  func voiceSample(for speakerID: String) -> TranscriptSegment? {
+    segments.filter { candidate in
       candidate.speakerID == speakerID && !candidate.provisional && candidate.end - candidate.start >= 2
         && !segments.contains {
           $0.id != candidate.id && $0.track == candidate.track && $0.start < min(candidate.end, candidate.start + 10)
             && $0.end > candidate.start
         }
-    }
-    guard let best = clean.max(by: { $0.end - $0.start < $1.end - $1.start }) else {
-      notice = "\(name) has no clean line of two seconds or more to learn their voice from."
-      return
-    }
-    enrollVoice(best, name: name, consent: true, matching: true)
+    }.max { $0.end - $0.start < $1.end - $1.start }
   }
   func enrollVoice(_ segment: TranscriptSegment, name: String, consent: Bool, matching: Bool = false) {
     guard consent, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
