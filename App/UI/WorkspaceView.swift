@@ -607,6 +607,7 @@ struct MeetingDetailView: View {
           icon: "text.alignleft", title: "No summary yet",
           subtitle: state.segments.isEmpty
             ? "It’s written when the meeting ends." : "Press Write summary to make one.")
+        addStepField
       } else {
         ScrollView {
           VStack(alignment: .leading, spacing: 22) {
@@ -647,11 +648,10 @@ struct MeetingDetailView: View {
                   .padding(.top, 4)
                 ForEach(group.steps) { step in nextStep(step) }
               }
-              HStack {
-                TextField("Add a next step…", text: $newStep).textFieldStyle(.plain).onSubmit(addStep)
-                  .padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
-                Button("Add", action: addStep).disabled(newStep.trimmingCharacters(in: .whitespaces).isEmpty)
-              }.padding(.top, 4)
+              addStepField.padding(.top, 4)
+              if state.lastActionReceipt != nil {
+                Button("Undo last change") { state.undoAction() }.controlSize(.small)
+              }
             }
             if !outline.questions.isEmpty {
               summarySection("Open questions") {
@@ -671,11 +671,19 @@ struct MeetingDetailView: View {
     }
   }
   @State private var newStep = ""
+  private var addStepField: some View {
+    HStack {
+      TextField("Add a next step…", text: $newStep).textFieldStyle(.plain).onSubmit(addStep)
+        .padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
+      Button("Add", action: addStep).disabled(newStep.trimmingCharacters(in: .whitespaces).isEmpty)
+    }
+  }
   @State private var summaryFinding = false
   @State private var summaryQuery = ""
   @FocusState private var summaryFindFocused: Bool
   private func tabPage(_ name: String, @ViewBuilder _ content: () -> some View) -> some View {
-    content().opacity(tab == name ? 1 : 0).allowsHitTesting(tab == name)
+    // Disabled as well as hidden, so inactive editors and buttons leave keyboard focus.
+    content().opacity(tab == name ? 1 : 0).allowsHitTesting(tab == name).disabled(tab != name)
       .accessibilityHidden(tab != name)
   }
   /// Summary lines matching the find field get a highlight.
@@ -727,7 +735,23 @@ struct MeetingDetailView: View {
       Text(step.text).font(.system(size: 15)).strikethrough(step.done)
         .background(found(step.text) ? Palette.accent.opacity(0.15) : .clear)
         .foregroundStyle(step.done ? Palette.secondary : Palette.ink)
-      if let due = step.dueDate { Text("due \(due)").font(.caption).foregroundStyle(Palette.secondary) }
+      if let action = step.action {
+        // Saved steps keep their owner and due date editable inline.
+        TextField("Owner", text: Binding(get: { action.owner ?? "" }, set: { value in
+          var copy = action
+          copy.owner = value.isEmpty ? nil : value
+          state.saveAction(copy)
+        })).textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary).frame(width: 90)
+          .accessibilityLabel("Owner of " + step.text)
+        TextField("Due", text: Binding(get: { action.dueDate ?? "" }, set: { value in
+          var copy = action
+          copy.dueDate = value.isEmpty ? nil : value
+          state.saveAction(copy)
+        })).textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary).frame(width: 80)
+          .accessibilityLabel("Due date of " + step.text)
+      } else if let due = step.dueDate {
+        Text("due \(due)").font(.caption).foregroundStyle(Palette.secondary)
+      }
       sourceLinks(step.sources)
       Spacer(minLength: 0)
       if let item = step.item { editButton(item) }
