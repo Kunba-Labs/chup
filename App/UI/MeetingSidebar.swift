@@ -72,6 +72,10 @@ struct MeetingSidebarView: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   private var onMeeting: Bool { state.selectedMeetingID == state.activeMeetingID }
   private var paused: Bool { state.meetingStatus == .paused }
+  /// Only the recording meeting's captions; a previous meeting's lines never carry over.
+  private var lines: [TranscriptSegment] {
+    state.liveLines.filter { $0.meetingID == state.activeMeetingID }
+  }
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       header
@@ -81,7 +85,7 @@ struct MeetingSidebarView: View {
           VStack(alignment: .leading, spacing: 12) {
             level
             if state.inputLost || state.micSilentSeconds != nil { noAudioWarning }
-            if (state.liveCaptionsEnabled && state.cloudEnabled) || !state.liveLines.isEmpty {
+            if (state.liveCaptionsEnabled && state.cloudEnabled) || !lines.isEmpty {
               liveText
             }
             if onMeeting { notes } else {
@@ -157,7 +161,7 @@ struct MeetingSidebarView: View {
 
   /// Older lines fade and blur; the current line is large. Live captions only know mic vs call.
   private var liveText: some View {
-    let recent = state.liveLines
+    let recent = lines
     return VStack(alignment: .leading, spacing: 10) {
       if recent.isEmpty {
         Text("Listening… text appears a few seconds after someone speaks.")
@@ -215,14 +219,17 @@ struct MeetingSidebarView: View {
   private var controls: some View {
     VStack(spacing: 8) {
       if confirmDiscard {
-        HStack(spacing: 8) {
-          Text("Delete this recording and its notes?").font(.system(size: 12))
+        VStack(alignment: .leading, spacing: 8) {
+          Text("Delete this recording and its notes? This can’t be undone.").font(.system(size: 12))
+            .fixedSize(horizontal: false, vertical: true)
+          HStack(spacing: 8) {
           Spacer()
           Button("Keep") { discardFor = nil }.controlSize(.small)
           Button("Discard", role: .destructive) {
             discardFor = nil
             state.discardMeeting()
           }.buttonStyle(.borderedProminent).tint(RailPalette.red).controlSize(.small)
+          }
         }
       }
       HStack(spacing: 8) {

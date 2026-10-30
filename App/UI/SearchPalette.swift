@@ -57,7 +57,7 @@ struct SearchPalette: View {
         id: "p/" + item.id, group: "Personal", icon: "character.book.closed", title: item.trigger,
         detail: item.replacement
       ) {
-        state.listQuery = item.trigger
+        state.listQuery = q
         state.page = item.kind == "dictionary" ? .dictionary : item.kind == "snippet" ? .snippets : .styles
       }
     }
