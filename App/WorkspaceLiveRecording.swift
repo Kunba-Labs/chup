@@ -24,6 +24,12 @@ extension WorkspaceState {
   /// deletion plan is saved, and only then is the meeting cleared and purged.
   func discardMeeting() {
     guard let id = activeMeetingID else { return }
+    // While a leg is starting, beginLeg may still be adding the consumer or opening files that a
+    // deletion plan made now would miss. Discard waits until capture has settled.
+    guard meetingStatus != .processing else {
+      notice = "Recording is still starting. Discard once it shows REC or PAUSED."
+      return
+    }
     guard recorderCloseFailed != id else {
       notice = "This recording's audio files didn't close cleanly, so it can't be discarded yet. "
         + "Quit and reopen Chup! (recovery closes them), then delete the meeting from the list."

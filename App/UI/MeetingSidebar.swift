@@ -250,6 +250,7 @@ struct MeetingSidebarView: View {
               discardFor = nil
               state.discardMeeting()
             }.buttonStyle(.borderedProminent).tint(RailPalette.red).controlSize(.small)
+              .disabled(state.meetingStatus == .processing)
           }
         }
       }
@@ -276,6 +277,7 @@ struct MeetingSidebarView: View {
           Text("Discard").font(.system(size: 12)).frame(maxWidth: .infinity).frame(height: 34)
             .overlay(Capsule().inset(by: 0.5).stroke(.white.opacity(0.22)))
         }.buttonStyle(.plain).padding(.horizontal, 1)
+          .disabled(state.meetingStatus == .processing)
           .accessibilityHint("Asks before deleting the whole meeting")
       }
     }
