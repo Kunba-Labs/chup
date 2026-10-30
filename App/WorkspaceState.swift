@@ -780,7 +780,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     assistantHistory = try db().list(AssistantExchange.self, kind: "assistantExchange", parent: id)
       .sorted { $0.created < $1.created }
     summary = try db().list(MeetingSummary.self, kind: "summary", parent: id).last
-    if let summary,
+    // With the transcript deleted on purpose the summary stays; its sources show as deleted.
+    if let summary, !partial.transcript,
       (try? EvidenceValidator.validate(summary, meetingID: id, segments: segments)) == nil
     {
       self.summary = nil

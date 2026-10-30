@@ -85,11 +85,13 @@ extension WorkspaceState {
     }
     do {
       stopPlayback()
+      // Voice clips remembered from this meeting are its audio too.
+      for profile in enrollments where profile.meetingID == id { deleteEnrollmentWithPlan(profile) }
       try db().deleteMeetingAudio(id, root: root)
       playback.reset()
       try refreshDetail()
       try refreshPrivacy()
-      notice = "Audio deleted. The transcript and notes stay."
+      notice = "Audio and voice clips from this meeting deleted. The transcript and notes stay."
     } catch { notice = error.localizedDescription }
   }
   func deleteSelectedTranscript() {

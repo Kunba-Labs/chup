@@ -70,13 +70,18 @@ extension WorkspaceStore {
       try savePartialMarker(marker, meetingID)
     }
   }
-  /// Deletes the transcript (and its search rows); notes, summaries and audio stay.
+  /// Every record kind that holds transcript text for a meeting.
+  static let transcriptKinds = ["segment", "correction", "transcriptRevision", "transcriptReview", "transcriptionJob"]
+  /// Deletes the transcript, its corrections, revisions, reviews and refine jobs (and their
+  /// search rows); notes, summaries and audio stay.
   public func deleteMeetingTranscript(_ meetingID: String) throws {
     var marker = try partialDeletion(meetingID)
     marker.transcript = true
     try transaction {
-      try execute("DELETE FROM objects WHERE kind='segment' AND parent=?", [meetingID])
-      try execute("DELETE FROM search WHERE kind='segment' AND parent=?", [meetingID])
+      for kind in Self.transcriptKinds {
+        try execute("DELETE FROM objects WHERE kind=? AND parent=?", [kind, meetingID])
+        try execute("DELETE FROM search WHERE kind=? AND parent=?", [kind, meetingID])
+      }
       try savePartialMarker(marker, meetingID)
     }
   }

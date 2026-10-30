@@ -44,8 +44,12 @@ final class TrashTests: XCTestCase {
     XCTAssertEqual(try store.list(TranscriptSegment.self, kind: "segment", parent: "m").count, 1)
     XCTAssertEqual(try store.partialDeletion("m"), PartialDeletion(audio: true))
 
+    try store.put(segment, kind: "correction", id: "s", parent: "m")
+    try store.put(["text": "Ship in May"], kind: "transcriptRevision", id: "r", parent: "m")
     try store.deleteMeetingTranscript("m")
-    XCTAssertTrue(try store.list(TranscriptSegment.self, kind: "segment", parent: "m").isEmpty)
+    for kind in WorkspaceStore.transcriptKinds {
+      XCTAssertTrue(try store.list(TranscriptSegment.self, kind: kind, parent: "m").isEmpty, kind)
+    }
     XCTAssertNil(try store.searchMeetings("May").first?.segmentID)
     XCTAssertEqual(try store.note("m").text, "my note")
     XCTAssertEqual(try store.partialDeletion("m"), PartialDeletion(audio: true, transcript: true))

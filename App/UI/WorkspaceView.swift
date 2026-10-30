@@ -540,7 +540,7 @@ struct MeetingDetailView: View {
             }
           } message: {
             Text(partialDelete == .audio
-              ? "The recording is removed from this Mac. Transcript, notes and summary stay. This cannot be undone."
+              ? "The recording and any voice clips remembered from it are removed from this Mac. Transcript, notes and summary stay. This cannot be undone."
               : "Every transcript line is removed. Notes and summary stay; their sources show as deleted. This cannot be undone.")
           }
       }

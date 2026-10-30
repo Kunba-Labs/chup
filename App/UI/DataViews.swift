@@ -7,7 +7,7 @@ struct UndoToastView: View {
   let toast: UndoToast
   var body: some View {
     HStack(spacing: 14) {
-      Image(systemName: "trash").foregroundStyle(.white.opacity(0.7))
+      Image(systemName: "trash").foregroundStyle(.white.opacity(0.7)).accessibilityHidden(true)
       Text(toast.message).lineLimit(1)
       Button("Undo") { state.restoreFromTrash(toast.ids) }
         .buttonStyle(.plain).fontWeight(.semibold).foregroundStyle(RailPalette.accent)
@@ -16,7 +16,6 @@ struct UndoToastView: View {
     .font(.system(size: 13)).foregroundStyle(.white).padding(.horizontal, 18).padding(.vertical, 11)
     .background(RailPalette.base.opacity(0.94), in: Capsule())
     .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
-    .accessibilityElement(children: .combine).accessibilityAddTraits(.isStaticText)
   }
 }
 
