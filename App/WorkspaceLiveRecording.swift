@@ -30,6 +30,11 @@ extension WorkspaceState {
       notice = "Wait until it shows REC, then discard."
       return
     }
+    // A transcription, summary or notes job for this meeting must finish (or be cancelled) first.
+    guard processingMeetingID != id, notesMeetingID != id else {
+      notice = "An AI job is still running for this meeting. Cancel it, then discard."
+      return
+    }
     guard recorderCloseFailed != id else {
       notice = "Quit and reopen Chup!, then delete this meeting from the list."
       return

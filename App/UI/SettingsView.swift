@@ -69,6 +69,7 @@ struct SettingsView: View {
           }
         }.padding(.horizontal, 12).padding(.vertical, 24)
       }.frame(width: 186).background(Palette.sidebar)
+      ScrollViewReader { proxy in
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
           VStack(alignment: .leading, spacing: 8) {
@@ -90,13 +91,18 @@ struct SettingsView: View {
             ForEach(Self.pages[home] ?? [], id: \.self) { name in
               if (Self.pages[home]?.count ?? 0) > 1 {
                 Text(name).font(.system(size: 18, weight: .semibold)).padding(.top, 10)
-                  .accessibilityAddTraits(.isHeader)
+                  .accessibilityAddTraits(.isHeader).id(name)
               }
               page(name)
             }
           }
         }.frame(maxWidth: 720, alignment: .leading).padding(28).frame(maxWidth: .infinity)
       }.background(Palette.workspace)
+        // A deep link to an original page (e.g. "Audio") scrolls to it inside its section.
+        .onChange(of: section, initial: true) { _, name in
+          if !sections.contains(name) { DispatchQueue.main.async { proxy.scrollTo(name, anchor: .top) } }
+        }
+      }
     }.foregroundStyle(Palette.ink).tint(Palette.accent).textFieldStyle(.roundedBorder)
       .onAppear {
         if state.microphoneSettingsRequested {

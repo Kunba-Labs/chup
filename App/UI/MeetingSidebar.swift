@@ -159,7 +159,7 @@ struct MeetingSidebarView: View {
       VStack(alignment: .leading, spacing: 2) {
         Text(state.inputLost ? "Microphone stopped" : "Microphone sending only silence for \(state.micSilentSeconds ?? 20) s")
           .font(.system(size: 13, weight: .semibold))
-        Text("Check your headphones. Restart keeps this meeting going.")
+        Text("Check your mic is connected, or pick another in Settings → Dictation.")
           .font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
       }
       Spacer(minLength: 4)
