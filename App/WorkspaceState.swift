@@ -117,6 +117,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   var microphonePreviewStartedAt: Double?
   var microphoneSignal = MicrophoneSignalHealth()
   var voiceSamplePlayer: AVAudioPlayer?
+  var voiceSampleTask: Task<Void, Never>?
   var microphoneMessageTask: Task<Void, Never>?
   @Published var dictationReady = false
   var dictationIndicatorUpdatePending = false
@@ -799,6 +800,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     do { try saveMeeting(meeting) } catch { notice = error.localizedDescription }
   }
   func startMeeting() {
+    stopPlayback()
     transcriptionLab.cancel()
     stopMicrophonePreview()
     stopDictationPlayback()
@@ -1557,9 +1559,11 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         // The transcript is saved; a failed summary or notes pass must not read as a failed
         // refine, and neither blocks the other.
         var problems: [String] = []
+        var failures: [String] = []
         if autoSummaryEnabled {
           do { try await finalizeSummary(meetingID: id) } catch {
             problems.append("Summary: " + error.localizedDescription)
+            failures.append("summary " + Self.errorCategory(error))
           }
         }
         do {
@@ -1567,12 +1571,13 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           notesDone = true
         } catch {
           problems.append("Notes: " + error.localizedDescription)
+          failures.append("notes " + Self.errorCategory(error))
         }
         notice =
           problems.isEmpty
           ? "Your notes are ready." : "Transcript saved. " + problems.joined(separator: " ")
-        // Error text only (no transcript), so a failed automatic run can be diagnosed later.
-        if !problems.isEmpty { NSLog("Chup meeting processing: %@", problems.joined(separator: " ")) }
+        // Step and error domain/code only: backend error text can echo meeting content.
+        if !failures.isEmpty { NSLog("Chup meeting processing failed: %@", failures.joined(separator: ", ")) }
       } catch {
         if var job = activeJob {
           job.status = Task.isCancelled ? "pending" : "failed"
@@ -1608,14 +1613,21 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     _ = try await archive.prepare(db().list(RecordingLeg.self, kind: "leg", parent: segment.meetingID))
     return try await archive.wave(start: segment.start, end: min(segment.end, segment.start + 10), track: segment.track)
   }
+  /// Error domain and code only, safe for system logs.
+  nonisolated static func errorCategory(_ error: Error) -> String {
+    let error = error as NSError
+    return "\(error.domain)#\(error.code)"
+  }
   func playVoiceSample(_ segment: TranscriptSegment) {
     guard let key else { return }
-    Task {
+    stopPlayback()
+    voiceSampleTask = Task {
       do {
         let wave = try await voiceSampleWave(segment, key: key)
-        stopPlayback()
+        try Task.checkCancellation()
         voiceSamplePlayer = try AVAudioPlayer(data: wave)
         voiceSamplePlayer?.play()
+      } catch is CancellationError {
       } catch { notice = error.localizedDescription }
     }
   }
@@ -1764,7 +1776,13 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     }
     playback.play(at: offset)
   }
-  func stopPlayback() { playback.pause() }
+  func stopPlayback() {
+    playback.pause()
+    voiceSampleTask?.cancel()
+    voiceSampleTask = nil
+    voiceSamplePlayer?.stop()
+    voiceSamplePlayer = nil
+  }
   func seekPlayback(to time: Double) { playback.seek(to: time) }
   func cancelAssistant() {
     assistantTask?.cancel()

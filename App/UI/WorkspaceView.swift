@@ -815,6 +815,9 @@ struct VoiceSampleConfirmation: View {
   let sample: VoiceSample
   @State private var confirmed = false
   var body: some View {
+    content.onDisappear { state.stopPlayback() }
+  }
+  private var content: some View {
     VStack(alignment: .leading, spacing: 16) {
       Text("Remember \(sample.name)’s voice").font(.system(size: 22, weight: .semibold))
       Text("Chup! will save this clip encrypted on this Mac and send it with future transcriptions to recognise \(sample.name).")
