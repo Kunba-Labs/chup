@@ -35,7 +35,10 @@ struct SearchPalette: View {
         Result(
           id: "d/" + entry.id, group: "Dictations", icon: "waveform",
           title: String(entry.text.prefix(70)), detail: entry.created.formatted(date: .abbreviated, time: .shortened)
-        ) { state.page = .dictation }
+        ) {
+          state.listQuery = String(entry.text.prefix(40))
+          state.page = .dictation
+        }
       }
     let personal = state.personalization.filter {
       $0.trigger.localizedCaseInsensitiveContains(q) || $0.replacement.localizedCaseInsensitiveContains(q)
@@ -44,10 +47,14 @@ struct SearchPalette: View {
         id: "p/" + item.id, group: "Personal", icon: "character.book.closed", title: item.trigger,
         detail: item.replacement
       ) {
+        state.listQuery = item.trigger
         state.page = item.kind == "dictionary" ? .dictionary : item.kind == "snippet" ? .snippets : .styles
       }
     }
-    return meetings + dictations + personal
+    // Relevance order within each group; one heading per group.
+    let order = ["Meetings and notes", "Transcripts"]
+    let grouped = order.flatMap { group in meetings.filter { $0.group == group } }
+    return grouped + dictations + personal
   }
 
   var body: some View {

@@ -279,7 +279,9 @@ struct MeetingDetailView: View {
   @State private var summaryEdit: SummaryItem?
   init(initialTab: String = "Notes") {
     _tab = State(initialValue: initialTab == "Summary" ? "Summary" : "Notes")
+    _revealOnAppear = State(initialValue: initialTab == "Transcript")
   }
+  @State private var revealOnAppear: Bool
   @AppStorage("transcriptCollapsed") private var transcriptCollapsed = false
   @AppStorage("transcriptWidth") private var transcriptWidth = 400.0
   @State private var askOpen = false
@@ -405,6 +407,12 @@ struct MeetingDetailView: View {
       }
       .onChange(of: tab) { _, new in state.meetingTab = new }
       .onChange(of: titleFocused) { _, focused in if !focused { saveTitle() } }
+      .onAppear {
+        if revealOnAppear {
+          revealOnAppear = false
+          revealTranscript()
+        }
+      }
       .sheet(item: $summaryEdit) { item in SummaryEditView(item: item).environmentObject(state) }
       .sheet(isPresented: $captureSheet) { CaptureSetupView().environmentObject(state) }
       .sheet(isPresented: $editMetadata) {

@@ -153,6 +153,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var assistantHistory: [AssistantExchange] = []
   @Published var trash: [TrashEntry] = []
   @Published var searchOpen = false
+  /// A ⌘K result hands its text to the list it opens, which filters to it.
+  @Published var listQuery: String?
   var pendingSeek: Double?
   @Published var undoToast: UndoToast?
   /// What was deleted on its own from the open meeting (audio and/or transcript).
@@ -705,12 +707,16 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     }
     enrollments = try db().list(VoiceEnrollment.self, kind: "enrollment")
     let db = try db()
+    let allMeetings = try db.list(Meeting.self, kind: "meeting")
+    let allHistory = try db.list(DictationEntry.self, kind: "dictation")
+    // A purge interrupted after the item was deleted leaves its Trash entry behind; drop it.
+    let existing = Set(allMeetings.map(\.id)).union(allHistory.map(\.id))
+    let stale = try db.trashEntries().filter { !existing.contains($0.id) }.map(\.id)
+    if !stale.isEmpty { try db.restoreFromTrash(stale) }
     trash = try db.trashEntries()
     let trashed = Set(trash.map(\.id))
-    meetings = try db.list(Meeting.self, kind: "meeting").filter { !trashed.contains($0.id) }
-      .sorted { $0.created > $1.created }
-    history = try db.list(DictationEntry.self, kind: "dictation").filter { !trashed.contains($0.id) }
-      .sorted { $0.created > $1.created }
+    meetings = allMeetings.filter { !trashed.contains($0.id) }.sorted { $0.created > $1.created }
+    history = allHistory.filter { !trashed.contains($0.id) }.sorted { $0.created > $1.created }
     personalization = try db.list(Personalization.self, kind: "personalization").sorted {
       $0.trigger < $1.trigger
     }

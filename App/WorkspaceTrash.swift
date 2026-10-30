@@ -86,7 +86,7 @@ extension WorkspaceState {
     do {
       stopPlayback()
       // Voice clips remembered from this meeting are its audio too.
-      for profile in enrollments where profile.meetingID == id { deleteEnrollmentWithPlan(profile) }
+      for profile in enrollments where profile.meetingID == id { try removeEnrollment(profile) }
       try db().deleteMeetingAudio(id, root: root)
       playback.reset()
       try refreshDetail()

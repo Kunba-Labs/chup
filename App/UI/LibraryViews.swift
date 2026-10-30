@@ -3,6 +3,12 @@ import SwiftUI
 
 struct DictationView: View {
   @EnvironmentObject var state: WorkspaceState
+  private func takeListQuery() {
+    if let query = state.listQuery {
+      search = query
+      state.listQuery = nil
+    }
+  }
   @State private var showTrash = false
   @State private var search = ""
   @State private var showIgnored = false
@@ -19,6 +25,7 @@ struct DictationView: View {
           Label(state.trash.isEmpty ? "Trash" : "Trash (\(state.trash.count))", systemImage: "trash")
         }
       }.sheet(isPresented: $showTrash) { TrashView().environmentObject(state) }
+      .onAppear(perform: takeListQuery).onChange(of: state.listQuery) { _, _ in takeListQuery() }
       WorkspaceCard {
         HStack(spacing: 22) {
           if state.dictationStatus == .listening {
@@ -204,6 +211,12 @@ struct PersonalizationView: View {
   @State private var language = "en"
   @State private var mode = CleanupMode.light
   @State private var query = ""
+  private func takeListQuery() {
+    if let handed = state.listQuery {
+      query = handed
+      state.listQuery = nil
+    }
+  }
   var kind: String { page == .dictionary ? "dictionary" : page == .snippets ? "snippet" : "style" }
   var body: some View {
     VStack(alignment: .leading, spacing: 26) {
@@ -256,6 +269,7 @@ struct PersonalizationView: View {
         }
       }.textFieldStyle(.roundedBorder)
       ListSearchField(placeholder: "Search \(page.rawValue.lowercased())", text: $query)
+        .onAppear(perform: takeListQuery).onChange(of: state.listQuery) { _, _ in takeListQuery() }
       if !state.personalization.contains(where: { $0.kind == kind }) {
         QuietEmpty(
           icon: page.icon, title: "Make this space yours",

@@ -331,6 +331,14 @@ extension WorkspaceState {
       return
     }
     do {
+      try removeEnrollment(profile)
+      notice =
+        "Voice reference and saved upload requests removed. Historical speaker labels remain editable."
+    } catch { notice = error.localizedDescription }
+  }
+  /// Throwing core of deleteEnrollmentWithPlan, for callers that must stop on failure.
+  func removeEnrollment(_ profile: VoiceEnrollment) throws {
+    do {
       var disabled = profile
       disabled.cloudMatching = false
       try db().put(disabled, kind: "enrollment", id: disabled.id)
@@ -340,8 +348,6 @@ extension WorkspaceState {
       try refresh()
       try refreshPrivacy()
       syncBackendDeletions()
-      notice =
-        "Voice reference and saved upload requests removed. Historical speaker labels remain editable."
-    } catch { notice = error.localizedDescription }
+    }
   }
 }
