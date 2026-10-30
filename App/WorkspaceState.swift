@@ -158,6 +158,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var assistantHistory: [AssistantExchange] = []
   @Published var trash: [TrashEntry] = []
   @Published var searchOpen = false
+  /// The last My thoughts write failed; the editor shows it until a write succeeds.
+  @Published var noteSaveFailed = false
   /// The recording meeting's newest live captions, whichever meeting is open.
   @Published var liveLines: [TranscriptSegment] = []
   /// Meeting ID → bundle ID of the app its call audio came from.
@@ -825,7 +827,11 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       lastReceipt = try db().writeNote(
         meetingID: id, text: text, expectedVersion: note.version, requestID: UUID().uuidString)
       note = lastReceipt!.after
-    } catch { notice = "Note not saved: \(error.localizedDescription)" }
+      noteSaveFailed = false
+    } catch {
+      noteSaveFailed = true
+      notice = "Note not saved: \(error.localizedDescription)"
+    }
   }
   func undoNote() {
     guard let lastReceipt else { return }

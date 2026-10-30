@@ -440,6 +440,7 @@ struct MeetingDetailView: View {
         Menu {
           Button("Copy as Markdown") { state.copyNotesMarkdown() }
           Button("Draft follow-up email") { state.draftFollowup() }
+            .disabled(state.enhancedNotes?.blocks.isEmpty ?? true)
         } label: {
           Label("Export", systemImage: "square.and.arrow.up")
         }.fixedSize()
@@ -545,7 +546,12 @@ struct MeetingDetailView: View {
           .accessibilityLabel("My thoughts")
       }.padding(16).frame(maxHeight: .infinity).workspaceSurface()
       HStack {
-        Text("Saved on this Mac").font(.caption).foregroundStyle(Palette.secondary)
+        if state.noteSaveFailed {
+          Label("Not saved. Keep typing to try again.", systemImage: "exclamationmark.triangle")
+            .font(.caption).foregroundStyle(Palette.red)
+        } else {
+          Text("Saved on this Mac").font(.caption).foregroundStyle(Palette.secondary)
+        }
         Spacer()
         Button("Undo last edit") { state.undoNote() }.disabled(state.lastReceipt == nil).controlSize(.small)
       }
@@ -614,6 +620,7 @@ struct MeetingDetailView: View {
                 ForEach(outline.tldr) { item in
                   HStack(alignment: .firstTextBaseline) {
                     Text(item.text).font(.system(size: 17)).textSelection(.enabled)
+                      .background(found(item.text) ? Palette.accent.opacity(0.15) : .clear)
                     sourceLinks(item.sources)
                   }
                 }
@@ -701,7 +708,7 @@ struct MeetingDetailView: View {
     }
   }
   @ViewBuilder private func sourceLinks(_ sources: [Evidence]) -> some View {
-    ForEach(sources.prefix(2).indices, id: \.self) { index in SourceLink(source: sources[index]) }
+    ForEach(sources.indices, id: \.self) { index in SourceLink(source: sources[index]) }
   }
   private func nextStep(_ step: SummaryOutline.Step) -> some View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
