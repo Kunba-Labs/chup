@@ -226,10 +226,7 @@ struct MeetingsView: View {
             }
           }
         }
-        HStack {
-          Image(systemName: "lock")
-          Text("Local recording first. Cloud transcription only when you enable it.")
-        }.font(.caption).foregroundStyle(Palette.secondary)
+        PipelineStatus()
       }.padding(38).confirmDeleteMeeting($deletion)
     }
   }
@@ -719,6 +716,62 @@ struct SegmentEditor: View {
     ).onAppear {
       text = segment.text
       name = segment.speakerName ?? ""
+    }
+  }
+}
+
+/// What will actually happen to the next meeting: cloud AI, the backend, live notes, queued notes.
+struct PipelineStatus: View {
+  @EnvironmentObject var state: WorkspaceState
+  @State private var backend: (ok: Bool, text: String)?
+  var body: some View {
+    HStack(spacing: 18) {
+      item(state.cloudEnabled, state.cloudEnabled ? "Cloud AI on" : "Cloud AI off · recordings stay local")
+      if state.cloudEnabled {
+        if state.backendToken.isEmpty {
+          item(false, "No backend token · Settings → Advanced")
+        } else if let backend {
+          item(backend.ok, backend.text)
+        } else {
+          item(nil, "Checking backend…")
+        }
+        item(
+          state.liveCaptionsEnabled && state.liveOutlineEnabled,
+          state.liveCaptionsEnabled
+            ? (state.liveOutlineEnabled ? "Live notes on" : "Live captions on, live notes off")
+            : "Live captions off")
+      }
+      if !state.notesQueue.isEmpty {
+        item(nil, "\(state.notesQueue.count) waiting for notes")
+      }
+    }.font(.caption).foregroundStyle(Palette.secondary)
+      .task(id: "\(state.backendURL)|\(state.backendToken)|\(state.cloudEnabled)") {
+        backend = nil
+        while state.cloudEnabled, !state.backendToken.isEmpty, !Task.isCancelled {
+          backend = await probe()
+          try? await Task.sleep(for: .seconds(30))
+        }
+      }
+  }
+  private func item(_ ok: Bool?, _ text: String) -> some View {
+    HStack(spacing: 5) {
+      Circle().fill(ok == nil ? Palette.secondary : ok! ? Palette.olive : Palette.red)
+        .frame(width: 6, height: 6)
+      Text(text)
+    }
+  }
+  /// The backend answers 405 to an authorised GET and 401 to a bad token, so no model call is made.
+  private func probe() async -> (Bool, String) {
+    guard let url = URL(string: state.backendURL) else { return (false, "Backend URL is invalid") }
+    var request = URLRequest(url: url, timeoutInterval: 5)
+    request.setValue("Bearer \(state.backendToken)", forHTTPHeaderField: "Authorization")
+    guard let (_, response) = try? await URLSession.shared.data(for: request),
+      let code = (response as? HTTPURLResponse)?.statusCode
+    else { return (false, "Backend unreachable at \(url.host() ?? state.backendURL)") }
+    switch code {
+    case 405: return (true, "Backend connected")
+    case 401: return (false, "Backend rejected the token")
+    default: return (false, "Backend answered HTTP \(code)")
     }
   }
 }
