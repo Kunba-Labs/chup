@@ -25,13 +25,16 @@ struct SearchPalette: View {
     guard !q.isEmpty else { return [] }
     let titles = Dictionary(state.meetings.map { ($0.id, $0.title) }, uniquingKeysWith: { a, _ in a })
     // One row per meeting for titles and notes; every matching line for transcripts.
-    let meetings = hits.compactMap { hit -> Result? in
+    // A meeting whose best match is a transcript line still gets that line under Transcripts.
+    let lineIDs = Set(lines.compactMap(\.segmentID))
+    let extraLines = hits.filter { $0.segmentID.map { !lineIDs.contains($0) } ?? false }
+    let meetings = hits.filter { $0.segmentID == nil }.compactMap { hit -> Result? in
       guard let title = titles[hit.meetingID] else { return nil }
       return Result(
         id: "m/" + hit.meetingID, group: "Meetings and notes", icon: "person.2", title: title,
         detail: hit.excerpt
-      ) { open(MeetingSearchHit(meetingID: hit.meetingID, segmentID: nil, excerpt: hit.excerpt)) }
-    } + lines.compactMap { hit -> Result? in
+      ) { open(hit) }
+    } + (lines + extraLines).compactMap { hit -> Result? in
       guard let title = titles[hit.meetingID], let segment = hit.segmentID else { return nil }
       return Result(
         id: "s/" + segment, group: "Transcripts", icon: "text.quote", title: title, detail: hit.excerpt

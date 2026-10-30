@@ -74,17 +74,21 @@ struct MeetingSidebarView: View {
     VStack(alignment: .leading, spacing: 12) {
       header
       if !sidebar.collapsed {
-        level
-        if state.inputLost || state.micSilentSeconds != nil { noAudioWarning }
-        if (state.liveCaptionsEnabled && state.cloudEnabled) || !state.liveLines.isEmpty {
-          liveText
-        }
-        if onMeeting { notes } else {
-          Button("Show this meeting’s notes") {
-            if let id = state.activeMeetingID { state.selectMeeting(id) }
-          }.buttonStyle(.bordered)
-        }
-        Spacer(minLength: 0)
+        // Everything scrolls except the recording controls, which stay pinned at the bottom.
+        ScrollView {
+          VStack(alignment: .leading, spacing: 12) {
+            level
+            if state.inputLost || state.micSilentSeconds != nil { noAudioWarning }
+            if (state.liveCaptionsEnabled && state.cloudEnabled) || !state.liveLines.isEmpty {
+              liveText
+            }
+            if onMeeting { notes } else {
+              Button("Show this meeting’s notes") {
+                if let id = state.activeMeetingID { state.selectMeeting(id) }
+              }.buttonStyle(.bordered)
+            }
+          }.frame(maxWidth: .infinity, alignment: .leading)
+        }.scrollIndicators(.automatic).frame(maxHeight: .infinity)
         controls
       }
     }.padding(14).frame(width: 320, alignment: .topLeading)
@@ -230,7 +234,9 @@ struct MeetingSidebarView: View {
         Button {
           state.stopMeeting()
         } label: {
-          Label("Stop and write notes", systemImage: "stop.fill").font(.system(size: 13, weight: .semibold))
+          // Notes are written on stop only when cloud processing can run; otherwise audio is saved.
+          Label(state.cloudEnabled && !state.backendToken.isEmpty ? "Stop and write notes" : "Stop and save",
+            systemImage: "stop.fill").font(.system(size: 13, weight: .semibold))
             .frame(maxWidth: .infinity).frame(height: 40).background(Palette.gradient, in: Capsule())
             .foregroundStyle(.white)
         }.buttonStyle(.plain)
