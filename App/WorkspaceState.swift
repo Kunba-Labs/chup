@@ -137,6 +137,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   var micEnvelope = VoiceWaveformEnvelope()
   @Published var remoteLevel: Float = 0
   @Published var micLastPacket: Date?
+  /// Last time the microphone carried any signal at all; a wedged input delivers exact silence.
+  var micHeardAt: Date?
   @Published var remoteLastPacket: Date?
   @Published var activeMeetingID: String?
   @Published var elapsed: Double = 0
@@ -531,6 +533,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           self?.microphoneSignal.receive(peak: level, at: ProcessInfo.processInfo.systemUptime)
           self?.micLevel = level
           self?.micLastPacket = Date()
+          if level > 0.0005 { self?.micHeardAt = Date() }
         }
         if track == .remote {
           self?.remoteLevel = level

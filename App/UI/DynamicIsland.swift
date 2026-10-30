@@ -216,6 +216,14 @@ struct DynamicIslandContent: View {
     state.meetingStatus == .recording || state.meetingStatus == .paused
   }
 
+  /// The newest ~80 characters, cut at a word, so two lines always show the latest words.
+  private var tail: String {
+    guard text.count > 80 else { return text }
+    let cut = text.suffix(80)
+    return "…" + (cut.firstIndex(of: " ").map { String(cut[cut.index(after: $0)...]) } ?? String(cut))
+  }
+  /// Long live text gets the two-line island.
+  private var twoLines: Bool { text.count > 38 }
   private var text: String {
     state.dictationLiveText.isEmpty
       ? (state.dictationStatus == .processing ? "Transcribing…" : "Listening…")
@@ -226,8 +234,18 @@ struct DynamicIslandContent: View {
     HStack(alignment: .center, spacing: 12) {
       IslandGlyph(state: state, size: 22)
       if transcribing {
-        MarqueeText(text: text, animate: state.dictationStatus == .listening)
+        // Up to two large lines; the oldest words drop off the top-left and fade.
+        Text(tail)
+          .font(.system(size: twoLines ? 17 : 18, weight: .semibold))
+          .foregroundStyle(.white)
+          .lineLimit(2)
           .frame(maxWidth: .infinity, alignment: .leading)
+          .mask(
+            LinearGradient(
+              stops: [.init(color: .black.opacity(twoLines ? 0.45 : 1), location: 0),
+                      .init(color: .black, location: 0.5)],
+              startPoint: .topLeading, endPoint: .bottomTrailing))
+          .animation(.easeOut(duration: 0.12), value: text)
         if hovering {
           circleButton("pencil", "Review before pasting") { state.requestDictationReview() }
             .transition(.scale.combined(with: .opacity))
@@ -242,7 +260,9 @@ struct DynamicIslandContent: View {
       if hovering { controls.transition(.opacity) }
     }
     .padding(.horizontal, 18)
-    .frame(width: hovering ? 560 : (transcribing ? 340 : 420), height: 64, alignment: .center)
+    .frame(
+      width: hovering ? 560 : (transcribing ? 460 : 420), height: transcribing && twoLines ? 86 : 64,
+      alignment: .center)
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Chup! island · " + (transcribing ? text : state.statusText))
     .onHover { entered in
@@ -294,63 +314,4 @@ struct DynamicIslandContent: View {
     .accessibilityLabel(title)
     .help(title)
   }
-}
-
-/// A compact, non-interactive marquee for live dictation. It only animates
-/// when the sentence is wider than the island's available text lane.
-private struct MarqueeText: View {
-  let text: String
-  let animate: Bool
-  @State private var contentWidth: CGFloat = 0
-  @State private var offset: CGFloat = 0
-
-  var body: some View {
-    GeometryReader { proxy in
-      let overflow = max(0, contentWidth - proxy.size.width)
-      Text(text)
-        .font(.system(size: 18, weight: .semibold))
-        .foregroundStyle(.white)
-        .lineLimit(1)
-        .fixedSize(horizontal: true, vertical: false)
-        .background {
-          GeometryReader { textProxy in
-            Color.clear.preference(key: MarqueeWidthKey.self, value: textProxy.size.width)
-          }
-        }
-        .offset(x: overflow > 1 ? -min(offset, overflow) : 0)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .onPreferenceChange(MarqueeWidthKey.self) { width in
-          contentWidth = width
-          followTail(overflow: max(0, width - proxy.size.width))
-        }
-        .onAppear { followTail(overflow: overflow, animated: false) }
-    }
-    .clipped()
-    .frame(height: 24, alignment: .center)
-    .onChange(of: text) { _, _ in
-      offset = 0
-      if animate { followTail(overflow: max(0, contentWidth), animated: false) }
-    }
-    .onChange(of: animate) { _, enabled in
-      if enabled { followTail(overflow: max(0, contentWidth), animated: false) }
-      else { offset = 0 }
-    }
-  }
-
-  private func followTail(overflow: CGFloat, animated: Bool = true) {
-    guard animate, overflow > 1 else {
-      offset = 0
-      return
-    }
-    if animated {
-      withAnimation(.easeOut(duration: 0.22)) { offset = overflow }
-    } else {
-      offset = overflow
-    }
-  }
-}
-
-private struct MarqueeWidthKey: PreferenceKey {
-  static var defaultValue: CGFloat = 0
-  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

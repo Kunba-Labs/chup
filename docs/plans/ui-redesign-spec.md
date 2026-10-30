@@ -19,8 +19,8 @@ approved before any build work starts.
   - Accept: one argument renders the same screen in each palette. The shipped build uses only the chosen one. (2026-10-30: the palette was picked from the HTML design board, so the in-app switch was dropped as unneeded. `Theme.swift` holds only the voice palette.)
 - [x] Titles use a sans display face. Body and transcript text stay legible at 14 to 16 pt.
   - Accept: no 32 pt serif titles remain in the workspace.
-- [ ] A gradient pill waveform component is used for every surface that hears audio.
-  - Accept: the floating sidebar, island, indicator, rail and record pill all use it. With Reduce Motion on, the bars hold still and still show the level. (gap: island, indicator, rail, sidebar list and recording scrubber done; floating sidebar waveform lands with F4, record pill with F3.)
+- [x] A gradient pill waveform component is used for every surface that hears audio.
+  - Accept: the floating sidebar, island, indicator, rail and record pill all use it. With Reduce Motion on, the bars hold still and still show the level.
 - [x] Each speaker in a meeting gets a stable colour, used consistently across the transcript, the timeline and the chips.
   - Accept: the same speaker has the same colour in every place in one meeting. Colour is never the only cue, so the name or initial is always shown. (`Palette.speaker` keyed by speaker ID: transcript dot, timeline lanes and the "who is this?" chip.)
 
@@ -58,14 +58,14 @@ approved before any build work starts.
   - Accept: leave the meeting, come back, and the earlier exchanges are still there.
 
 ## F4. Recording (floating live sidebar)
-- [ ] The floating sidebar keeps its current behaviour and adds the gradient waveform with a playhead and a timer.
+- [x] The floating sidebar keeps its current behaviour and adds the gradient waveform with a playhead and a timer.
   - Accept: it is still excluded from screen sharing and is non-activating.
-- [ ] Live text shows the current line large, older lines fade, and lines are labelled You or Them.
+- [x] Live text shows the current line large, older lines fade, and lines are labelled You or Them.
   - Accept: the current line meets 4.5:1 contrast. No speaker numbers are invented while recording.
-- [ ] The sidebar has Pause, Stop and Discard.
+- [x] The sidebar has Pause, Stop and Discard.
   - Accept: Discard asks for confirmation, then deletes the audio and the meeting. Stop saves as it does today.
 - [ ] If no audio arrives for 20 s, the sidebar shows a warning with "Restart input".
-  - Accept: unplugging an input during a test recording shows the warning. Restart resumes capture without ending the meeting.
+  - Accept: unplugging an input during a test recording shows the warning. Restart resumes capture without ending the meeting. (gap: built: exact-silence detection after 20 s plus the existing packet-loss pause both show the warning, and Restart input starts a fresh input leg. Needs the physical unplug test from MANUAL-TESTS.md before checking off.)
 
 ## F5. Data operations
 - [x] Deleted meetings, dictations and notebook entries go to a Trash with Restore.
@@ -118,10 +118,10 @@ approved before any build work starts.
   - Accept: a fresh install with no data shows guidance, not sample data presented as real.
 
 ## F9. Floating surfaces
-- [ ] The hover rail, dictation island and indicator use the new waveform, type and gradient.
+- [x] The hover rail, dictation island and indicator use the new waveform, type and gradient.
   - Accept: the existing island and compact render boards show the new style. The 160/450 ms timings are unchanged.
 - [ ] The island grows to fit up to 2 lines of large live dictation text, then fades.
-  - Accept: the click-through regions are re-verified, so the island never blocks clicks outside its visible shape. Placement holds on left, right and bottom docks.
+  - Accept: the click-through regions are re-verified, so the island never blocks clicks outside its visible shape. Placement holds on left, right and bottom docks. (gap: built: two large lines of the newest words, island grows to 86 pt; the notch package sizes the surface to the content. Click-through needs a manual pass on a notched Mac.)
 
 ## F10. App icon
 - [x] 3 to 4 icon concepts (pill bars, a monogram, and others) are rendered on the design board.

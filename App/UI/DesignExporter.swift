@@ -91,10 +91,27 @@ import ChupCore
               SummaryItem(category: "question", text: "Pricing is still open.", status: "unknown", sources: ev),
             ]))
         ]
+        state.segments = [
+          ("Sounds good. Also, some backend tests failed last night.", "provisional-remote"),
+          ("Campaign assets will be ready by Monday.", "provisional-remote"),
+          ("We’ll need final copy approval before launch", "provisional-microphone"),
+        ].enumerated().map { index, line in
+          TranscriptSegment(
+            id: "live-\(index)", meetingID: "preview-notes", start: Double(index * 4), end: Double(index * 4 + 3),
+            text: line.0, speakerID: line.1, track: line.1.hasSuffix("microphone") ? .microphone : .remote,
+            provisional: true)
+        }
+        state.micWaveform = (0..<16).map { Float(0.25 + 0.6 * abs(sin(Double($0) * 0.7))) }
         let sidebar = MeetingSidebar(state: state)
         try renderNative(
           MeetingSidebarView(sidebar: sidebar).environmentObject(state).environment(\.colorScheme, .dark),
-          size: CGSize(width: 320, height: 560), to: destination.appendingPathComponent("33-notes-sidebar.png"))
+          size: CGSize(width: 320, height: 680), to: destination.appendingPathComponent("33-notes-sidebar.png"))
+        state.meetingStatus = .paused
+        state.currentGapReason = "Microphone packets stopped. Recording paused; source-loss gap marked."
+        try renderNative(
+          MeetingSidebarView(sidebar: sidebar).environmentObject(state).environment(\.colorScheme, .dark),
+          size: CGSize(width: 320, height: 680), to: destination.appendingPathComponent("33b-sidebar-no-audio.png"))
+        state.meetingStatus = .recording
         state.activeMeetingID = nil
         state.enhancedNotes = EnhancedNotes(
           meetingID: "preview-notes", template: "general",
@@ -456,7 +473,7 @@ import ChupCore
       listening: stage {
         $0.dictationStatus = .listening
         $0.micWaveform = bars
-        $0.dictationLiveText = "launch moves to the fourth"
+        $0.dictationLiveText = "so for the launch we should keep it to the Netherlands first, then open it up after the audio tests"
       },
       processing: stage { $0.dictationStatus = .processing },
       ready: stage { $0.dictationStatus = .idle },

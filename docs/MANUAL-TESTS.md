@@ -41,6 +41,12 @@ A normal installation intentionally includes no Chup! Mic driver. Private text s
 
 If deliberately qualifying the separately installed prototype on an isolated test call, follow [DriverPrototype/README.md](../DriverPrototype/README.md). Use headphones and harmless test phrases. Independently record the receiving device: verify mic+assistant arrive once, remote audio never loops into outgoing, and private input/replies never arrive there. Switch private→broadcast while delayed output is pending; interrupt midway, compare actually heard PCM with the recorded assistant track, disconnect devices/network and change the call input. Document any leakage and stop that route's qualification. HAL checks at 100 ms cannot prove race-free privacy even after a successful trial.
 
+## Redesign (increment 10) hardware checks
+
+- [ ] **No-audio warning and Restart input.** Start a test recording on AirPods or a USB mic, then disconnect it. Within 20 s the floating sidebar shows "Microphone stopped" or "No microphone audio" with Restart input. Reconnect, press Restart input: recording continues in the same meeting with a marked gap, and the saved audio has both legs.
+- [ ] **Island click-through.** On a notched Mac with the island on, dictate a long sentence so the island grows to two lines. Click just outside its visible black shape (left, right, below): the click must reach the window underneath. Repeat with the rail docked left, right and bottom.
+- [ ] **VoiceOver pass.** Rail, meeting list column, Notes | Summary, transcript pane, timeline (via its slider), ⌘K palette, Undo toast and Trash are reachable and labelled.
+
 ## Distribution checks
 
 - [ ] After each local replacement, verify the build in exported diagnostics and that macOS permissions remain usable. The installer must refuse replacing a running Chup! without stopping its recording.

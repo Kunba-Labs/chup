@@ -66,84 +66,178 @@ import SwiftUI
 struct MeetingSidebarView: View {
   @EnvironmentObject var state: WorkspaceState
   @ObservedObject var sidebar: MeetingSidebar
+  @State private var confirmDiscard = false
   private var onMeeting: Bool { state.selectedMeetingID == state.activeMeetingID }
+  private var paused: Bool { state.meetingStatus == .paused }
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      HStack(spacing: 8) {
-        Image(systemName: state.meetingStatus == .paused ? "pause.circle" : "record.circle.fill")
-          .foregroundStyle(RailPalette.red)
-        Text("CHUP! · LIVE NOTES").font(.system(size: 9, weight: .semibold)).tracking(1.4)
-          .foregroundStyle(RailPalette.secondary)
-        Text(WorkspaceState.time(state.elapsed)).font(.system(size: 11, design: .monospaced))
-          .foregroundStyle(RailPalette.red)
-        Spacer()
-        Button(action: sidebar.toggle) {
-          Image(systemName: sidebar.collapsed ? "chevron.down" : "chevron.up")
-        }.buttonStyle(.plain).accessibilityLabel(sidebar.collapsed ? "Expand notes" : "Collapse notes")
-        Button(action: sidebar.close) { Image(systemName: "xmark") }.buttonStyle(.plain)
-          .accessibilityLabel("Hide notes for this meeting")
-      }.foregroundStyle(RailPalette.secondary)
+      header
       if !sidebar.collapsed {
-        if onMeeting {
-          Text("Your notes").font(.system(size: 13, weight: .semibold))
-          ZStack(alignment: .topLeading) {
-            if state.noteDraft.isEmpty {
-              Text("Jot a thought. Chup! keeps your words and fills in the rest.")
-                .foregroundStyle(RailPalette.secondary).padding(.top, 8).padding(.leading, 5)
-                .allowsHitTesting(false)
-            }
-            TextEditor(text: $state.noteDraft).scrollContentBackground(.hidden)
-              .onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
-              .accessibilityLabel("Your meeting notes")
-          }.font(.system(size: 14)).padding(8).frame(minHeight: 140, maxHeight: 220)
-            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-          if state.liveCaptionsEnabled && state.cloudEnabled {
-            Divider().overlay(.white.opacity(0.12))
-            Label("Live transcript", systemImage: "captions.bubble").font(.system(size: 13, weight: .semibold))
-            let recent = state.segments.filter(\.provisional).suffix(3)
-            // Bounded so long captions never push Live notes out of the fixed-height panel.
-            ScrollView {
-              VStack(alignment: .leading, spacing: 6) {
-                if recent.isEmpty {
-                  Text("Listening… text appears a few seconds after someone speaks.")
-                    .foregroundStyle(RailPalette.secondary)
-                }
-                ForEach(recent) { segment in
-                  Text(segment.text).foregroundStyle(segment.id == recent.last?.id ? RailPalette.ink : RailPalette.secondary)
-                    .textSelection(.enabled)
-                }
-              }.font(.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading)
-            }.frame(maxHeight: 96).defaultScrollAnchor(.bottom)
-          }
-          Divider().overlay(.white.opacity(0.12))
-          Label("Live notes", systemImage: "sparkle").font(.system(size: 13, weight: .semibold))
-          ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-              let items = LiveOutlineView.items(state.liveOutlines)
-              if items.isEmpty {
-                Text(
-                  state.liveOutlineEnabled && state.liveCaptionsEnabled && state.cloudEnabled
-                    ? "Notes appear here about a minute into the conversation."
-                    : "Turn on Live captions and Live outline in Settings to see notes as you talk."
-                ).font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
-              }
-              ForEach(items, id: \.key) { _, item in
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                  Text("•").foregroundStyle(RailPalette.accent)
-                  Text(item.text).font(.system(size: 13)).textSelection(.enabled)
-                }
-              }
-            }.frame(maxWidth: .infinity, alignment: .leading)
-          }
-        } else {
+        level
+        if state.inputLost || state.micSilentSeconds != nil { noAudioWarning }
+        if (state.liveCaptionsEnabled && state.cloudEnabled) || state.segments.contains(where: \.provisional) {
+          liveText
+        }
+        if onMeeting { notes } else {
           Button("Show this meeting’s notes") {
             if let id = state.activeMeetingID { state.selectMeeting(id) }
           }.buttonStyle(.bordered)
         }
+        Spacer(minLength: 0)
+        controls
       }
     }.padding(14).frame(width: 320, alignment: .topLeading)
       .frame(maxHeight: .infinity, alignment: .top)
       .background { RailSurface() }
       .foregroundStyle(RailPalette.ink)
+  }
+
+  private var header: some View {
+    HStack(spacing: 8) {
+      Circle().fill(paused ? RailPalette.secondary : RailPalette.red).frame(width: 8, height: 8)
+        .accessibilityHidden(true)
+      Text(paused ? "PAUSED" : "REC").font(.system(size: 10, weight: .semibold)).tracking(1.4)
+        .foregroundStyle(RailPalette.secondary)
+      Text(WorkspaceState.time(state.elapsed)).font(.system(size: 13, weight: .semibold).monospacedDigit())
+      Text("· " + (state.activeMeeting?.title ?? "Meeting")).font(.system(size: 12))
+        .foregroundStyle(RailPalette.secondary).lineLimit(1)
+      Spacer()
+      Button(action: sidebar.toggle) {
+        Image(systemName: sidebar.collapsed ? "chevron.down" : "chevron.up")
+      }.buttonStyle(.plain).accessibilityLabel(sidebar.collapsed ? "Expand sidebar" : "Collapse sidebar")
+      Button(action: sidebar.close) { Image(systemName: "xmark") }.buttonStyle(.plain)
+        .accessibilityLabel("Hide sidebar for this meeting")
+    }.foregroundStyle(RailPalette.secondary)
+  }
+
+  /// The big gradient level with a playhead; still bars under Reduce Motion (VoiceWaveform).
+  private var level: some View {
+    VStack(spacing: 6) {
+      ZStack {
+        VoiceWaveform(samples: paused ? [] : state.micWaveform, width: 288, height: 64, barCount: 30)
+        Capsule().fill(.white.opacity(0.85)).frame(width: 2, height: 58).accessibilityHidden(true)
+      }.frame(maxWidth: .infinity)
+      HStack(spacing: 12) {
+        SourceMeter(name: "Mic", level: state.micLevel,
+          receiving: state.micLastPacket.map { Date().timeIntervalSince($0) < 3 } ?? false)
+        if state.meetingPID != 0 {
+          SourceMeter(name: "Call", level: state.remoteLevel,
+            receiving: state.remoteLastPacket.map { Date().timeIntervalSince($0) < 3 } ?? false)
+        }
+      }
+    }.accessibilityElement(children: .combine).accessibilityLabel("Live audio level")
+  }
+
+  private var noAudioWarning: some View {
+    HStack(spacing: 10) {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(state.inputLost ? "Microphone stopped" : "No microphone audio for \(state.micSilentSeconds ?? 20) s")
+          .font(.system(size: 13, weight: .semibold))
+        Text("Headphones may have disconnected. Restarting keeps this meeting going.")
+          .font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
+      }
+      Spacer(minLength: 4)
+      Button { state.restartInput() } label: {
+        Text("Restart input").font(.system(size: 12, weight: .semibold)).foregroundStyle(.black)
+          .padding(.horizontal, 12).frame(height: 30).background(.white, in: Capsule())
+      }.buttonStyle(.plain).fixedSize()
+    }.padding(10)
+      .background(RailPalette.red.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+      .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(RailPalette.red.opacity(0.45)) }
+      .accessibilityElement(children: .contain)
+  }
+
+  /// Older lines fade and blur; the current line is large. Live captions only know mic vs call.
+  private var liveText: some View {
+    let recent = Array(state.segments.filter(\.provisional).suffix(4))
+    return VStack(alignment: .leading, spacing: 10) {
+      if recent.isEmpty {
+        Text("Listening… text appears a few seconds after someone speaks.")
+          .font(.system(size: 13)).foregroundStyle(RailPalette.secondary)
+      }
+      ForEach(Array(recent.enumerated()), id: \.element.id) { index, segment in
+        let current = index == recent.count - 1
+        let age = Double(recent.count - 1 - index)
+        VStack(alignment: .leading, spacing: 3) {
+          Text(segment.speakerID.hasSuffix("microphone") ? "YOU" : "THEM")
+            .font(.system(size: 10, weight: .bold)).tracking(1.2)
+            .foregroundStyle(current ? RailPalette.accent : RailPalette.secondary)
+          Text(segment.text)
+            .font(current ? .system(size: 19, weight: .semibold) : .system(size: 14))
+            .lineLimit(current ? 4 : 2).textSelection(.enabled)
+        }.opacity(current ? 1 : max(0.35, 0.8 - age * 0.2)).blur(radius: current ? 0 : age * 0.5)
+      }
+    }.frame(maxWidth: .infinity, alignment: .leading).frame(maxHeight: 210, alignment: .bottom)
+      .clipped().animation(.easeOut(duration: 0.25), value: recent.map(\.id))
+  }
+
+  private var notes: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text("YOUR NOTES").font(.system(size: 10, weight: .semibold)).tracking(1.2)
+        .foregroundStyle(RailPalette.secondary)
+      ZStack(alignment: .topLeading) {
+        if state.noteDraft.isEmpty {
+          Text("Jot a thought. Chup! keeps your words and fills in the rest.")
+            .foregroundStyle(RailPalette.secondary).padding(.top, 8).padding(.leading, 5)
+            .allowsHitTesting(false)
+        }
+        TextEditor(text: $state.noteDraft).scrollContentBackground(.hidden)
+          .onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
+          .accessibilityLabel("Your meeting notes")
+      }.font(.system(size: 14)).padding(8).frame(minHeight: 90, maxHeight: 150)
+        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+      let items = LiveOutlineView.items(state.liveOutlines)
+      if !items.isEmpty {
+        Label("Live notes", systemImage: "sparkle").font(.system(size: 12, weight: .semibold))
+          .padding(.top, 4)
+        ScrollView {
+          VStack(alignment: .leading, spacing: 6) {
+            ForEach(items, id: \.key) { _, item in
+              HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("•").foregroundStyle(RailPalette.accent)
+                Text(item.text).font(.system(size: 12)).textSelection(.enabled)
+              }
+            }
+          }.frame(maxWidth: .infinity, alignment: .leading)
+        }.frame(maxHeight: 90)
+      }
+    }
+  }
+
+  private var controls: some View {
+    VStack(spacing: 8) {
+      if confirmDiscard {
+        HStack(spacing: 8) {
+          Text("Delete this recording and its notes?").font(.system(size: 12))
+          Spacer()
+          Button("Keep") { confirmDiscard = false }.controlSize(.small)
+          Button("Discard", role: .destructive) {
+            confirmDiscard = false
+            state.discardMeeting()
+          }.buttonStyle(.borderedProminent).tint(RailPalette.red).controlSize(.small)
+        }
+      }
+      HStack(spacing: 8) {
+        Button {
+          paused ? state.resumeMeeting() : state.pauseMeeting()
+        } label: {
+          Image(systemName: paused ? "play.fill" : "pause.fill").frame(width: 40, height: 40)
+            .background(.white.opacity(0.10), in: Circle())
+        }.buttonStyle(.plain).accessibilityLabel(paused ? "Resume recording" : "Pause recording")
+          .disabled(state.meetingStatus != .recording && !paused)
+        Button {
+          state.stopMeeting()
+        } label: {
+          Label("Stop and write notes", systemImage: "stop.fill").font(.system(size: 13, weight: .semibold))
+            .frame(maxWidth: .infinity).frame(height: 40).background(Palette.gradient, in: Capsule())
+            .foregroundStyle(.white)
+        }.buttonStyle(.plain)
+        Button { confirmDiscard = true } label: {
+          Text("Discard").font(.system(size: 12)).padding(.horizontal, 12).frame(height: 40)
+            .background(Capsule().strokeBorder(.white.opacity(0.22)))
+        }.buttonStyle(.plain).fixedSize()
+          .accessibilityHint("Asks before deleting the recording")
+      }
+    }
   }
 }
