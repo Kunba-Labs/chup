@@ -20,16 +20,53 @@ extension WorkspaceState {
     resumeMeeting()
   }
   /// Stops the recording and deletes it for good: audio, notes and the meeting itself.
+  /// Order matters: the recorder is closed first (abort if it won't close), then the durable
+  /// deletion plan is saved, and only then is the meeting cleared and purged.
   func discardMeeting() {
     guard let id = activeMeetingID else { return }
+    do {
+      if let meetingConsumerID { try audio?.removeConsumer(id: meetingConsumerID) }
+    } catch {
+      notice = "Discard stopped: the recording could not be closed, so nothing was deleted. "
+        + error.localizedDescription
+      return
+    }
     meetingTask?.cancel()
     outlineTask?.cancel()
     outlineTask = nil
     stopAssistantRoute()
     closeRemoteGap()
     stopLiveCaptions()
-    if let meetingConsumerID { try? audio?.removeConsumer(id: meetingConsumerID) }
     audio?.stopRemote()
+    let plan: DeletionPlan
+    do {
+      plan = try db().planMeetingDeletion(id, root: root)
+    } catch {
+      // No plan means no later retry: keep the meeting as a stopped recording and say so.
+      if var meeting = activeMeeting {
+        meeting.status = "Audio saved"
+        try? saveMeeting(meeting)
+      }
+      endActiveMeeting(id)
+      try? refresh()
+      notice = "Recording stopped and kept; it could not be discarded. Delete it from the meeting list. "
+        + error.localizedDescription
+      return
+    }
+    endActiveMeeting(id)
+    do {
+      try db().finishDeletion(plan, root: root)
+      notesQueue.removeAll { $0 == id }
+      try refresh()
+      try refreshPrivacy()
+      syncBackendDeletions()
+      notice = "Recording discarded. Nothing from it was kept."
+    } catch {
+      notice = "Discard paused; its saved deletion plan finishes at the next cleanup. "
+        + error.localizedDescription
+    }
+  }
+  private func endActiveMeeting(_ id: String) {
     activeMeetingID = nil
     meetingStatus = .idle
     meetingStarted = nil
@@ -37,16 +74,5 @@ extension WorkspaceState {
     pausedAt = nil
     currentGapID = nil
     if selectedMeetingID == id { leaveMeeting() }
-    do {
-      // The deletion plan is saved first, so an interrupted purge resumes at the next cleanup.
-      try db().finishDeletion(db().planMeetingDeletion(id, root: root), root: root)
-      notesQueue.removeAll { $0 == id }
-      try refresh()
-      try refreshPrivacy()
-      syncBackendDeletions()
-      notice = "Recording discarded. Nothing from it was kept."
-    } catch {
-      notice = "Discard paused; it will finish at the next cleanup. " + error.localizedDescription
-    }
   }
 }
