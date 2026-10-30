@@ -207,6 +207,7 @@ struct DynamicIslandContent: View {
   /// Design renders pin the hover state; live use tracks the pointer.
   var pinnedHover: Bool?
   @State private var isHovering = false
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   private var hovering: Bool { pinnedHover ?? isHovering }
   private var transcribing: Bool {
@@ -245,7 +246,7 @@ struct DynamicIslandContent: View {
               stops: [.init(color: .black.opacity(twoLines ? 0.45 : 1), location: 0),
                       .init(color: .black, location: 0.5)],
               startPoint: .topLeading, endPoint: .bottomTrailing))
-          .animation(.easeOut(duration: 0.12), value: text)
+          .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: text)
         if hovering {
           circleButton("pencil", "Review before pasting") { state.requestDictationReview() }
             .transition(.scale.combined(with: .opacity))

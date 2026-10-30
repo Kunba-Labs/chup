@@ -67,6 +67,7 @@ struct MeetingSidebarView: View {
   @EnvironmentObject var state: WorkspaceState
   @ObservedObject var sidebar: MeetingSidebar
   @State private var confirmDiscard = false
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   private var onMeeting: Bool { state.selectedMeetingID == state.activeMeetingID }
   private var paused: Bool { state.meetingStatus == .paused }
   var body: some View {
@@ -168,7 +169,7 @@ struct MeetingSidebarView: View {
         }.opacity(current ? 1 : max(0.35, 0.8 - age * 0.2)).blur(radius: current ? 0 : age * 0.5)
       }
     }.frame(maxWidth: .infinity, alignment: .leading).frame(maxHeight: 210, alignment: .bottom)
-      .clipped().animation(.easeOut(duration: 0.25), value: recent.map(\.id))
+      .clipped().animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: recent.map(\.id))
   }
 
   private var notes: some View {

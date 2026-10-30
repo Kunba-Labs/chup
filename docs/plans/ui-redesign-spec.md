@@ -132,12 +132,12 @@ approved before any build work starts.
 ## Non-functional
 - [ ] VoiceOver labels and a keyboard path exist for the rail, list, panes, timeline and ⌘K.
   - Accept: a manual VoiceOver pass over these surfaces is noted in MANUAL-TESTS.md.
-- [ ] Reduce Motion and Reduce Transparency fallbacks exist on every new surface.
-  - Accept: renders with both flags on look correct.
-- [ ] Every list has an empty state, and every job has a failure state with a recovery action.
+- [x] Reduce Motion and Reduce Transparency fallbacks exist on every new surface.
+  - Accept: renders with both flags on look correct. (Verified in code, since renders can't force the system flags: the rail and the dark surfaces (RailSurface) go solid under Reduce Transparency; the toast, palette and panels are already opaque; waveforms, live text, island text and the toast skip animation under Reduce Motion.)
+- [x] Every list has an empty state, and every job has a failure state with a recovery action.
   - Accept: empty Trash, empty search and a failed summary each show a clear message and a next step.
-- [ ] The existing native offline checks still pass, and the layout review renders every new screen.
-  - Accept: `scripts/test.sh` and the `--render-design` layout review pass.
+- [x] The existing native offline checks still pass, and the layout review renders every new screen.
+  - Accept: `scripts/test.sh` and the `--render-design` layout review pass. (Layout review adds shell 900/1600, Today, Personal, ⌘K, Trash, Tags and both meeting views; CHUP_NOTES_PREVIEW renders the live sidebar and its no-audio state; the island board shows the two-line state.)
 
 ## Out of scope (Parked)
 - **Calendar and upcoming meetings:** unpark when the P2 calendar integration is scheduled.

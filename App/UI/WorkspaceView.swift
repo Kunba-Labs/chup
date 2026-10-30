@@ -28,6 +28,7 @@ struct WorkspaceView: View {
 /// Glass rail beside the floating content panel.
 struct WorkspaceShell: View {
   @EnvironmentObject var state: WorkspaceState
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var body: some View {
     HStack(spacing: 0) {
       GlassRail()
@@ -76,7 +77,7 @@ struct WorkspaceShell: View {
       if let toast = state.undoToast {
         UndoToastView(toast: toast).padding(.bottom, 28).transition(.move(edge: .bottom).combined(with: .opacity))
       }
-    }.animation(.easeOut(duration: 0.2), value: state.undoToast).background(
+    }.animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: state.undoToast).background(
       LinearGradient(
         colors: [Palette.sidebar, Palette.backdrop], startPoint: .topLeading,
         endPoint: .bottomTrailing)).foregroundStyle(Palette.ink).tint(Palette.accent)

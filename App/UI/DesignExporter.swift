@@ -432,6 +432,8 @@ import ChupCore
     }
     state.page = .today
     try renderNative(WorkspaceShell().environmentObject(state), size: CGSize(width: 1100, height: 760), to: destination.appendingPathComponent("layout-today.png"))
+    try renderNative(TrashView().environmentObject(state), size: CGSize(width: 600, height: 520), to: destination.appendingPathComponent("layout-trash.png"))
+    try renderNative(TagManagerView().environmentObject(state), size: CGSize(width: 460, height: 480), to: destination.appendingPathComponent("layout-tags.png"))
     state.searchOpen = true
     try renderNative(WorkspaceShell().environmentObject(state), size: CGSize(width: 1100, height: 760), to: destination.appendingPathComponent("layout-search.png"))
     state.searchOpen = false

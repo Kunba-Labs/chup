@@ -179,6 +179,11 @@ struct NotebookView: View {
       } else {
         ScrollView {
           LazyVStack(spacing: 14) {
+            if !query.isEmpty && !state.meetings.contains(where: {
+              "\($0.title) \($0.participants) \($0.tags)".localizedCaseInsensitiveContains(query)
+            }) {
+              Text("Nothing in your notebook matches “\(query)”.").foregroundStyle(Palette.secondary)
+            }
             ForEach(state.meetings.filter {
               query.isEmpty || "\($0.title) \($0.participants) \($0.tags)".localizedCaseInsensitiveContains(query)
             }) { meeting in
@@ -277,6 +282,11 @@ struct PersonalizationView: View {
       } else {
         ScrollView {
           LazyVStack(spacing: 12) {
+            if !query.isEmpty && !state.personalization.contains(where: {
+              $0.kind == kind && "\($0.trigger) \($0.replacement)".localizedCaseInsensitiveContains(query)
+            }) {
+              Text("No entries match “\(query)”.").foregroundStyle(Palette.secondary)
+            }
             ForEach(state.personalization.filter {
               $0.kind == kind
                 && (query.isEmpty || "\($0.trigger) \($0.replacement)".localizedCaseInsensitiveContains(query))
