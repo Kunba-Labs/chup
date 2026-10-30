@@ -42,7 +42,6 @@ enum RailModule: String, CaseIterable, Identifiable {
 /// Translucent icon rail (the inbox2-style glass), solid under Reduce Transparency.
 struct GlassRail: View {
   @EnvironmentObject var state: WorkspaceState
-  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   var body: some View {
     VStack(spacing: 6) {
       WaveMark().scaleEffect(0.62).frame(height: 34).padding(.top, 34).padding(.bottom, 14)
@@ -92,11 +91,9 @@ struct GlassRail: View {
       .help(state.activeMeetingID == nil ? "Record a meeting" : "Show the recording meeting")
       .accessibilityLabel(state.activeMeetingID == nil ? "Record meeting" : "Show recording meeting")
     }
+    // Transparent: the shell's behind-window glass shows through, so the rail and the
+    // gutter around the panel read as one glass surface.
     .frame(width: 60).frame(maxHeight: .infinity)
-    .background {
-      if reduceTransparency { Palette.sidebar } else { Rectangle().fill(.ultraThinMaterial) }
-    }
-    .overlay(alignment: .trailing) { Rectangle().fill(Palette.border.opacity(0.7)).frame(width: 0.5) }
   }
 }
 
@@ -117,11 +114,13 @@ struct PersonalModuleView: View {
 struct MeetingListColumn: View {
   @EnvironmentObject var state: WorkspaceState
   @State private var query = ""
-  /// ⌘-click and ⇧-click build a selection for bulk Delete and Tag.
+  /// Select mode, ⌘-click and ⇧-click build a selection for bulk Delete and Tag.
+  @State private var selecting = false
   @State private var picked: Set<String> = []
   @State private var anchor: String?
   @State private var tagging = false
   @State private var bulkTag = ""
+  @FocusState private var listFocused: Bool
   private var meetings: [Meeting] {
     query.isEmpty
       ? state.meetings
@@ -131,80 +130,124 @@ struct MeetingListColumn: View {
   }
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      HStack(spacing: 6) {
-        Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
-        TextField("Filter meetings", text: $query).textFieldStyle(.plain)
-      }.font(.system(size: 13)).padding(9)
-        .background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
+      HStack(spacing: 8) {
+        HStack(spacing: 6) {
+          Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
+          TextField("Filter meetings", text: $query).textFieldStyle(.plain)
+        }.font(.system(size: 13)).padding(9)
+          .background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
+        Button(selecting ? "Done" : "Select") {
+          selecting.toggle()
+          if !selecting { picked = [] }
+        }.buttonStyle(.plain).font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.accent)
+          .help("Select several meetings to delete or tag")
+      }
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 2) {
-          ForEach(meetings) { meeting in
-            let selected = meeting.id == state.selectedMeetingID
-            Button {
-              click(meeting)
-            } label: {
-              VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                  if let app = state.meetingApps[meeting.id] { InstalledAppIcon(bundleID: app, size: 14) }
-                  Text(meeting.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                }
-                Text(meeting.created.formatted(date: .abbreviated, time: .shortened))
-                  .font(.system(size: 11)).foregroundStyle(Palette.secondary)
-              }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
-                .padding(.horizontal, 10).contentShape(Rectangle())
-                .background(
-                  picked.contains(meeting.id)
-                    ? Palette.accent.opacity(0.14) : selected ? Palette.paper : .clear,
-                  in: RoundedRectangle(cornerRadius: 9))
-            }.buttonStyle(.plain)
-              .accessibilityAddTraits(selected || picked.contains(meeting.id) ? .isSelected : [])
-              .accessibilityHint("Command-click to select several")
-          }
+          ForEach(meetings) { meeting in row(meeting) }
         }
+      }
+      .focusable().focused($listFocused).focusEffectDisabled()
+      .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+        deleteSelection()
+        return .handled
       }
       if meetings.isEmpty {
         Text("No meetings match.").font(.caption).foregroundStyle(Palette.secondary)
       }
-      if picked.count > 1 {
-        HStack(spacing: 8) {
-          Text("\(picked.count) selected").font(.caption.weight(.semibold))
-          Spacer()
-          Button("Tag…") { tagging = true }.controlSize(.small)
-            .popover(isPresented: $tagging) {
-              TextField("Tag", text: $bulkTag).textFieldStyle(.roundedBorder).frame(width: 180)
-                .padding(12).onSubmit {
-                  let tag = bulkTag.trimmingCharacters(in: .whitespaces)
-                  if !tag.isEmpty { state.addTag(tag, to: chosen) }
-                  bulkTag = ""
-                  tagging = false
-                }
-            }
-          Button("Delete", role: .destructive) {
-            state.trashMeetings(chosen)
-            picked = []
-          }.controlSize(.small).disabled(!state.privacyWorkAllowed)
-          Button {
-            picked = []
-          } label: { Image(systemName: "xmark") }.buttonStyle(.plain).controlSize(.small)
-            .accessibilityLabel("Clear selection")
-        }.padding(10).background(Palette.paper, in: RoundedRectangle(cornerRadius: 10))
-      }
+      if selecting || picked.count > 1 { bulkBar }
     }.padding(14).frame(width: 236).background(Palette.sidebar.opacity(0.5))
+
+  }
+
+  private func row(_ meeting: Meeting) -> some View {
+    let selected = meeting.id == state.selectedMeetingID
+    let isPicked = picked.contains(meeting.id)
+    return Button {
+      click(meeting)
+    } label: {
+      HStack(spacing: 8) {
+        if selecting {
+          Image(systemName: isPicked ? "checkmark.circle.fill" : "circle")
+            .foregroundStyle(isPicked ? Palette.accent : Palette.secondary).font(.system(size: 15))
+        }
+        VStack(alignment: .leading, spacing: 3) {
+          HStack(spacing: 6) {
+            if let app = state.meetingApps[meeting.id] { InstalledAppIcon(bundleID: app, size: 14) }
+            Text(meeting.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+          }
+          Text(meeting.created.formatted(date: .abbreviated, time: .shortened))
+            .font(.system(size: 11)).foregroundStyle(Palette.secondary)
+        }
+      }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
+        .padding(.horizontal, 10).contentShape(Rectangle())
+        .background(
+          isPicked ? Palette.accent.opacity(0.14) : selected && !selecting ? Palette.paper : .clear,
+          in: RoundedRectangle(cornerRadius: 9))
+    }.buttonStyle(.plain)
+      .accessibilityAddTraits(selected || isPicked ? .isSelected : [])
+      .accessibilityHint(selecting ? "Selects this meeting" : "Opens this meeting")
+      .contextMenu {
+        Button("Select") {
+          selecting = true
+          picked.insert(meeting.id)
+        }
+        Button("Move to Trash", role: .destructive) { state.trashMeetings([meeting]) }
+          .disabled(!state.privacyWorkAllowed)
+      }
+  }
+
+  private var bulkBar: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack {
+        Text(picked.isEmpty ? "Select meetings" : "\(picked.count) selected").font(.caption.weight(.semibold))
+        Spacer()
+        Button(picked.count == meetings.count ? "Select none" : "Select all") {
+          picked = picked.count == meetings.count ? [] : Set(meetings.map(\.id))
+        }.buttonStyle(.plain).font(.caption).foregroundStyle(Palette.accent)
+      }
+      HStack(spacing: 8) {
+        Button("Tag…") { tagging = true }.controlSize(.small).disabled(picked.isEmpty)
+          .popover(isPresented: $tagging) {
+            TextField("Tag", text: $bulkTag).textFieldStyle(.roundedBorder).frame(width: 180)
+              .padding(12).onSubmit {
+                let tag = bulkTag.trimmingCharacters(in: .whitespaces)
+                if !tag.isEmpty { state.addTag(tag, to: chosen) }
+                bulkTag = ""
+                tagging = false
+              }
+          }
+        Spacer()
+        Button("Delete", role: .destructive) { deleteSelection() }
+          .controlSize(.small).disabled(picked.isEmpty || !state.privacyWorkAllowed)
+      }
+    }.padding(10).background(Palette.paper, in: RoundedRectangle(cornerRadius: 10))
   }
 }
 
 extension MeetingListColumn {
   private var chosen: [Meeting] { state.meetings.filter { picked.contains($0.id) } }
+  /// Delete key (list focused) and the bar: the selection if there is one, otherwise the open
+  /// meeting. A window-wide ⌘⌫ would also fire while typing notes, so there isn't one.
+  /// Everything goes to the Trash with an Undo toast.
+  private func deleteSelection() {
+    let targets = picked.isEmpty ? state.meetings.filter { $0.id == state.selectedMeetingID } : chosen
+    guard !targets.isEmpty else { return }
+    state.trashMeetings(targets)
+    picked = []
+    selecting = false
+  }
   private func click(_ meeting: Meeting) {
+    listFocused = true
     let flags = NSEvent.modifierFlags
     if flags.contains(.shift), let anchor,
       let from = meetings.firstIndex(where: { $0.id == anchor }),
       let to = meetings.firstIndex(where: { $0.id == meeting.id })
     {
       picked = Set(meetings[min(from, to)...max(from, to)].map(\.id))
-    } else if flags.contains(.command) {
-      // Start the selection with the open meeting so ⌘-click adds a second one.
-      if picked.isEmpty, let open = state.selectedMeetingID { picked.insert(open) }
+    } else if selecting || flags.contains(.command) {
+      // ⌘-click starts the selection with the open meeting, so it adds a second one.
+      if picked.isEmpty, !selecting, let open = state.selectedMeetingID { picked.insert(open) }
       if picked.contains(meeting.id) { picked.remove(meeting.id) } else { picked.insert(meeting.id) }
       anchor = meeting.id
     } else {
@@ -330,4 +373,27 @@ struct TodayView: View {
     } catch { state.notice = error.localizedDescription }
     load()
   }
+}
+
+/// Behind-window glass (the Finder sidebar material): the desktop blurs through the window.
+/// Reduce Transparency gets the solid backdrop instead.
+struct ShellGlass: View {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  var body: some View {
+    if reduceTransparency {
+      Palette.sidebar
+    } else {
+      BehindWindowMaterial().overlay(Palette.sidebar.opacity(0.35))
+    }
+  }
+}
+private struct BehindWindowMaterial: NSViewRepresentable {
+  func makeNSView(context: Context) -> NSVisualEffectView {
+    let view = NSVisualEffectView()
+    view.material = .sidebar
+    view.blendingMode = .behindWindow
+    view.state = .followsWindowActiveState
+    return view
+  }
+  func updateNSView(_ view: NSVisualEffectView, context: Context) {}
 }

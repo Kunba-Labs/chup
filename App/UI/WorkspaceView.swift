@@ -61,7 +61,8 @@ struct WorkspaceShell: View {
           RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.border.opacity(0.8), lineWidth: 0.5)
             .allowsHitTesting(false)
         }
-        .shadow(color: .black.opacity(0.07), radius: 14, y: 4).padding(10)
+        .shadow(color: .black.opacity(0.07), radius: 14, y: 4)
+        .padding(.vertical, 10).padding(.trailing, 10)
     }.overlay {
       if state.searchOpen {
         ZStack(alignment: .top) {
@@ -77,10 +78,7 @@ struct WorkspaceShell: View {
       if let toast = state.undoToast {
         UndoToastView(toast: toast).padding(.bottom, 28).transition(.move(edge: .bottom).combined(with: .opacity))
       }
-    }.animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: state.undoToast).background(
-      LinearGradient(
-        colors: [Palette.sidebar, Palette.backdrop], startPoint: .topLeading,
-        endPoint: .bottomTrailing)).foregroundStyle(Palette.ink).tint(Palette.accent)
+    }.animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: state.undoToast).background(ShellGlass().ignoresSafeArea()).foregroundStyle(Palette.ink).tint(Palette.accent)
   }
 }
 struct PageHeader: View {
