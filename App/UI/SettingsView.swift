@@ -26,9 +26,9 @@ struct SettingsView: View {
   private let descriptions = [
     "General": "Start-up, permissions and how Chup! looks.",
     "Dictation": "Shortcuts, microphone and how your words become text.",
-    "Meetings": "Capture the conversation, keep what matters.",
-    "AI & Assistant": "A thought partner with clear boundaries.",
-    "Privacy & Data": "Your words and how they are kept.",
+    "Meetings": "Recording, transcripts and summaries.",
+    "AI & Assistant": "Ask questions about your meetings.",
+    "Privacy & Data": "Cloud AI, storage and deleting data.",
     "Advanced": "Usage, recovery, diagnostics and the transcription lab.",
   ]
   /// `section` may hold an original page name (deep links, renders); this is its section.
@@ -117,13 +117,13 @@ struct SettingsView: View {
   @ViewBuilder private func page(_ name: String) -> some View {
     switch name {
     case "General":
-      WorkspaceCard("At your fingertips", icon: "cursorarrow.rays") {
+      WorkspaceCard("Floating rail", icon: "cursorarrow.rays") {
         SettingSwitch(
           title: "Show the floating rail",
           detail: "Keep voice controls at the edge of your screen.", isOn: $state.showRail)
       }
-      WorkspaceCard("Start with your Mac", icon: "sun.max") { LoginSettings(setup: state.setup) }
-      WorkspaceCard("Set up your workspace", icon: "checkmark.shield") {
+      WorkspaceCard("Open at login", icon: "sun.max") { LoginSettings(setup: state.setup) }
+      WorkspaceCard("Setup", icon: "checkmark.shield") {
         HStack {
           Button("Run setup again") {
             state.onboardingVisible = true
@@ -142,23 +142,23 @@ struct SettingsView: View {
     case "Audio":
       MicrophonePicker(devices: state.devices)
       WorkspaceCard(
-        "Meeting audio", subtitle: "Capture the other side of the conversation.",
+        "Meeting audio", subtitle: "Record what the other people say.",
         icon: "person.wave.2"
       ) {
         SettingSwitch(
           title: "Use alternative audio capture",
-          detail: "Try this if the standard capture route does not work with your call app.",
+          detail: "Try this if your call app’s audio doesn’t record.",
           isOn: $state.captureFallback)
         DetailDisclosure(
-          title: "How capture and permissions work",
+          title: "How call audio is recorded",
           text:
-            "Core Audio process taps are the default. The ScreenCaptureKit fallback requests Screen & System Audio Recording access. Neither route needs a virtual microphone; no screen video is saved."
+            "Chup! records the call app’s sound directly. The other option needs Screen & System Audio Recording access. Neither one saves video."
         )
       }
     case "Dictation":
       LocalSpeechSettings(service: state.localSpeech)
       WorkspaceCard(
-        "Writing preferences", subtitle: "A little cleanup, while keeping your meaning.",
+        "Writing preferences", subtitle: "How much Chup! tidies your words.",
         icon: "textformat"
       ) {
         Picker("Cleanup", selection: $state.cleanupMode) {
@@ -169,56 +169,56 @@ struct SettingsView: View {
           Text("English").tag("en")
           Text("Nederlands").tag("nl")
         }
-        Text("Transcription is explicit; Chup! does not translate. Automatic detects English or Nederlands from each recording.")
+        Text("Chup! doesn’t translate. Automatic picks English or Dutch for each recording.")
           .font(.callout).foregroundStyle(Palette.secondary)
       }
     case "Meetings":
-      WorkspaceCard("When a call begins", icon: "bell") {
+      WorkspaceCard("Call alerts", icon: "bell") {
         SettingSwitch(
           title: "Suggest meeting notes",
           detail:
-            "A gentle prompt that disappears after 10 seconds. Recording always needs your action.",
+            "A prompt shows for 10 seconds. Recording starts only when you press Record.",
           isOn: $state.meetingDetectionEnabled)
         DetailDisclosure(
           title: "About browser calls",
           text:
-            "Browser activity cannot prove which tab is a meeting. Review the selected application before recording."
+            "Chup! can’t tell which browser tab is the call. Check the app before you record."
         )
       }
       WorkspaceCard("Transcripts & summaries", icon: "text.bubble") {
         SettingSwitch(
           title: "Live captions",
-          detail: "Show provisional text while recording. Uses cloud processing.",
+          detail: "Show text while you record. Uses cloud AI.",
           isOn: $state.liveCaptionsEnabled)
         Divider()
         SettingSwitch(
-          title: "Live outline",
-          detail: "Build a provisional outline from completed text. Uses cloud processing.",
+          title: "Live notes",
+          detail: "Write notes while you record. Uses cloud AI.",
           isOn: $state.liveOutlineEnabled)
         Divider()
         SettingSwitch(
-          title: "Final summary", detail: "Generate a summary after the transcript is refined.",
+          title: "Final summary", detail: "Write a summary when the meeting ends.",
           isOn: $state.autoSummaryEnabled)
       }
       VoiceEnrollmentSettings()
     case "Assistant":
-      WorkspaceCard("A conversation, on your terms", icon: "sparkles") {
+      WorkspaceCard("How to ask", icon: "sparkles") {
         Text("Choose Private text, Private voice or Speak in meeting from the assistant.").font(
           .callout
         ).foregroundStyle(Palette.secondary)
         InlineStatus(
           text:
-            "Only questions you explicitly address to the assistant can trigger retrieval or note changes.",
+            "The assistant acts only on questions you ask it.",
           icon: "hand.raised")
         DetailDisclosure(
           title: "Voice setup & privacy",
           text:
-            "GPT-Live-1 receives addressed voice. Headphones must be identified by macOS. Private voice in a meeting requires control of the call’s microphone through the separately built Chup! Mic prototype; headphones alone do not make your spoken question private. After a voice failure, the outgoing microphone stays muted until you resume it."
+            "Voice questions go to GPT-Live-1. Use headphones. In a call, private voice needs the Chup! Mic."
         )
       }
       WorkspaceCard("Recent voice sessions", icon: "clock") {
         if state.usageRecords.isEmpty {
-          Text("Your voice sessions will appear here.").foregroundStyle(Palette.secondary)
+          Text("Your voice sessions show here.").foregroundStyle(Palette.secondary)
         }
         ForEach(state.usageRecords.prefix(12)) { item in
           VStack(alignment: .leading, spacing: 6) {
@@ -234,11 +234,11 @@ struct SettingsView: View {
             }
           }.padding(.vertical, 4)
         }
-        Button("View usage & estimates") { section = "Usage" }
+        Button("See usage and costs") { section = "Usage" }
       }
     case "Appearance":
       WorkspaceCard(
-        "Paper & glass", subtitle: "A light reading space with dark floating controls.",
+        "Look", subtitle: "A light window with dark floating controls.",
         icon: "paintpalette"
       ) {
         HStack(spacing: 16) {
@@ -254,19 +254,19 @@ struct SettingsView: View {
         SettingSwitch(
           title: "Use the Dynamic Island",
           detail:
-            "On a notched display, put the live transcript, voice level and controls under the notch and keep the edge rail hidden. Other displays keep the rail.",
+            "On a Mac with a notch, show live text and controls under the notch. Other screens keep the rail.",
           isOn: $state.dynamicIslandEnabled)
         Picker("Dock at", selection: $state.railDock) {
           Text("Left").tag("left")
           Text("Right").tag("right")
           Text("Bottom").tag("bottom")
         }.pickerStyle(.segmented)
-        Text("Drag the handle to adjust its position on a display.").font(.callout).foregroundStyle(
+        Text("Drag the handle to move the rail.").font(.callout).foregroundStyle(
           Palette.secondary)
         DetailDisclosure(
           title: "Accessibility & motion",
           text:
-            "Floating controls follow macOS Reduce Motion and Reduce Transparency settings. The workspace stays light and the rail stays dark."
+            "Floating controls follow Reduce Motion and Reduce Transparency in macOS."
         )
       }
     case "Privacy":
@@ -274,14 +274,14 @@ struct SettingsView: View {
         SettingSwitch(
           title: "Allow cloud AI",
           detail:
-            "Transcription, summaries and questions send the required content through your backend to OpenAI. Recording itself stays local.",
+            "Transcripts, summaries and questions send content to OpenAI. Recording alone sends nothing.",
           isOn: $state.cloudEnabled)
       }
       WorkspaceCard("AI tools (MCP)", icon: "point.3.connected.trianglepath.dotted") {
         SettingSwitch(
           title: "Let AI tools read meetings",
           detail:
-            "Claude and other MCP apps can read your meetings, notes, summaries, actions and transcripts while Chup! runs. Read-only. Private thoughts are never shared.",
+            "Claude and other AI apps can read your meetings while Chup! is open. They can’t change anything or see private thoughts.",
           isOn: $state.mcpEnabled)
         if state.mcpEnabled {
           Text("Add to your MCP client: command \"\(Bundle.main.executablePath ?? "/Applications/Chup!.app/Contents/MacOS/Chup!")\" with argument --mcp")
@@ -295,7 +295,7 @@ struct SettingsView: View {
     case "Diagnostics": DictationDiagnosticsView()
     case "Transcription Lab": TranscriptionLabView(lab: state.transcriptionLab)
     default:
-      WorkspaceCard("AI connection", subtitle: "Connect to your trusted backend.", icon: "network")
+      WorkspaceCard("AI connection", subtitle: "Your Chup! server.", icon: "network")
       {
         VStack(alignment: .leading, spacing: 6) {
           Text("Backend URL").font(.caption)
@@ -311,7 +311,7 @@ struct SettingsView: View {
         DetailDisclosure(
           title: "Backend setup",
           text:
-            "Use backend/.env.example to configure the included backend. Use HTTPS for a remote deployment. This token is for the app connection; never enter an OpenAI project secret here."
+            "Set up the server with backend/.env.example. Use https for a remote server. Never paste an OpenAI key here."
         )
       }
       WorkspaceCard("Troubleshooting", icon: "stethoscope") {
@@ -319,7 +319,7 @@ struct SettingsView: View {
           .foregroundStyle(Palette.secondary)
         Button("Export diagnostics…") { state.exportDiagnostics() }
         Text(
-          "Exports versions, permissions, timing and counts. Recordings, transcripts, notes and credentials are excluded."
+          "Includes versions, permissions and counts. No recordings, text or passwords."
         ).font(.caption).foregroundStyle(Palette.secondary)
       }
     }
@@ -338,7 +338,7 @@ struct ShortcutSettingsView: View {
         Button("Enable / retry registration") { registry.enable() }
         Divider()
         Text(
-          "Keep Fn for your Mac keyboard and add Control–Shift for an external keyboard. Every shortcut below stays active."
+          "Keep Fn on your Mac keyboard. Add Control–Shift for an external keyboard."
         )
         .font(.callout).foregroundStyle(Palette.secondary)
         if !registry.bindings.contains(where: {
@@ -400,10 +400,10 @@ struct ShortcutSettingsView: View {
       DetailDisclosure(
         title: "How to record a shortcut",
         text:
-          "Press modifiers alone (such as Control–Shift), a key with modifiers, or a side mouse button, then release all keys. Escape cancels, except when assigning Cancel voice action. Changes apply immediately and remain active when Settings closes."
+          "Press the keys or a side mouse button, then let go. Escape cancels. Changes save at once."
       )
       WorkspaceCard(
-        "Try it here", subtitle: "Check a shortcut without starting a voice action.",
+        "Try it here", subtitle: "Press a shortcut to see if it works.",
         icon: "hand.tap"
       ) {
         Toggle(
@@ -413,7 +413,7 @@ struct ShortcutSettingsView: View {
           maxWidth: .infinity, alignment: .leading
         ).background(Palette.paper, in: RoundedRectangle(cornerRadius: 7))
         Text(
-          "Internal and known system conflicts are checked. Other apps’ shortcut assignments cannot be exhaustively detected. Registered ordinary chords are reserved by macOS. Fn, modifier-only and mouse gestures are monitored without suppressing their system behavior."
+          "Chup! checks its own shortcuts. It can’t see every shortcut in other apps."
         ).font(.caption).foregroundStyle(Palette.secondary)
       }
     }.onDisappear {

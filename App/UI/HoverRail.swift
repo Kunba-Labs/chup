@@ -406,7 +406,7 @@ struct RailContent: View {
             if state.activeMeetingID != nil {
               HStack {
                 Button(state.meetingStatus == .paused ? "Resume" : "Pause") { action("pause") }
-                Button("Stop & save") { action("stop") }
+                Button("Stop and save") { action("stop") }
               }.buttonStyle(.bordered)
             }
           } else {

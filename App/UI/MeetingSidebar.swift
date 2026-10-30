@@ -145,7 +145,7 @@ struct MeetingSidebarView: View {
   private var errorBanner: some View {
     VStack(alignment: .leading, spacing: 4) {
       Text("Recording stopped with an error").font(.system(size: 13, weight: .semibold))
-      Text("Audio saved so far is kept. Stop and save to keep this meeting, then start a new recording.")
+      Text("Your audio so far is safe. Press Stop and save, then record again.")
         .font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
         .fixedSize(horizontal: false, vertical: true)
     }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
@@ -159,7 +159,7 @@ struct MeetingSidebarView: View {
       VStack(alignment: .leading, spacing: 2) {
         Text(state.inputLost ? "Microphone stopped" : "Microphone sending only silence for \(state.micSilentSeconds ?? 20) s")
           .font(.system(size: 13, weight: .semibold))
-        Text("Headphones may have disconnected. Restarting keeps this meeting going.")
+        Text("Check your headphones. Restart keeps this meeting going.")
           .font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
       }
       Spacer(minLength: 4)
@@ -178,7 +178,7 @@ struct MeetingSidebarView: View {
     let recent = lines
     return VStack(alignment: .leading, spacing: 10) {
       if recent.isEmpty {
-        Text("Listening… text appears a few seconds after someone speaks.")
+        Text("Listening… Text shows a few seconds after someone speaks.")
           .font(.system(size: 13)).foregroundStyle(RailPalette.secondary)
       }
       ForEach(Array(recent.enumerated()), id: \.element.id) { index, segment in
@@ -203,7 +203,7 @@ struct MeetingSidebarView: View {
         .foregroundStyle(RailPalette.secondary)
       ZStack(alignment: .topLeading) {
         if state.noteDraft.isEmpty {
-          Text("Jot a thought. Chup! keeps your words and fills in the rest.")
+          Text("Type a note. Chup! adds the rest when you stop.")
             .foregroundStyle(RailPalette.secondary).padding(.top, 8).padding(.leading, 5)
             .allowsHitTesting(false)
         }
@@ -219,7 +219,7 @@ struct MeetingSidebarView: View {
         Text(
           state.liveOutlineEnabled && state.liveCaptionsEnabled && state.cloudEnabled
             ? "Notes appear here about a minute into the conversation."
-            : "Turn on Live captions and Live outline in Settings to see notes as you talk."
+            : "Turn on Live captions and Live notes in Settings → Meetings."
         ).font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
       } else {
         ScrollView {

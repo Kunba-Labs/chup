@@ -30,7 +30,7 @@ struct TranscriptionLabView: View {
       }
       WorkspaceCard("Whisper Turbo + Parakeet v3", icon: "internaldrive") {
         Text(
-          "Whisper uses the model from Dictation settings. Parakeet detects the spoken language automatically; Whisper uses the recording’s saved language."
+          "Whisper uses your Dictation settings. Parakeet picks the language by itself."
         )
         .font(.callout).foregroundStyle(Palette.secondary)
         HStack {
@@ -97,7 +97,7 @@ struct TranscriptionLabView: View {
       DetailDisclosure(
         title: "Understanding the results",
         text:
-          "Models unload between runs. Preparation includes verification, loading and a readiness check; macOS may retain compiled caches. Results have no AI cleanup or speaker labels."
+          "Results have no AI cleanup and no speaker names."
       )
     }.onDisappear { lab.cancel() }
       .onChange(of: lab.selectedEntryID) { _, _ in lab.clear() }

@@ -248,12 +248,12 @@ struct TodayView: View {
         }
         if state.meetings.isEmpty && state.history.isEmpty {
           WorkspaceCard(
-            "Start here", subtitle: "Nothing is recorded yet. Three ways to begin:", icon: "sparkles"
+            "Start here", subtitle: "Three ways to start:", icon: "sparkles"
           ) {
             VStack(alignment: .leading, spacing: 10) {
-              Label("Record a meeting. Chup! keeps the audio and writes notes when you stop.",
+              Label("Record a meeting. You get notes when you stop.",
                 systemImage: "1.circle")
-              Label("Hold your dictation shortcut anywhere and talk. The text lands where you type.",
+              Label("Hold your shortcut and talk. Your words go where you type.",
                 systemImage: "2.circle")
               Label("Add names and terms under Personal so transcripts spell them right.",
                 systemImage: "3.circle")
@@ -283,7 +283,7 @@ struct TodayView: View {
           }
           section("Open action items") {
             if open.isEmpty {
-              Text("Nothing open. Actions from your meetings show up here.")
+              Text("No open actions. New ones from your meetings show here.")
                 .foregroundStyle(Palette.secondary)
             }
             ForEach(open) { action in

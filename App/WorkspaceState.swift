@@ -452,7 +452,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       }
       // Active capture cannot survive process termination; never resume microphone automatically.
       for var meeting in meetings where ["Recording", "Paused"].contains(meeting.status) {
-        meeting.status = "Recovered — capture interrupted"
+        meeting.status = "Recovered, recording was interrupted"
         try saveMeeting(meeting)
         let recoveredID = meeting.id
         // A quit, crash or power loss skipped Stop & save; still write the transcript and notes.
@@ -566,7 +566,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           if self?.meetingStatus == .processing {
             self?.stopMeeting()
           } else {
-            self?.pauseMeeting(reason: "Mac asleep — no audio captured")
+            self?.pauseMeeting(reason: "Mac was asleep, nothing recorded")
           }
         }
       })
@@ -574,7 +574,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) {
         [weak self] _ in
         DispatchQueue.main.async {
-          self?.notice = "Mac awake. Resume the meeting when you are ready; sleep was not recorded."
+          self?.notice = "Your Mac woke up. Press Resume to keep recording."
           self?.shortcuts.reset()
         }
       })
@@ -591,7 +591,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
             self.meetingStatus == .recording || self.dictationStatus == .listening || self.microphonePreviewActive
           else { return }
           self.stopForMicrophoneIssue(
-            "Microphone capture was interrupted. Audio is saved; check the input and start again."
+            "The mic stopped. Your audio is saved. Check the mic and start again."
           )
         }
       })
@@ -690,13 +690,13 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   func saveToken() {
     do {
       try KeyVault.write(Data(backendToken.utf8), account: "backend-token")
-      notice = "Backend token saved to Keychain."
+      notice = "App token saved."
     } catch { notice = error.localizedDescription }
   }
   func backend(scope: String? = nil, associationID: String? = nil) throws -> BackendClient {
     guard cloudEnabled else {
       throw WorkspaceError.message(
-        "Cloud processing is off. Enable it in Privacy to transcribe or ask AI; audio and notes remain saved locally."
+        "Cloud AI is off. Turn it on in Settings → Privacy & Data to transcribe or ask."
       )
     }
     guard let url = URL(string: backendURL), !backendToken.isEmpty else {
@@ -870,14 +870,14 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     meetingBaseElapsed = 0
     meetingTask = Task {
       if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
-        notice = "Waiting for microphone permission. Allow Chup! in the macOS prompt to start recording."
+        notice = "Allow Chup! in the macOS prompt to start recording."
       }
       guard await AVCaptureDevice.requestAccess(for: .audio) else {
         if activeMeetingID == id {
           activeMeetingID = nil
           meetingStatus = .idle
           notice =
-            "Microphone access is required to start recording. Turn it on in System Settings → Privacy & Security → Microphone."
+            "Chup! needs the mic to record. Turn it on in System Settings → Privacy & Security → Microphone."
         }
         return
       }
@@ -918,7 +918,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       if meetingPID != 0 {
         guard callProcessAlive else {
           throw WorkspaceError.message(
-            "The selected call app exited. Stop this recording and select the reopened app; another process will not be captured automatically."
+            "The call app closed. Stop this recording, then record the call app again."
           )
         }
       }
@@ -954,7 +954,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         pausedAt = nil
         currentGapID = nil
       }
-      notice = "Recording locally. Let participants know. Pause does not mute you in the call."
+      notice = "Recording on this Mac. Tell everyone you’re recording."
     } catch {
       try? audio.removeConsumer(id: consumerID)
       guard activeMeetingID == id, !Task.isCancelled else { return }
@@ -1022,7 +1022,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       meetingStatus = .idle
       meetingStarted = nil
       activeLeg = nil
-      notice = "Audio saved on this Mac. Transcribe when you are ready."
+      notice = "Audio saved on this Mac."
       if selectedMeetingID == id {
         try refreshDetail()
         preparePlayback()
@@ -1030,7 +1030,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       // Every leading notetaker writes the notes on stop; cloud off keeps recordings local.
       if cloudEnabled && backendToken.isEmpty {
         notice =
-          "Audio saved. Notes weren’t written: add the backend token in Settings → Advanced, then use Write notes."
+          "Audio saved. To get notes, add your app token in Settings → Advanced, then press Write notes."
       } else if cloudEnabled {
         notice = "Writing your notes…"
         if selectedMeetingID == id { meetingTab = "Notes" }
@@ -1085,7 +1085,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         guard callProcessAlive else { throw WorkspaceError.message("Reselect the reopened call app in a new recording.") }
         audio?.stopRemote()
         try await audio?.startRemote(pid: meetingPID, fallback: captureFallback)
-        notice = "Waiting for call audio packets. The capture gap stays open until audio arrives."
+        notice = "Waiting for call audio…"
       } catch { notice = error.localizedDescription }
     }
   }
@@ -1146,7 +1146,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     editingSelection = editSelection
     if editSelection && (destination?.selectedText.isEmpty ?? true) {
       finishTrace(traceID, .failed)
-      notice = "Select editable text in another app first, then hold the selected-text shortcut."
+      notice = "Select text in another app, then hold the edit shortcut."
       return
     }
     let generation = UUID()
@@ -1276,7 +1276,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         entry.processingNote = "Cloud unavailable · transcribed locally"
       }
     } else if !mode.allowsLocal {
-      throw WorkspaceError.message("Cloud-only transcription needs cloud processing and a configured backend. Choose Local only or Cloud with local fallback in Dictation settings.")
+      throw WorkspaceError.message("Cloud only needs cloud AI and a server. Pick another option in Settings → Dictation.")
     }
     if cloudClient == nil {
       guard let key else { throw WorkspaceError.message("Recording key unavailable.") }
@@ -1319,7 +1319,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           entry.processingNote = "Editing needs cloud access · instruction saved only"
           try db().put(entry, kind: "dictation", id: entry.id, searchable: text)
           try refresh()
-          throw WorkspaceError.message("Local transcription saved your instruction. Selected-text editing requires cloud processing; no replacement was inserted.")
+          throw WorkspaceError.message("Editing selected text needs cloud AI. Your words are saved in history.")
         } else {
           entry.processingNote = "Plain local transcript · cloud cleanup not applied"
         }
@@ -1384,7 +1384,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     recordingEntry = nil
     dictationConsumerID = nil
     dictationStatus = pendingDictations > 0 ? .processing : .idle
-    notice = "Voice action cancelled. Saved clips remain in history."
+    notice = "Cancelled. Your audio is in history."
   }
   func toggleDictation() { dictationStatus == .listening ? finishDictation() : beginDictation() }
   func pasteLast() {
@@ -1680,7 +1680,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       let key
     else {
       notice =
-        "Choose a finalized interval of at least two seconds and explicitly confirm whose voice it contains."
+        "Pick a line of 2 seconds or more, then confirm whose voice it is."
       return
     }
     Task {
@@ -1720,7 +1720,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           ? "Chup! will recognise \(name) in meetings you transcribe from now on."
           : matching
             ? "\(name)'s voice is saved, but four voices are already matched. Choose which in Meetings settings."
-            : "Encrypted voice reference saved. Cloud matching is off; enable it explicitly in Meetings settings."
+            : "Voice saved. Turn on matching in Settings → Meetings to use it."
       } catch { notice = error.localizedDescription }
     }
   }
@@ -1750,10 +1750,10 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       }
       do {
         try await finalizeSummary(meetingID: id)
-        notice = "Summary saved with transcript sources. Your pinned edits are preserved."
+        notice = "Summary ready."
       } catch is CancellationError {
-        notice = "Summary cancelled. Nothing was saved."
-      } catch { notice = Task.isCancelled ? "Summary cancelled. Nothing was saved." : error.localizedDescription }
+        notice = "Summary stopped."
+      } catch { notice = Task.isCancelled ? "Summary stopped." : error.localizedDescription }
     }
   }
   func correctSegment(
@@ -1803,11 +1803,11 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   func play(at offset: Double = 0) {
     stopDictationPlayback()
     guard selectedMeetingID != activeMeetingID else {
-      notice = "Finish this recording before playing it back."
+      notice = "Stop recording to play it back."
       return
     }
     guard !playbackLoading, playbackDuration > 0 else {
-      notice = playbackLoading ? "Opening recorded audio…" : "This meeting has no recorded audio."
+      notice = playbackLoading ? "Opening recorded audio…" : "This meeting has no audio."
       return
     }
     playback.play(at: offset)

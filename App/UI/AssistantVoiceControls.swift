@@ -16,8 +16,8 @@ struct AssistantVoiceControls: View {
       }
       Text(
         mode == .broadcast
-          ? "Only this meeting’s transcript is shared. Your private questions, notes and thoughts stay out of the broadcast context."
-          : "Hold to address the assistant. During a meeting, Chup! must control the call’s microphone route before private voice is available."
+          ? "Only this meeting’s transcript goes to AI. Your notes and private thoughts stay out."
+          : "Hold to talk to the assistant. In a call, private voice needs the Chup! Mic."
       )
       .font(.callout).foregroundStyle(Palette.secondary)
       Picker("Headphone output", selection: $router.monitorUID) {
@@ -40,7 +40,7 @@ struct AssistantVoiceControls: View {
           }
           Text(router.message).font(.caption)
           Text(
-            "Select Chup! Mic in your call app. This is a routed microphone, not a separate participant. Headphones are required; speakers are not qualified."
+            "Pick Chup! Mic as the mic in your call app. Use headphones."
           ).font(.caption).foregroundStyle(Palette.secondary)
         }.insetSurface()
       }

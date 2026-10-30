@@ -83,7 +83,7 @@ import SwiftUI
           case 4: state.dictationFeedback = .inserted
           case 5:
             state.dictationMicMessage =
-              "No input detected. Check your microphone’s mute switch, connection and input selection. A disconnected USB or Bluetooth microphone may need to reconnect before you can resume capture."
+              "No sound from your mic. Check that it’s connected and not muted."
           default: break
           }
           controller.show(on: screen)

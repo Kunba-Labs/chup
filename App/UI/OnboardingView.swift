@@ -45,7 +45,7 @@ struct PermissionCards: View {
           if permission == .systemAudio {
             Text(
               setup.lastAudioCapture.map { "Last successful capture: " + $0.formatted() }
-                ?? "Choose a meeting app and start your first recording to request audio-only access. Opening System Settings alone does not add Chup! to its list."
+                ?? "Start your first recording to give Chup! access to call audio."
             )
             .font(.caption).foregroundStyle(Palette.secondary)
           }
@@ -84,10 +84,10 @@ struct PermissionRefreshButton: View {
   }
   private var description: String {
     if checking { return "Checking access" }
-    if confirmed { return "All displayed permissions are enabled. Check again." }
+    if confirmed { return "All access is on." }
     if checked && result == .awaitingCapture {
       return
-        "Available permission checks passed. Meeting audio access is checked when capture starts. Check again."
+        "All set. Call audio is checked when you start recording."
     }
     if checked {
       let pending = permissions.filter { setup.permissions[$0] != .allowed }.map(\.title)
@@ -188,7 +188,7 @@ struct OnboardingView: View {
           WaveMark()
           Text("Chup!").font(.system(size: 30, weight: .semibold))
         }
-        Text("A little setup.\nA calmer working day.").font(.system(size: 23, weight: .semibold))
+        Text("Set up Chup!\nin five steps.").font(.system(size: 23, weight: .semibold))
           .lineSpacing(5)
         ForEach(steps.indices, id: \.self) { index in
           HStack(spacing: 12) {
@@ -198,7 +198,7 @@ struct OnboardingView: View {
             .accessibilityLabel("Step \(index + 1): \(steps[index])")
         }
         Spacer()
-        Text("Permissions are your choice.\nYou can change them in Settings.").font(.caption)
+        Text("Change any of this later\nin Settings.").font(.caption)
           .foregroundStyle(Palette.secondary)
       }.padding(28).frame(width: 265).background(Palette.sidebar)
       VStack(alignment: .leading, spacing: 20) {
@@ -207,76 +207,76 @@ struct OnboardingView: View {
             Text(title).font(.system(size: 33, weight: .semibold))
             switch step {
             case 0:
-              Text("Speak naturally. Keep the conversation. Find the thought you need.").font(
+              Text("Dictate anywhere. Record meetings. Find what was said.").font(
                 .system(size: 19)
               ).foregroundStyle(Palette.secondary)
               feature(
-                "waveform", "Dictate into your own words",
-                "Hold a shortcut, speak, and place the result in the field you chose.")
+                "waveform", "Dictate anywhere",
+                "Hold a shortcut and talk. Your words go where you type.")
               feature(
-                "person.2", "Stay present in meetings",
-                "Keep audio, transcripts and notes together, with sources you can revisit.")
+                "person.2", "Record meetings",
+                "Get a transcript and notes for every call.")
               feature(
-                "sparkles", "Ask a thought partner",
-                "Questions stay scoped to the meeting. You review proposed changes.")
+                "sparkles", "Ask about a meeting",
+                "Ask questions. You approve any change to your notes.")
               Text(
-                "Nothing records automatically. Hovering over the rail never activates your microphone."
+                "Chup! records only when you press Record or hold your shortcut."
               ).font(.callout).foregroundStyle(Palette.secondary)
             case 1:
-              WorkspaceCard("Your everyday tools", icon: "waveform") {
+              WorkspaceCard("Turn on", icon: "waveform") {
                 SettingSwitch(title: "Dictation and voice shortcuts", isOn: $choices.dictation)
                 Divider()
                 SettingSwitch(title: "Meeting audio and notes", isOn: $choices.meetings)
               }
               if choices.meetings {
-                WorkspaceCard("Alternative meeting capture", icon: "person.wave.2") {
+                WorkspaceCard("If call audio doesn’t record", icon: "person.wave.2") {
                   SettingSwitch(
-                    title: "Set up the fallback route too", isOn: $choices.screenFallback)
+                    title: "Also set up the other audio option", isOn: $choices.screenFallback)
                   Text(
-                    "Ordinary meeting capture uses Core Audio. The fallback needs broader Screen & System Audio Recording access; no video is saved."
+                    "Only needed if call audio doesn’t record. It asks for Screen & System Audio Recording access."
                   ).font(.callout).foregroundStyle(Palette.secondary)
                 }
               }
               Text("You can start with typed notes and add voice later.").foregroundStyle(
                 Palette.secondary)
             case 2:
-              Text("Enable only what you want to use. macOS owns the final permission switches.")
+              Text("Turn on only what you need. You confirm each one in macOS.")
                 .foregroundStyle(Palette.secondary)
               PermissionCards(setup: state.setup, permissions: choices.permissions)
             case 3:
               WorkspaceCard("Kept on this Mac", icon: "lock.shield") {
                 Label(
                   state.store?.encrypted == true
-                    ? "Audio, notes and search indexes are encrypted locally"
+                    ? "Your audio and notes are encrypted on this Mac"
                     : "Workspace encryption needs attention", systemImage: "lock.shield"
                 ).font(.headline)
                 Text(
-                  "Chup! keeps its encryption keys in this Mac’s Keychain. Keep a recovery backup before removing keys or changing Macs."
+                  "The keys are in this Mac’s Keychain. Make a backup before you change Macs."
                 ).foregroundStyle(Palette.secondary)
               }
               WorkspaceCard("Your cloud choice", icon: "cloud") {
                 SettingSwitch(title: "Allow cloud AI processing", isOn: $state.cloudEnabled)
                 Text(
-                  "Transcription, summaries and assistant questions send the required content through your configured backend to OpenAI. Local recording alone does not send it. Private thoughts are excluded. Configure the backend in Advanced settings."
+                  "Transcripts, summaries and questions send content to OpenAI. Private thoughts never go. Set up the server in Settings → Advanced."
                 ).font(.callout).foregroundStyle(Palette.secondary)
               }
-              WorkspaceCard("Start with your Mac", icon: "sun.max") {
+              WorkspaceCard("Open at login", icon: "sun.max") {
                 LoginSettings(setup: state.setup)
               }
               Text(
-                "Retention starts with Keep until I delete. You can choose a schedule in Privacy settings."
+                "Chup! keeps everything until you delete it. Change this in Settings → Privacy & Data."
               ).font(.caption)
             default:
               Text(
-                "Your workspace is ready. Features without permission stay available to set up later."
+                "You’re set. Turn on anything you skipped in Settings."
               ).font(.system(size: 18)).foregroundStyle(Palette.secondary)
               feature(
                 "keyboard", "Try a short dictation",
-                "Enable shortcuts, then hold Fn. A keyboard without Fn can use the alternative preset in Settings."
+                "Hold Fn and talk. No Fn key? Pick another shortcut in Settings."
               )
               feature(
-                "record.circle", "Start a meeting deliberately",
-                "Choose its app, let participants know, then press Record. Pausing a recording does not mute the call."
+                "record.circle", "Record a meeting",
+                "Pick the call app, tell everyone, then press Record."
               )
               Button("Review permissions") { step = 2 }
             }
@@ -296,8 +296,8 @@ struct OnboardingView: View {
   }
   private var title: String {
     [
-      "Make room for your voice.", "What brings you here?", "A few doors to open.",
-      "Your words. Your choices.", "Ready when you are.",
+      "Welcome to Chup!", "What do you want to do?", "Give Chup! access",
+      "Your privacy", "You’re set",
     ][step]
   }
   private func move(_ delta: Int) {

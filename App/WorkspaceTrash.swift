@@ -20,7 +20,7 @@ extension WorkspaceState {
   private func moveToTrash(_ entries: [TrashEntry]) {
     guard !entries.isEmpty else { return }
     guard privacyWorkAllowed else {
-      notice = "Finish active capture and AI work before deleting."
+      notice = "Wait until recording and AI jobs finish, then delete."
       return
     }
     do {
@@ -50,11 +50,11 @@ extension WorkspaceState {
   /// Permanent removal through the verified deletion plan (audio, records, FTS rows).
   func deleteForever(_ entries: [TrashEntry]) {
     guard privacyWorkAllowed else {
-      notice = "Finish active capture and AI work before deleting."
+      notice = "Wait until recording and AI jobs finish, then delete."
       return
     }
     if let blocked = recorderCloseFailed, entries.contains(where: { $0.id == blocked }) {
-      notice = "A recording's audio files didn't close cleanly. Quit and reopen Chup! before deleting it for good."
+      notice = "Quit and reopen Chup! before you delete this recording for good."
       return
     }
     do {
@@ -84,7 +84,7 @@ extension WorkspaceState {
 
   func deleteSelectedAudio() {
     guard let id = selectedMeetingID, privacyWorkAllowed else {
-      notice = "Finish active capture and AI work before deleting."
+      notice = "Wait until recording and AI jobs finish, then delete."
       return
     }
     do {
@@ -95,19 +95,19 @@ extension WorkspaceState {
       playback.reset()
       try refreshDetail()
       try refreshPrivacy()
-      notice = "Audio and voice clips from this meeting deleted. The transcript and notes stay."
+      notice = "Audio deleted. Your transcript and notes stay."
     } catch { notice = error.localizedDescription }
   }
   func deleteSelectedTranscript() {
     guard let id = selectedMeetingID, privacyWorkAllowed else {
-      notice = "Finish active capture and AI work before deleting."
+      notice = "Wait until recording and AI jobs finish, then delete."
       return
     }
     do {
       try db().deleteMeetingTranscript(id)
       selectedTranscriptSource = nil
       try refreshDetail()
-      notice = "Transcript deleted. Your notes stay; their sources now show as deleted."
+      notice = "Transcript deleted. Your notes stay."
     } catch { notice = error.localizedDescription }
   }
 

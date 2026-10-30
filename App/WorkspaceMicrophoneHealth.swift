@@ -63,11 +63,11 @@ extension WorkspaceState {
   func checkDictationMicrophone() {
     guard dictationStatus == .listening, dictationReady, let audio, !audio.microphoneStarting else { return }
     if let captured = activeMicrophone, let actual = audio.actualMicrophoneID, actual != captured.objectID {
-      stopForMicrophoneIssue("The active microphone route changed. Audio saved; check Audio settings and start again.")
+      stopForMicrophoneIssue("Your mic changed. Your audio is saved. Start again.")
       return
     }
     if !audio.microphoneRunning {
-      stopForMicrophoneIssue("Microphone capture was interrupted. Audio is saved; start again or check Audio settings.")
+      stopForMicrophoneIssue("The mic stopped. Your audio is saved. Start again or check Settings → Dictation.")
       return
     }
     switch microphoneSignal.status(at: ProcessInfo.processInfo.systemUptime) {

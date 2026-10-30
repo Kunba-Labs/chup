@@ -49,7 +49,7 @@ extension WorkspaceState {
   }
   func enableAssistantRoute() {
     guard let audio, let id = activeMeetingID, meetingStatus == .recording else {
-      notice = "Start a microphone/call recording first, then configure its outgoing route."
+      notice = "Start a recording first."
       return
     }
     do {
@@ -153,7 +153,7 @@ extension WorkspaceState {
         try? await Task.sleep(for: .seconds(120))
         guard !Task.isCancelled, voiceScope?.id == scope.id else { return }
         endVoice()
-        notice = "Voice session closed after two minutes. Reconnect when ready."
+        notice = "Voice ended after two minutes."
       }
     } catch {
       endVoice()
@@ -203,7 +203,7 @@ extension WorkspaceState {
             if track == .microphone, case .dropped = pair.continuation.yield(packet) {
               Task { @MainActor in
                 self.endVoice()
-                self.notice = "Voice uplink fell behind. Recording continues."
+                self.notice = "Voice is slow. Recording goes on."
               }
             }
           }, id: "voice")
@@ -314,7 +314,7 @@ extension WorkspaceState {
         let response =
           result.write == nil
           ? result.text
-          : "A proposed change is ready for you to review in the app. It has not been saved."
+          : "A change is ready for you to check in the app."
         var short = String(response.prefix(400))
         while short.utf8.count > 480 { short.removeLast() }
         voicePlaybackAllowed = true

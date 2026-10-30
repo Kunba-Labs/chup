@@ -97,7 +97,7 @@ extension WorkspaceState {
       defer { notesTask = nil }
       do { try await writeNotes(meetingID: id, template: template) } catch {
         notice = Task.isCancelled || error is CancellationError
-          ? "Notes cancelled. Nothing was saved." : "Notes weren’t written: " + error.localizedDescription
+          ? "Notes stopped." : "Notes weren’t written: " + error.localizedDescription
       }
     }
   }
@@ -116,7 +116,7 @@ extension WorkspaceState {
         let draft = try await backend(scope: id).followup(title: title, blocks: notes.blocks)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString("Subject: \(draft.subject)\n\n\(draft.body)", forType: .string)
-        notice = "Follow-up email draft copied. Nothing was sent."
+        notice = "Follow-up email copied."
       } catch { notice = "Follow-up not drafted: " + error.localizedDescription }
     }
   }

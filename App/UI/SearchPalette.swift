@@ -72,7 +72,7 @@ struct SearchPalette: View {
     VStack(spacing: 0) {
       HStack(spacing: 10) {
         Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
-        TextField("Search meetings, transcripts, dictations and Personal", text: $query)
+        TextField("Search everything", text: $query)
           .textFieldStyle(.plain).font(.system(size: 17)).focused($focused)
           .onSubmit { if list.indices.contains(cursor) { choose(list[cursor]) } }
           // Arrows move through results from the field itself, where focus stays.
@@ -88,7 +88,7 @@ struct SearchPalette: View {
       Divider()
       if list.isEmpty {
         Text(query.isEmpty
-          ? "Type to search. Private thoughts and the Trash are never searched."
+          ? "Searches meetings, transcripts, dictations and Personal. Private thoughts stay out."
           : "Nothing matches “\(query)”. Try fewer words.")
           .font(.callout).foregroundStyle(Palette.secondary).padding(16)
           .frame(maxWidth: .infinity, alignment: .leading)

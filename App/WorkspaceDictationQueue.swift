@@ -68,7 +68,7 @@ extension WorkspaceState {
         try Task.checkCancellation()
         guard insertResult else {
           finishTrace(traceID, .saved)
-          notice = "Retry saved to history. Copy into the intended field."
+          notice = "Saved to history. Copy it where you need it."
           return
         }
         markTrace(traceID, .insertionStarted)

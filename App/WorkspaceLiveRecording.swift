@@ -27,12 +27,11 @@ extension WorkspaceState {
     // While a leg is starting, beginLeg may still be adding the consumer or opening files that a
     // deletion plan made now would miss. Discard waits until capture has settled.
     guard meetingStatus != .processing else {
-      notice = "Recording is still starting. Discard once it shows REC or PAUSED."
+      notice = "Wait until it shows REC, then discard."
       return
     }
     guard recorderCloseFailed != id else {
-      notice = "This recording's audio files didn't close cleanly, so it can't be discarded yet. "
-        + "Quit and reopen Chup! (recovery closes them), then delete the meeting from the list."
+      notice = "Quit and reopen Chup!, then delete this meeting from the list."
       return
     }
     do {
@@ -41,8 +40,7 @@ extension WorkspaceState {
       // Capture has stopped, but the files may still be open: show the error and block deletion.
       recorderCloseFailed = id
       meetingStatus = .error
-      notice = "Discard stopped: the recording's audio files could not be closed, so nothing was deleted. "
-        + error.localizedDescription
+      notice = "Nothing was deleted. The audio files didn’t close. " + error.localizedDescription
       return
     }
     meetingTask?.cancel()
@@ -63,8 +61,7 @@ extension WorkspaceState {
       }
       endActiveMeeting(id)
       try? refresh()
-      notice = "Recording stopped and kept; it could not be discarded. Delete it from the meeting list. "
-        + error.localizedDescription
+      notice = "Recording stopped and kept. Delete it from the meeting list. " + error.localizedDescription
       return
     }
     endActiveMeeting(id)
@@ -74,10 +71,9 @@ extension WorkspaceState {
       try refresh()
       try refreshPrivacy()
       syncBackendDeletions()
-      notice = "Recording discarded. Nothing from it was kept."
+      notice = "Recording deleted."
     } catch {
-      notice = "Discard paused; its saved deletion plan finishes at the next cleanup. "
-        + error.localizedDescription
+      notice = "Deleting paused. It finishes at the next cleanup. " + error.localizedDescription
     }
   }
   private func endActiveMeeting(_ id: String) {

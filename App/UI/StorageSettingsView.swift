@@ -17,18 +17,18 @@ struct StorageSettingsView: View {
         DetailDisclosure(
           title: "Encryption & backups",
           text:
-            "Notes, transcripts and search indexes use SQLCipher encryption. Audio and voice references have their own encryption; keys stay in Keychain. Older backups and macOS snapshots may contain previously unencrypted data."
+            "Notes, transcripts and audio are encrypted. The keys stay in your Keychain. Older backups may hold unencrypted copies."
         )
       }
       WorkspaceCard(
-        "Keep what matters", subtitle: "Choose how long your recordings and notes stay.",
+        "How long to keep things", subtitle: "Choose how long your recordings and notes stay.",
         icon: "calendar"
       ) {
         period("Meetings, notes and related audio", value: $draft.meetingDays)
         period("Dictation history and audio", value: $draft.dictationDays)
         period("Private question audio", value: $draft.questionDays)
         Text(
-          "Age is measured from creation. Cleanup runs hourly while Chup! is open and idle. Private-question retention removes audio; saved assistant exchanges remain with their meeting."
+          "Cleanup runs every hour while Chup! is open and idle."
         ).font(.caption).foregroundStyle(Palette.secondary)
         HStack {
           Button("Save retention schedule") { confirmRetention = true }.disabled(
@@ -54,11 +54,11 @@ struct StorageSettingsView: View {
           }.disabled(!state.privacyWorkAllowed)
         }
         Text(
-          "Readable exports are not encrypted. Deletion here cannot remove copies you exported, provider records, system snapshots or external backups."
+          "Exports aren’t encrypted. Deleting here doesn’t remove copies you exported or backed up."
         ).font(.caption).foregroundStyle(Palette.secondary)
       }
       WorkspaceCard(
-        "Delete a meeting", subtitle: "Permanently remove its local audio and content.",
+        "Delete a meeting", subtitle: "Moves it to the Trash.",
         icon: "trash"
       ) {
         if state.meetings.isEmpty {
@@ -114,9 +114,9 @@ struct BackupSettingsView: View {
   @State private var confirmation = ""
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
-      Text("Keep a way back.").font(.system(size: 30, weight: .semibold))
+      Text("Backups").font(.system(size: 30, weight: .semibold))
       Text(
-        "Recovery archives include encrypted recordings, notes, search data and wrapped encryption keys. Your backend token is excluded. Use a password of at least 12 characters and keep it separately."
+        "A backup holds your recordings, notes and keys. Use a password of 12 or more characters and keep it safe."
       ).foregroundStyle(Palette.secondary)
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
@@ -134,7 +134,7 @@ struct BackupSettingsView: View {
               state.restoreBackup(password: password, activate: true)
             }.disabled(!state.privacyWorkAllowed || password.count < 12)
             Text(
-              "Restore never overwrites your current workspace. After verification, quit and reopen Chup! to switch to the restored copy."
+              "Restoring keeps your current data. Quit and reopen Chup! to use the restored copy."
             ).font(.caption).foregroundStyle(Palette.secondary)
           }
           if state.storageBusy { ProgressView() }
@@ -163,14 +163,14 @@ struct RequestRecoveryView: View {
     VStack(alignment: .leading, spacing: 16) {
       WorkspaceCard("Interrupted work", icon: "arrow.counterclockwise") {
         Text(
-          "Resume uses the same request ID and saved provider steps. If the provider may have charged for a lost response, Chup! asks before making a new request. No microphone or note write starts automatically."
+          "Resume picks up where the request stopped. Chup! asks before anything could cost twice."
         ).font(.callout).foregroundStyle(Palette.secondary)
       }
       if state.durableRequests.isEmpty {
         WorkspaceCard {
           QuietEmpty(
-            icon: "checkmark.circle", title: "All caught up",
-            subtitle: "Interrupted requests will appear here when there is work to recover.")
+            icon: "checkmark.circle", title: "Nothing to recover",
+            subtitle: "Unfinished requests show here.")
         }
       }
       ForEach(state.durableRequests.prefix(30)) { job in
@@ -195,7 +195,7 @@ struct RequestRecoveryView: View {
         }.padding(20).workspaceSurface()
       }
     }.confirmationDialog(
-      "A new attempt may incur another provider charge.",
+      "A new attempt may cost again.",
       isPresented: Binding(get: { chargedRetry != nil }, set: { if !$0 { chargedRetry = nil } }),
       titleVisibility: .visible
     ) {
@@ -205,7 +205,7 @@ struct RequestRecoveryView: View {
       }
     } message: {
       Text(
-        "The earlier provider response may be missing even if it was processed. Its usage stays marked unconfirmed."
+        "The first attempt may have been charged without an answer."
       )
     }
   }
@@ -225,7 +225,7 @@ struct UsageSettingsView: View {
         "Your estimates", subtitle: "Enter your provider’s USD rates.", icon: "dollarsign.circle"
       ) {
         Text(
-          "Provider-reported units are separate from local session duration. Missing final usage stays unconfirmed. Estimates use the USD rates you enter and are not an invoice."
+          "Costs are estimates from the rates you enter. They aren’t an invoice."
         ).font(.callout).foregroundStyle(Palette.secondary)
         Picker("Model", selection: $model) {
           ForEach(
@@ -253,7 +253,7 @@ struct UsageSettingsView: View {
             values.allSatisfy({ $0.isEmpty || (Double($0).map { $0.isFinite && $0 >= 0 } ?? false) }
             )
           else {
-            feedback = "Enter nonnegative numeric rates, or leave them blank."
+            feedback = "Enter numbers of 0 or more, or leave blank."
             return
           }
           rate = UsageRates(

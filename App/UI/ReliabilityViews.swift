@@ -53,7 +53,7 @@ struct MicrophonePicker: View {
         DetailDisclosure(
           title: "Automatic selection & device changes",
           text:
-            "Automatic follows macOS and avoids the built-in microphone when the MacBook lid is closed. A device change pauses active capture and preserves the audio already recorded."
+            "Automatic uses your macOS input. Changing devices pauses recording and keeps the audio."
         )
       }
       if showsPreview {
@@ -87,7 +87,7 @@ struct MicrophonePicker: View {
           if !state.isPreview && !state.microphonePreviewBusy && !state.canPreviewMicrophone {
             InlineStatus(text: "Finish active capture before testing your microphone.")
           }
-          Label("Local test · 30-second limit · nothing saved or sent", systemImage: "lock")
+          Label("The test lasts 30 seconds. Nothing is saved.", systemImage: "lock")
             .font(.caption).foregroundStyle(Palette.secondary).fixedSize(
               horizontal: false, vertical: true)
         }
@@ -100,16 +100,16 @@ struct VoiceEnrollmentSettings: View {
   @EnvironmentObject var state: WorkspaceState
   var body: some View {
     WorkspaceCard(
-      "Remembered voices", subtitle: "Choose whose voice to recognize across meetings.",
+      "Remembered voices", subtitle: "Voices Chup! names in future meetings.",
       icon: "person.crop.circle.badge.checkmark"
     ) {
       DetailDisclosure(
-        title: "How voice enrollment works",
+        title: "How voices are remembered",
         text:
-          "Enroll a clean 2–10 second interval from a transcript’s correction panel. Enabling matching sends that voice sample to your configured AI service during transcription. Suggested matches need your review; attendees’ names alone are not proof of identity."
+          "Pick a clean clip in a transcript. Chup! uses it to name that person later. You confirm every match."
       )
       if state.enrollments.isEmpty {
-        InlineStatus(text: "No voices enrolled yet.", icon: "person.crop.circle")
+        InlineStatus(text: "No voices yet.", icon: "person.crop.circle")
       }
       ForEach(state.enrollments) { profile in
         VStack(alignment: .leading, spacing: 8) {
@@ -136,7 +136,7 @@ struct VoiceEnrollmentSettings: View {
               "\(Int(profile.duration)) second reference · \(profile.created.formatted(date: .abbreviated, time: .omitted))"
             ).font(.caption)
             Spacer()
-            Button("Delete reference", role: .destructive) { state.deleteEnrollment(profile) }
+            Button("Forget voice", role: .destructive) { state.deleteEnrollment(profile) }
           }
         }.insetSurface()
       }
@@ -155,13 +155,13 @@ struct TranscriptReviewView: View {
           ForEach(review.current) { Text($0.text).textSelection(.enabled) }
         }.frame(maxWidth: .infinity, alignment: .leading)
         VStack(alignment: .leading) {
-          Text("Proposed refinement").font(.headline)
+          Text("New version").font(.headline)
           ForEach(review.incoming) { Text($0.text).textSelection(.enabled) }
         }.frame(maxWidth: .infinity, alignment: .leading)
       }.padding(.vertical, 12)
       HStack {
         Button("Keep my corrections") { state.resolveTranscriptReview(review, accept: false) }
-        Button("Replace this interval with refinement", role: .destructive) {
+        Button("Use the new version", role: .destructive) {
           state.resolveTranscriptReview(review, accept: true)
         }
       }

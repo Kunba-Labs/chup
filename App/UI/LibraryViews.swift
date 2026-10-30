@@ -16,8 +16,8 @@ struct DictationView: View {
     VStack(alignment: .leading, spacing: 28) {
       HStack(alignment: .top) {
         PageHeader(
-          eyebrow: "From thought to words", title: "Dictation",
-          subtitle: "Speak naturally. Keep your voice in what you write.")
+          eyebrow: "Talk instead of typing", title: "Dictation",
+          subtitle: "Hold your shortcut and talk. Your words go where you type.")
         Spacer()
         Button {
           showTrash = true
@@ -35,10 +35,10 @@ struct DictationView: View {
           }
           VStack(alignment: .leading, spacing: 8) {
             Text(
-              state.dictationStatus == .listening ? "Listening to you…" : "A little less typing."
+              state.dictationStatus == .listening ? "Listening to you…" : "Hold your shortcut to talk"
             )
             .font(.system(size: 23, weight: .semibold))
-            Text("Use your global shortcut in another app to preserve the intended text field.")
+            Text("Use your shortcut in the app you’re typing in.")
               .font(
                 .caption
               ).foregroundStyle(Palette.secondary)
@@ -71,9 +71,9 @@ struct DictationView: View {
       }
       if state.history.isEmpty {
         QuietEmpty(
-          icon: "text.cursor", title: "Your words, safely kept",
+          icon: "text.cursor", title: "No dictations yet",
           subtitle:
-            "Completed dictations and recoverable audio appear here. Copy, retry, or paste your last result with a shortcut."
+            "Your dictations show here. Copy or retry any of them."
         )
       } else {
         ScrollView {
@@ -93,8 +93,8 @@ struct DictationView: View {
                 }.font(.caption).foregroundStyle(Palette.secondary)
                 Text(
                   entry.status == "ignored"
-                    ? "Not transcribed · no usable speech"
-                    : (entry.text.isEmpty ? "Audio saved · transcription needed" : entry.text)
+                    ? "No speech heard"
+                    : (entry.text.isEmpty ? "Audio saved · not transcribed yet" : entry.text)
                 ).font(
                   .system(size: 16)
                 ).lineSpacing(5).textSelection(.enabled)
@@ -125,7 +125,7 @@ struct DictationView: View {
                       || (state.dictationStatus == .listening
                         && state.recordingEntry?.id == entry.id)
                   )
-                  .help("Listen to the saved audio without transcription or cloud access")
+                  .help("Play the saved audio")
                   Button("Copy") { TextInsertion.copy(entry.text) }.disabled(entry.text.isEmpty)
                   Button("Retry audio") { state.retryDictation(entry) }
                   Spacer()
@@ -165,17 +165,17 @@ struct NotebookView: View {
     VStack(alignment: .leading, spacing: 28) {
       HStack {
         PageHeader(
-          eyebrow: "Things worth keeping", title: "Notebook",
-          subtitle: "Your own words, separate from every generated summary.")
+          eyebrow: "Your notes", title: "Notebook",
+          subtitle: "Notes you write yourself, for any meeting.")
         Spacer()
         Button("New note") { state.newMeeting() }
       }
       ListSearchField(placeholder: "Search notebook", text: $query)
       if state.meetings.isEmpty {
         QuietEmpty(
-          icon: "book.closed", title: "A place for your thinking",
+          icon: "book.closed", title: "No notes yet",
           subtitle:
-            "Create a meeting note and write freely, before, during, or after a conversation.")
+            "Press New note to start one.")
       } else {
         ScrollView {
           LazyVStack(spacing: 14) {
@@ -226,12 +226,12 @@ struct PersonalizationView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 26) {
       PageHeader(
-        eyebrow: "Make it sound like you", title: page.rawValue,
+        eyebrow: "Your words", title: page.rawValue,
         subtitle: page == .dictionary
-          ? "Names, acronyms, product names and preferred spellings. Used for dictation and meeting transcripts."
+          ? "Names and words Chup! should spell your way."
           : page == .snippets
-            ? "A short spoken phrase for something you write often."
-            : "Writing preferences for each application and language.")
+            ? "Say a short phrase to type something you write often."
+            : "How you write in each app.")
       WorkspaceCard(
         page == .styles ? "Add an application style" : "Add a personal entry",
         icon: page == .styles ? "textformat" : "plus.circle"
@@ -277,8 +277,8 @@ struct PersonalizationView: View {
         .onAppear(perform: takeListQuery).onChange(of: state.listQuery) { _, _ in takeListQuery() }
       if !state.personalization.contains(where: { $0.kind == kind }) {
         QuietEmpty(
-          icon: page.icon, title: "Make this space yours",
-          subtitle: "Add your first entry above. Your preferences will appear here.")
+          icon: page.icon, title: "Nothing here yet",
+          subtitle: "Add your first entry above.")
       } else {
         ScrollView {
           LazyVStack(spacing: 12) {
@@ -328,7 +328,7 @@ struct AssistantView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {
       HStack {
-        Text("A thought partner").font(.system(size: 29, weight: .semibold))
+        Text("Ask about this meeting").font(.system(size: 29, weight: .semibold))
         Spacer()
         Button {
           dismiss()
@@ -336,7 +336,7 @@ struct AssistantView: View {
           Image(systemName: "xmark")
         }.buttonStyle(.plain).accessibilityLabel("Close assistant")
       }
-      Text(state.selectedMeeting?.title ?? "Open a meeting to give the assistant context.").font(
+      Text(state.selectedMeeting?.title ?? "Open a meeting first.").font(
         .caption
       ).foregroundStyle(Palette.secondary)
       Picker("Conversation mode", selection: $state.voiceMode) {
@@ -358,7 +358,7 @@ struct AssistantView: View {
             )
             .foregroundStyle(Palette.secondary)
             Text(
-              "Ask about this meeting, or ask to add something to My notes. Your conversation is saved locally with this meeting."
+              "Ask a question, or ask Chup! to add to your notes."
             )
             .font(.callout).foregroundStyle(Palette.secondary)
           }
@@ -367,7 +367,7 @@ struct AssistantView: View {
               Text(exchange.question).font(.system(size: 19, weight: .semibold)).textSelection(
                 .enabled)
               if exchange.status == "pending" {
-                Label("Looking through this meeting…", systemImage: "ellipsis").foregroundStyle(
+                Label("Searching the meeting…", systemImage: "ellipsis").foregroundStyle(
                   Palette.secondary)
               } else {
                 Text(exchange.answer).font(.system(size: 15)).lineSpacing(4).textSelection(.enabled)
@@ -422,7 +422,7 @@ struct AssistantView: View {
         Button("Ask", action: send).buttonStyle(.borderedProminent).disabled(
           state.assistantBusy || question.isEmpty || mode != .privateText)
       }
-      Label("Only this meeting is shared with your configured AI backend.", systemImage: "lock")
+      Label("Only this meeting goes to AI.", systemImage: "lock")
         .font(.caption).foregroundStyle(Palette.secondary)
     }.padding(30).background(Palette.workspace).foregroundStyle(Palette.ink).tint(Palette.accent)
   }

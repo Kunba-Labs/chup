@@ -34,7 +34,7 @@ struct MeetingActionsView: View {
             }
             HStack {
               TextField(
-                "Owner not assigned",
+                "No owner",
                 text: Binding(
                   get: { action.owner ?? "" },
                   set: { value in
@@ -43,7 +43,7 @@ struct MeetingActionsView: View {
                     state.saveAction(copy)
                   }))
               TextField(
-                "No date agreed",
+                "No due date",
                 text: Binding(
                   get: { action.dueDate ?? "" },
                   set: { value in
@@ -59,7 +59,7 @@ struct MeetingActionsView: View {
           }
         }
       }
-      Button("Undo last action change") { state.undoAction() }.disabled(
+      Button("Undo") { state.undoAction() }.disabled(
         state.lastActionReceipt == nil)
     }
   }
@@ -119,7 +119,7 @@ struct PrivateThoughtsView: View {
       if !embedded {
         Text("Just for you").font(.system(size: 25, weight: .semibold)).padding(.top, 24)
       }
-      Label("These thoughts are never included in AI requests or broadcasts.", systemImage: "lock")
+      Label("Only you see these. They never go to AI.", systemImage: "lock")
         .font(.caption).foregroundStyle(Palette.secondary)
       TextEditor(text: $state.thoughtsDraft).font(.system(size: 17)).scrollContentBackground(
         .hidden
@@ -142,13 +142,13 @@ struct LiveOutlineView: View {
     VStack(alignment: .leading, spacing: 12) {
       Label("Live notes", systemImage: "sparkle").font(.system(size: 22, weight: .semibold))
       Text(
-        "Written from completed live text as the meeting goes. Wording may change after final refinement."
+        "Written from live text. It can change after the meeting."
       ).font(.caption).foregroundStyle(Palette.secondary)
       ForEach(LiveOutlineView.items(outlines), id: \.key) { key, item in
         VStack(alignment: .leading, spacing: 6) {
           Text(item.text)
           ForEach(item.sources.indices, id: \.self) { i in
-            Button("Open source") { state.revealSource(item.sources[i]) }.buttonStyle(.borderless)
+            Button("Show in transcript") { state.revealSource(item.sources[i]) }.buttonStyle(.borderless)
               .font(.caption)
           }
         }
@@ -162,9 +162,9 @@ struct SummaryEditView: View {
   @State var item: SummaryItem
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      Text("Keep your interpretation").font(.system(size: 25, weight: .semibold))
+      Text("Your version").font(.system(size: 25, weight: .semibold))
       Text(
-        "This pinned edit stays separate from regenerated summaries. Its original sources are retained."
+        "Your edit stays when the summary is written again."
       ).foregroundStyle(Palette.secondary)
       TextEditor(text: $item.text).font(.system(size: 16)).scrollContentBackground(.hidden).padding(
         16
@@ -172,7 +172,7 @@ struct SummaryEditView: View {
       HStack {
         Button("Cancel") { dismiss() }
         Spacer()
-        Button("Save pinned edit") {
+        Button("Save edit") {
           state.saveSummaryEdit(item)
           dismiss()
         }.buttonStyle(.borderedProminent)
@@ -208,7 +208,7 @@ struct EnhancedNotesView: View {
         }
       }.padding(.top, embedded ? 0 : 24)
       if let notes = state.enhancedNotes, !notes.blocks.isEmpty {
-        Text("Black is what you wrote. Grey is filled in from the transcript.")
+        Text("Black is yours. Grey comes from the transcript.")
           .font(.caption).foregroundStyle(Palette.secondary)
         let document = VStack(alignment: .leading, spacing: 8) {
           ForEach(notes.blocks) { block in row(block) }
@@ -218,9 +218,9 @@ struct EnhancedNotesView: View {
         QuietEmpty(
           icon: "doc.text",
           title: state.activeMeetingID == state.selectedMeetingID
-            ? "Notes are written when the meeting ends" : "No notes yet",
+            ? "Notes come when the meeting ends" : "No notes yet",
           subtitle:
-            "Jot anything in My raw notes or the sidebar. When you stop, Chup! keeps your lines and fills in the rest from the transcript."
+            "Type notes during the meeting. Chup! adds the rest when you stop."
         )
         if state.activeMeetingID != state.selectedMeetingID, !busy {
           Button("Write notes") { state.regenerateNotes(template: state.enhancedNotes?.template ?? "general") }

@@ -24,12 +24,12 @@ extension WorkspaceState {
     do {
       try db().put(retention, kind: "retention", id: "policy")
       storageMessage =
-        "Retention schedule saved. Cleanup runs while Chup! is open and capture is idle."
+        "Schedule saved. Cleanup runs while Chup! is open and idle."
     } catch { storageMessage = error.localizedDescription }
   }
   func runRetention() {
     guard privacyWorkAllowed else {
-      storageMessage = "Finish recording and AI work before cleanup."
+      storageMessage = "Wait until recording and AI jobs finish."
       return
     }
     do {
@@ -64,7 +64,7 @@ extension WorkspaceState {
       syncBackendDeletions()
       purgeExpiredTrash()
       storageMessage =
-        "Cleanup completed. Active work is never removed. External backups and provider retention are separate."
+        "Cleanup done."
     } catch {
       storageMessage =
         "Cleanup paused; its saved deletion plan will retry. " + error.localizedDescription
@@ -77,20 +77,20 @@ extension WorkspaceState {
     panel.nameFieldStringValue = "Chup-meeting.json"
     panel.message =
       includePrivate
-      ? "This readable export includes private thoughts and assistant conversations. Choose a destination you trust."
-      : "This readable export includes notes, transcript, summaries and actions. Private thoughts and assistant history are excluded."
+      ? "This export includes private thoughts. Save it somewhere safe."
+      : "Exports notes, transcript, summary and actions. Private thoughts stay out."
     guard panel.runModal() == .OK, let destination = panel.url else { return }
     do {
       try db().exportMeeting(id, includePrivate: includePrivate).write(
         to: destination, options: .atomic)
-      storageMessage = "Meeting exported. The exported JSON is not encrypted."
+      storageMessage = "Meeting exported. The file isn’t encrypted."
     } catch { storageMessage = error.localizedDescription }
   }
   func exportMeetingAudio() {
     guard let id = selectedMeetingID, privacyWorkAllowed, let key else { return }
     let panel = NSSavePanel()
     panel.nameFieldStringValue = "Chup-meeting-audio"
-    panel.message = "Exports separate unencrypted microphone, call and assistant WAV tracks with aligned timing. Private question audio is excluded. Choose a new folder."
+    panel.message = "Pick a new folder. Mic and call audio are saved as separate files."
     guard panel.runModal() == .OK, let destination = panel.url else { return }
     storageBusy = true
     audioExportProgress = 0
@@ -102,8 +102,8 @@ extension WorkspaceState {
         try await archive.exportTracks(to: destination) { value in
           await MainActor.run { self.audioExportProgress = value }
         }
-        storageMessage = "Aligned WAV tracks and timing manifest exported. These copies are not encrypted."
-      } catch is CancellationError { storageMessage = "Audio export cancelled; no completed export folder was created." }
+        storageMessage = "Audio exported. These copies aren’t encrypted."
+      } catch is CancellationError { storageMessage = "Audio export stopped." }
       catch { storageMessage = error.localizedDescription }
     }
   }
@@ -180,7 +180,7 @@ extension WorkspaceState {
         try refreshPrivacy()
         if selectedMeetingID == job.scope { try refreshDetail() }
         storageMessage =
-          "Response recovered. Note and action proposals still need review; no text was inserted and no audio session was resumed."
+          "Answer recovered. Check any note changes before you save them."
       } catch { storageMessage = error.localizedDescription }
     }
   }
@@ -190,7 +190,7 @@ extension WorkspaceState {
     }
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(String(decoding: response, as: UTF8.self), forType: .string)
-    storageMessage = "Recovered response copied. It may contain private meeting content."
+    storageMessage = "Answer copied."
   }
   func createBackup(password: String) {
     guard privacyWorkAllowed, let audioKey = key else { return }
@@ -228,7 +228,7 @@ extension WorkspaceState {
             snapshot: snapshot, destination: destination, password: password, keys: keys,
             originalRoot: root)
         }.value
-        storageMessage = "Encrypted recovery backup saved. No API credentials are included."
+        storageMessage = "Backup saved."
       } catch { storageMessage = error.localizedDescription }
     }
   }
@@ -263,11 +263,11 @@ extension WorkspaceState {
           defaults.set(destination.path, forKey: "workspaceRootOverride")
           defaults.set("." + identifier, forKey: "workspaceKeySuffix")
           storageMessage =
-            "Recovery verified. Quit and reopen Chup! to use the restored workspace. Your current workspace remains intact."
+            "Restore ready. Quit and reopen Chup! to use it."
         } else {
           try FileManager.default.removeItem(at: destination)
           storageMessage =
-            "Backup password, every file and database integrity verified. Your workspace was unchanged."
+            "Backup checked. Everything in it is readable."
         }
       } catch {
         try? FileManager.default.removeItem(at: destination)
@@ -317,7 +317,7 @@ extension WorkspaceState {
           try db().remove(kind: "backendDeletion", id: item.id)
         }
         storageMessage =
-          "Local deletion and trusted-backend cache deletion completed. Provider retention and external backups are separate."
+          "Deleted from this Mac and your server."
       } catch {
         storageMessage =
           "Local deletion completed; backend cache deletion is queued for retry. "
@@ -327,13 +327,13 @@ extension WorkspaceState {
   }
   func deleteEnrollmentWithPlan(_ profile: VoiceEnrollment) {
     guard privacyWorkAllowed else {
-      notice = "Finish capture and AI work before removing a voice reference."
+      notice = "Wait until recording and AI jobs finish."
       return
     }
     do {
       try removeEnrollment(profile)
       notice =
-        "Voice reference and saved upload requests removed. Historical speaker labels remain editable."
+        "Voice forgotten. Names in past meetings stay."
     } catch { notice = error.localizedDescription }
   }
   /// Throwing core of deleteEnrollmentWithPlan, for callers that must stop on failure.

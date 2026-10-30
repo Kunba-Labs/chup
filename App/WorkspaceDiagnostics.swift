@@ -25,15 +25,15 @@ extension WorkspaceState {
       "dictationCount": history.count,
       "unconfirmedUsageCount": providerUsage.filter { !$0.confirmed }.count,
       "interruptedRequestCount": durableRequests.filter { $0.status == "interrupted" }.count,
-      "disclosure": "Contains timing, status and counts only. Excludes recordings, text, names, file paths, endpoints, device identifiers and credentials. Audio-only permission must be verified during capture."
+      "disclosure": "Only timings, states and counts. No recordings, text, names or passwords."
     ]
     let panel = NSSavePanel()
     panel.nameFieldStringValue = "Chup-diagnostics.json"
-    panel.message = "Export app and macOS versions, permission states and counts. No recordings, notes, transcripts or credentials are included."
+    panel.message = "Saves versions, permissions and counts. No recordings, text or passwords."
     guard panel.runModal() == .OK, let url = panel.url else { return }
     do {
       try DurableFile.write(JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]), to: url)
-      storageMessage = "Diagnostics exported. Nothing was sent automatically."
+      storageMessage = "Diagnostics saved."
     } catch { storageMessage = "Diagnostics export failed: " + error.localizedDescription }
   }
 }

@@ -114,7 +114,7 @@ struct MeetingsView: View {
       searchHits = try state.store?.searchMeetings(query) ?? []
       searchError = nil
     } catch {
-      searchError = "Search could not open the local index."
+      searchError = "Search isn’t available. Try again."
       searchHits = []
     }
   }
@@ -180,8 +180,8 @@ struct MeetingsView: View {
       VStack(alignment: .leading, spacing: 26) {
         HStack(alignment: .top) {
           PageHeader(
-            eyebrow: "Be here. Keep the details.", title: "Meetings",
-            subtitle: "Good conversations deserve a place to land.")
+            eyebrow: "Record, review, search", title: "Meetings",
+            subtitle: "Record a call and get notes when it ends.")
           Spacer()
           Button("Tags") { showTags = true }.controlSize(.large)
           Button {
@@ -207,9 +207,9 @@ struct MeetingsView: View {
         if let searchError { Text(searchError).font(.caption).foregroundStyle(Palette.red) }
         if filtered.isEmpty {
           QuietEmpty(
-            icon: "person.2.wave.2", title: "Make room for the conversation",
+            icon: "person.2.wave.2", title: "No meetings yet",
             subtitle:
-              "Record a call or an in-person meeting. Your notes, transcript, and source-backed summary will live here."
+              "Press Record in the rail to start your first meeting."
           )
         } else {
           ScrollView {
@@ -246,7 +246,7 @@ struct MeetingsView: View {
                       }
                       Text(
                         meeting.participants.isEmpty
-                          ? "No participants named yet" : meeting.participants
+                          ? "No people added" : meeting.participants
                       ).font(.system(size: 13)).foregroundStyle(Palette.secondary)
                       if !meeting.tags.isEmpty {
                         Text(meeting.tags).font(.caption).foregroundStyle(Palette.accent)
@@ -342,10 +342,10 @@ struct MeetingDetailView: View {
             state.meetingStatus == .paused ? state.resumeMeeting() : state.pauseMeeting()
           } label: {
             Image(systemName: state.meetingStatus == .paused ? "play.fill" : "pause.fill")
-          }.accessibilityLabel("Pause or resume local recording")
-          Button("Stop & save") { state.stopMeeting() }
+          }.accessibilityLabel("Pause or resume recording")
+          Button("Stop and save") { state.stopMeeting() }
         } else {
-          Label("Your notes save as you type", systemImage: "checkmark.circle").font(.caption)
+          Label("Notes save as you type", systemImage: "checkmark.circle").font(.caption)
             .foregroundStyle(Palette.secondary)
           Spacer()
           Button {
@@ -425,7 +425,7 @@ struct MeetingDetailView: View {
         VStack(alignment: .leading, spacing: 18) {
           Text("Meeting details").font(.title2)
           TextField("Title", text: $title)
-          TextField("Participant names (candidates, not speaker proof)", text: $people)
+          TextField("People in the meeting", text: $people)
           TextField("Tags, separated by commas", text: $tags)
           HStack {
             Button("Cancel") { editMetadata = false }
@@ -446,7 +446,7 @@ struct MeetingDetailView: View {
         }
         // Enrollment needs finished audio, so it is offered once recording ends.
         if state.activeMeetingID != state.selectedMeetingID {
-          Button("Rename and remember voice…") {
+          Button("Rename and remember their voice…") {
             let name = newSpeakerName.trimmingCharacters(in: .whitespaces)
             if let renaming, !name.isEmpty {
               state.renameSpeaker(renaming.speakerID, name: name)
@@ -467,9 +467,9 @@ struct MeetingDetailView: View {
   private var summaryBody: some View {
     VStack(alignment: .leading) {
       HStack {
-        Text("Grounded in the conversation").font(.system(size: 22, weight: .semibold))
+        Text("Summary").font(.system(size: 22, weight: .semibold))
         Spacer()
-        Button(state.summary == nil ? "Generate summary" : "New summary version") {
+        Button(state.summary == nil ? "Write summary" : "Write a new version") {
           state.generateSummary()
         }.disabled(state.segments.isEmpty || state.processingMeeting)
       }.padding(.vertical, 24)
@@ -477,7 +477,7 @@ struct MeetingDetailView: View {
         LiveOutlineView(outlines: state.liveOutlines)
       }
       if !state.summaryVersions.isEmpty {
-        Menu("Saved summary versions") {
+        Menu("Earlier versions") {
           ForEach(state.summaryVersions) { revision in
             Button(revision.created.formatted()) { state.summary = revision.summary }
           }
@@ -485,7 +485,7 @@ struct MeetingDetailView: View {
       }
       ForEach(state.summaryEdits) { item in
         VStack(alignment: .leading, spacing: 6) {
-          Text("Your pinned edit").font(.caption).foregroundStyle(Palette.accent)
+          Text("Your edit").font(.caption).foregroundStyle(Palette.accent)
           Text(item.text)
           Button("Edit") { summaryEdit = item }
         }.padding(12).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
@@ -504,7 +504,7 @@ struct MeetingDetailView: View {
                   columns: [GridItem(.adaptive(minimum: 110), alignment: .leading)],
                   alignment: .leading, spacing: 10
                 ) {
-                  Button("Pin an edit") { summaryEdit = item }.font(.caption)
+                  Button("Edit") { summaryEdit = item }.font(.caption)
                   if item.category == "action" {
                     Button("Save action") { state.createAction(from: item) }.font(.caption)
                   }
@@ -533,9 +533,9 @@ struct MeetingDetailView: View {
         }
       } else {
         QuietEmpty(
-          icon: "text.alignleft", title: "A clear record of what mattered",
+          icon: "text.alignleft", title: "No summary yet",
           subtitle:
-            "Transcribe the audio first, then generate an overview, decisions, actions, and open questions with evidence."
+            "Get the transcript first. Then press Write summary."
         )
       }
     }
@@ -605,8 +605,8 @@ struct MeetingDetailView: View {
             }
           } message: {
             Text(partialDelete == .audio
-              ? "The recording and any voice clips remembered from it are removed from this Mac. Transcript, notes and summary stay. This cannot be undone."
-              : "Every transcript line is removed. Notes and summary stay; their sources show as deleted. This cannot be undone.")
+              ? "The recording and its voice clips are deleted for good. Your notes and transcript stay."
+              : "The transcript is deleted for good. Your notes and summary stay.")
           }
       }
       HStack(spacing: 6) {
@@ -639,7 +639,7 @@ struct MeetingDetailView: View {
         {
           ProgressView().controlSize(.small)
           Button("Cancel") { state.cancelMeetingJobs() }.controlSize(.small)
-            .help("Stop refining, summarising or writing notes. Nothing partial is saved.")
+            .help("Stop this job. Nothing half-done is saved.")
         }
       }
       if tab == "Summary" {
@@ -656,7 +656,7 @@ struct MeetingDetailView: View {
             DisclosureGroup {
               ZStack(alignment: .topLeading) {
                 if state.noteDraft.isEmpty {
-                  Text("A thought, a question, something to come back to…").foregroundStyle(
+                  Text("Type your notes here…").foregroundStyle(
                     Palette.secondary
                   ).padding(.top, 8).padding(.leading, 5).allowsHitTesting(false)
                 }
@@ -670,13 +670,13 @@ struct MeetingDetailView: View {
                 Button("Undo last edit") { state.undoNote() }.disabled(state.lastReceipt == nil)
               }
             } label: {
-              Label("My raw notes", systemImage: "pencil.line").font(.system(size: 15, weight: .semibold))
+              Label("Your typed notes", systemImage: "pencil.line").font(.system(size: 15, weight: .semibold))
             }
             DisclosureGroup {
               PrivateThoughtsView(embedded: true).padding(.top, 8)
             } label: {
               Label("Private thoughts", systemImage: "lock.fill").font(.system(size: 15, weight: .semibold))
-                .help("Never sent to AI, never exported, never searched")
+                .help("Only you see these. They never go to AI.")
             }
           }.padding(.trailing, 6).padding(.bottom, 20)
         }
@@ -738,7 +738,7 @@ struct MeetingDetailView: View {
               Palette.secondary)
             if state.playbackLoading { ProgressView().controlSize(.mini) }
             Text("Original audio").foregroundStyle(Palette.secondary)
-            Button("Show recordings") {
+            Button("Show audio files") {
               NSWorkspace.shared.open(
                 state.root.appendingPathComponent("Recordings/\(state.selectedMeetingID ?? "")"))
             }
@@ -789,11 +789,11 @@ struct MeetingDetailView: View {
         Text("Transcript").font(.system(size: 17, weight: .semibold))
         Spacer()
         Menu {
-          Button("Transcribe / retry") { state.transcribeMeeting() }.disabled(refineLocked)
-          Button("Reprocess and review corrections") { state.transcribeMeeting(reprocess: true) }
+          Button("Transcribe again") { state.transcribeMeeting() }.disabled(refineLocked)
+          Button("Transcribe again and review changes") { state.transcribeMeeting(reprocess: true) }
             .disabled(refineLocked)
           Divider()
-          Button("Inspect recovery") { state.inspectRecording() }.disabled(
+          Button("Check the recording") { state.inspectRecording() }.disabled(
             state.activeMeetingID == state.selectedMeetingID)
         } label: {
           Label("Refine", systemImage: "wand.and.stars")
@@ -837,9 +837,9 @@ struct MeetingDetailView: View {
       }
       if state.segments.isEmpty {
         QuietEmpty(
-          icon: "waveform", title: "The conversation lives here",
+          icon: "waveform", title: "No transcript yet",
           subtitle:
-            "Record first. Final transcription adds timing and speaker groups. People are named only when you identify them."
+            "Record the meeting. The transcript shows here when you stop."
         )
       } else {
         ScrollView {
@@ -852,7 +852,7 @@ struct MeetingDetailView: View {
                 VStack(alignment: .leading, spacing: 8) {
                   HStack {
                     if segment.provisional {
-                      Text("Provisional · speaker unknown").font(.system(size: 12, weight: .semibold))
+                      Text("Live text · speaker not known yet").font(.system(size: 12, weight: .semibold))
                     } else {
                       Circle().fill(Palette.speaker(segment.speakerID)).frame(width: 8, height: 8)
                         .accessibilityHidden(true)
@@ -878,7 +878,7 @@ struct MeetingDetailView: View {
                       source = segment
                     } label: {
                       Image(systemName: "pencil")
-                    }.buttonStyle(.plain).accessibilityLabel("Correct transcript or speaker")
+                    }.buttonStyle(.plain).accessibilityLabel("Fix this line")
                   }
                   Text(segment.text).padding(5).background(
                     state.selectedTranscriptSource == segment.id
@@ -901,13 +901,13 @@ struct CaptureSetupView: View {
   var permissionSetup = false
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {
-      Text("Be present. We’ll keep the audio.").font(.system(size: 27, weight: .semibold))
+      Text("Record a meeting").font(.system(size: 27, weight: .semibold))
       Text(
-        "Let everyone know you’re recording. Microphone and call audio are saved separately on this Mac."
+        "Tell everyone you’re recording. The audio stays on this Mac."
       ).foregroundStyle(Palette.secondary)
       if permissionSetup {
         Text(
-          "Choose the app whose audio you want to record. Starting requests any missing macOS access and creates a new meeting recording. Nothing starts until you press Start recording."
+          "Pick the call app to record. Nothing starts until you press Start recording."
         )
         .font(.callout).foregroundStyle(Palette.secondary)
       }
@@ -927,10 +927,10 @@ struct CaptureSetupView: View {
             }.pickerStyle(.radioGroup)
             if state.selectedPID != 0 {
               Text(
-                "App capture may include all audio from that app. Browsers can include other tabs and may use separate audio helper processes."
+                "Chup! records all sound from this app. In a browser, that can include other tabs."
               ).font(.caption).foregroundStyle(Palette.red)
             }
-            Text("Pausing this recorder does not mute you in the meeting.").font(.caption)
+            Text("Pause stops the recording. The call can still hear you.").font(.caption)
               .foregroundStyle(Palette.secondary)
           }
         }.padding(.trailing, 4)
@@ -968,7 +968,7 @@ struct SegmentEditor: View {
   }
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      Text("Correct the record").font(.system(size: 25, weight: .semibold))
+      Text("Fix this line").font(.system(size: 25, weight: .semibold))
       ScrollView {
         VStack(alignment: .leading, spacing: 18) {
           WorkspaceCard("Transcript", icon: "text.bubble") {
@@ -976,24 +976,24 @@ struct SegmentEditor: View {
               height: 130)
           }
           WorkspaceCard("Speaker", icon: "person.crop.circle") {
-            TextField("Speaker name (leave unknown if unsure)", text: $name)
-            DisclosureGroup("Remember this voice across meetings") {
+            TextField("Who said this? Leave empty if you’re not sure.", text: $name)
+            DisclosureGroup("Remember this voice in future meetings") {
               Text(
-                "Listen to this interval first. It must contain only this person. The reference is saved locally and encrypted; cloud matching starts off."
+                "Listen first. Only this person may speak in the clip."
               ).font(.caption)
-              Button("Listen to reference interval") { state.play(at: segment.start) }
+              Button("Listen to the clip") { state.play(at: segment.start) }
               Toggle(
-                "I confirm this is a single speaker and want to enroll their voice",
+                "Only this person speaks in the clip",
                 isOn: $enrollmentConsent)
-              Button("Save encrypted voice reference") {
+              Button("Remember this voice") {
                 state.enrollVoice(segment, name: name, consent: enrollmentConsent)
               }
               .disabled(
                 !enrollmentConsent || name.isEmpty || segment.provisional
                   || segment.end - segment.start < 2)
             }
-            Picker("Assign to existing speaker group", selection: $merge) {
-              Text("Keep current assignment").tag("")
+            Picker("Move to another speaker", selection: $merge) {
+              Text("Keep the current speaker").tag("")
               ForEach(state.speakerIDs, id: \.self) { id in Text(state.speakerLabel(id)).tag(id) }
             }
           }
@@ -1001,7 +1001,7 @@ struct SegmentEditor: View {
       }
       Divider()
       HStack {
-        Button("Split into new speaker") {
+        Button("Make this a new speaker") {
           state.splitSpeaker(segment)
           dismiss()
         }
@@ -1031,14 +1031,14 @@ struct PipelineStatus: View {
   @State private var backend: (ok: Bool, text: String)?
   var body: some View {
     HStack(spacing: 18) {
-      item(state.cloudEnabled, state.cloudEnabled ? "Cloud AI on" : "Cloud AI off · recordings stay local")
+      item(state.cloudEnabled, state.cloudEnabled ? "Cloud AI on" : "Cloud AI off · audio stays on this Mac")
       if state.cloudEnabled {
         if state.backendToken.isEmpty {
-          item(false, "No backend token · Settings → Advanced")
+          item(false, "Not connected · Settings → Advanced")
         } else if let backend {
           item(backend.ok, backend.text)
         } else {
-          item(nil, "Checking backend…")
+          item(nil, "Checking the connection…")
         }
         item(
           state.liveCaptionsEnabled && state.liveOutlineEnabled,
@@ -1070,15 +1070,15 @@ struct PipelineStatus: View {
     // Same rule as BackendClient: the token only goes over HTTPS or to this Mac.
     guard let url = URL(string: state.backendURL),
       url.scheme == "https" || ["localhost", "127.0.0.1", "::1"].contains(url.host ?? "")
-    else { return (false, "Backend URL must be HTTPS or local") }
+    else { return (false, "Use an https address") }
     var request = URLRequest(url: url, timeoutInterval: 5)
     request.setValue("Bearer \(state.backendToken)", forHTTPHeaderField: "Authorization")
     guard let (_, response) = try? await URLSession.shared.data(for: request),
       let code = (response as? HTTPURLResponse)?.statusCode
     else { return (false, "Backend unreachable at \(url.host() ?? state.backendURL)") }
     switch code {
-    case 405: return (true, "Backend connected")
-    case 401: return (false, "Backend rejected the token")
+    case 405: return (true, "Connected")
+    case 401: return (false, "The app token is wrong")
     default: return (false, "Backend answered HTTP \(code)")
     }
   }

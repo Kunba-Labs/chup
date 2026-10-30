@@ -34,7 +34,7 @@ struct TrashView: View {
       Text("Deleted meetings and dictations stay here for \(TrashEntry.retentionDays) days, then are removed for good.")
         .font(.callout).foregroundStyle(Palette.secondary)
       if state.trash.isEmpty {
-        QuietEmpty(icon: "trash", title: "Trash is empty", subtitle: "Deleted meetings and dictations land here first, so you can bring them back.")
+        QuietEmpty(icon: "trash", title: "Trash is empty", subtitle: "Deleted meetings and dictations show here.")
       } else {
         ScrollView {
           LazyVStack(spacing: 8) {
@@ -60,7 +60,7 @@ struct TrashView: View {
     .confirmationDialog("Delete everything in the Trash for good?", isPresented: $confirmEmpty, titleVisibility: .visible) {
       Button("Delete \(state.trash.count) items forever", role: .destructive) { state.deleteForever(state.trash) }
     } message: {
-      Text("Recordings, transcripts, notes and private thoughts are removed from this Mac. This cannot be undone.")
+      Text("Everything in the Trash leaves this Mac for good.")
     }
   }
 }
@@ -131,7 +131,7 @@ struct TagManagerView: View {
         Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
       }
       if state.allTags.isEmpty {
-        Text("No tags yet. Add one from a meeting's header.").foregroundStyle(Palette.secondary)
+        Text("No tags yet. Add one at the top of a meeting.").foregroundStyle(Palette.secondary)
       }
       ScrollView {
         VStack(spacing: 6) {

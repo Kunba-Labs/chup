@@ -14,7 +14,7 @@ struct DictationDiagnosticsView: View {
     VStack(alignment: .leading, spacing: 16) {
       WorkspaceCard("Timing reports", icon: "timer") {
         Text(
-          "Recent attempts, including failed and cancelled ones. Missing timings mean that stage did not complete. No spoken text is stored in these diagnostics."
+          "Your recent dictations, with how long each step took. No text is kept."
         )
         .font(.callout).foregroundStyle(Palette.secondary)
         if state.traceStorageFailed {
@@ -54,7 +54,7 @@ struct DictationDiagnosticsView: View {
         .font(.caption).foregroundStyle(Palette.secondary)
       }
       WorkspaceCard("Paste activity", icon: "arrow.down.doc") {
-        Text("Every delivery is recorded locally with its shortcut, route and safety decision. This helps explain when text was inserted, copied for recovery, or left unconfirmed.")
+        Text("Shows where each dictation went: typed in, copied, or held back.")
           .font(.callout).foregroundStyle(Palette.secondary)
         if state.deliveryDiagnostics.isEmpty {
           Text("No paste attempts yet.").foregroundStyle(Palette.secondary)

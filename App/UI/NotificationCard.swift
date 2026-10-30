@@ -32,14 +32,14 @@ struct NotificationCard: View {
   }
   private var title: String {
     switch kind {
-    case .callDetected: return "A conversation to remember?"
-    case .browserDetected: return "A call in your browser?"
-    case .recording: return "You’re free to be here."
+    case .callDetected: return "Record this call?"
+    case .browserDetected: return "Record this browser call?"
+    case .recording: return "Recording"
     case .paused: return "Recording is paused"
-    case .dictating: return "Go on. I’m listening."
-    case .recovered: return "Your words are safe"
-    case .privateAssistant: return "Just between us"
-    case .routeBlocked: return "Let’s keep this private"
+    case .dictating: return "Listening"
+    case .recovered: return "Your text is ready"
+    case .privateAssistant: return "Private question"
+    case .routeBlocked: return "The call may hear you"
     case .meetingEnded: return "Did the call end?"
     }
   }
@@ -47,14 +47,14 @@ struct NotificationCard: View {
     switch kind {
     case .callDetected: return "Take notes for your conversation in \(appName)."
     case .browserDetected: return "Possible call in \(appName). App capture can include other tabs."
-    case .recording: return "Microphone and call audio are being saved on this Mac."
-    case .paused: return "Audio is not being saved. You may still be heard in the call."
+    case .recording: return "Your mic and the call are recording on this Mac."
+    case .paused: return "Nothing is recording. The call can still hear you."
     case .dictating: return "Release your shortcut to finish. Escape to cancel."
-    case .recovered: return "The original text field changed. Your dictation is ready to copy."
+    case .recovered: return "The text box changed. Copy your dictation instead."
     case .privateAssistant:
-      return "Ask about this meeting in private text. Only its context is shared with AI."
+      return "Type a private question. Only this meeting goes to AI."
     case .routeBlocked:
-      return "Your call may still hear this microphone. A verified private input route is required."
+      return "The call may hear this mic. Private voice needs the Chup! Mic."
     case .meetingEnded: return "\(appName) stopped using the microphone. Chup! is still recording."
     }
   }
@@ -66,7 +66,7 @@ struct NotificationCard: View {
     case .dictating: return "Finish"
     case .recovered: return "Copy text"
     case .privateAssistant, .routeBlocked: return "Ask in text"
-    case .meetingEnded: return "Stop & save"
+    case .meetingEnded: return "Stop and save"
     }
   }
   var body: some View {
@@ -97,7 +97,7 @@ struct NotificationCard: View {
           .fixedSize(horizontal: false, vertical: true)
       }
       if kind == .callDetected {
-        Text("Let participants know before recording.").font(.system(size: 10)).foregroundStyle(
+        Text("Tell everyone before you record.").font(.system(size: 10)).foregroundStyle(
           RailPalette.secondary)
       }
       HStack(spacing: 10) {
@@ -110,7 +110,7 @@ struct NotificationCard: View {
           Button(
             kind == .recording
               ? "Pause"
-              : kind == .paused ? "Stop & save" : kind == .meetingEnded ? "Keep recording" : "Dismiss",
+              : kind == .paused ? "Stop and save" : kind == .meetingEnded ? "Keep recording" : "Dismiss",
             action: secondary
           ).buttonStyle(.plain).foregroundStyle(RailPalette.secondary)
         }

@@ -5,7 +5,7 @@ struct LocalSpeechSettings: View {
   @ObservedObject var service: LocalSpeechService
   @EnvironmentObject var state: WorkspaceState
   var body: some View {
-    WorkspaceCard("Transcription", subtitle: "Choose where speech becomes text.", icon: "waveform")
+    WorkspaceCard("Transcription", subtitle: "Pick where Chup! turns speech into text.", icon: "waveform")
     {
       Picker("Transcription", selection: $state.transcriptionMode) {
         ForEach(DictationTranscriptionMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -50,7 +50,7 @@ struct LocalSpeechSettings: View {
       DetailDisclosure(
         title: "What works offline?",
         text:
-          "After download, dictation works without internet. With cloud processing off, audio stays on this Mac. Local mode saves a plain transcript; AI rewriting, meeting speakers and summaries use their separate cloud features."
+          "After download, dictation works without internet. AI cleanup, speakers and summaries still need the cloud."
       )
     }
   }
