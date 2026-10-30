@@ -96,15 +96,15 @@ approved before any build work starts.
   - Accept: a typed query narrows the list as you type.
 
 ## F7. Settings
-- [ ] Settings has six sections: General, Dictation, Meetings, AI & Assistant, Privacy & Data, and Advanced (collapsed).
-  - Accept: every control that exists today can be reached in the new structure, checked against the old list of 14 pages.
-- [ ] Usage, Recovery, Diagnostics and Transcription Lab live under Advanced.
+- [x] Settings has six sections: General, Dictation, Meetings, AI & Assistant, Privacy & Data, and Advanced (collapsed).
+  - Accept: every control that exists today can be reached in the new structure, checked against the old list of 14 pages. (Each section renders the original pages unchanged: General = General, Permissions, Appearance; Dictation = Dictation, Shortcuts, Audio; Meetings; AI & Assistant = Assistant; Privacy & Data = Privacy; Advanced = Connection, Usage, Recovery, Diagnostics, Transcription Lab. Old page names still deep-link.)
+- [x] Usage, Recovery, Diagnostics and Transcription Lab live under Advanced.
   - Accept: each opens and works as it does today.
-- [ ] Permissions show as one checklist in General.
+- [x] Permissions show as one checklist in General.
   - Accept: each permission row shows its real status and an action.
-- [ ] Each section has a coloured, filled icon tile.
+- [x] Each section has a coloured, filled icon tile.
   - Accept: the tiles meet contrast, and VoiceOver reads the section name.
-- [ ] The capture-source picker and meeting rows show the real app icon read from the installed app.
+- [x] The capture-source picker and meeting rows show the real app icon read from the installed app.
   - Accept: Zoom, Teams, FaceTime and browsers show their own icons. Apps that aren't installed show a generic symbol. No third-party logos are bundled.
 - [x] Dictionary, Snippets and Styles live in a Personal module in the rail.
   - Accept: create, edit, delete and search work for each.

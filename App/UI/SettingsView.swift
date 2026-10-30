@@ -4,34 +4,48 @@ import SwiftUI
 struct SettingsView: View {
   @EnvironmentObject var state: WorkspaceState
   @State var section = "General"
-  let sections = [
-    "General", "Shortcuts", "Audio", "Dictation", "Meetings", "Assistant", "Appearance", "Privacy",
-    "Permissions", "Usage", "Recovery", "Diagnostics", "Transcription Lab", "Advanced",
+  /// Six sections; each shows one or more of the original pages, so every control keeps its home.
+  let sections = ["General", "Dictation", "Meetings", "AI & Assistant", "Privacy & Data", "Advanced"]
+  static let pages: [String: [String]] = [
+    "General": ["General", "Permissions", "Appearance"],
+    "Dictation": ["Dictation", "Shortcuts", "Audio"],
+    "Meetings": ["Meetings"],
+    "AI & Assistant": ["Assistant"],
+    "Privacy & Data": ["Privacy"],
+    "Advanced": ["Advanced", "Usage", "Recovery", "Diagnostics", "Transcription Lab"],
   ]
-  private let icons = [
-    "General": "slider.horizontal.3", "Shortcuts": "keyboard", "Audio": "mic",
-    "Dictation": "waveform", "Meetings": "person.2", "Assistant": "sparkles",
-    "Appearance": "paintpalette",
-    "Privacy": "lock.shield", "Permissions": "checkmark.shield", "Usage": "clock",
-    "Recovery": "arrow.counterclockwise",
-    "Diagnostics": "stethoscope", "Transcription Lab": "flask", "Advanced": "gearshape.2",
+  /// Filled tiles: symbol on a coloured square, like System Settings.
+  private static let tiles: [String: (icon: String, color: Color)] = [
+    "General": ("gearshape.fill", Color(red: 0.45, green: 0.45, blue: 0.50)),
+    "Dictation": ("waveform", Palette.violet),
+    "Meetings": ("person.2.fill", Color(red: 0.85, green: 0.38, blue: 0.27)),
+    "AI & Assistant": ("sparkles", Color(red: 0.76, green: 0.22, blue: 0.49)),
+    "Privacy & Data": ("lock.fill", Color(red: 0.12, green: 0.54, blue: 0.44)),
+    "Advanced": ("wrench.and.screwdriver.fill", Color(red: 0.30, green: 0.36, blue: 0.46)),
   ]
   private let descriptions = [
-    "General": "Make Chup! part of your day.",
-    "Shortcuts": "Your voice, one familiar gesture away.",
-    "Audio": "Choose your input. Make sure you sound like you.",
-    "Dictation": "Decide how your spoken words become text.",
+    "General": "Start-up, permissions and how Chup! looks.",
+    "Dictation": "Shortcuts, microphone and how your words become text.",
     "Meetings": "Capture the conversation, keep what matters.",
-    "Assistant": "A thought partner with clear boundaries.",
-    "Appearance": "A quiet workspace, wherever you work.",
-    "Privacy": "Your words and how they are kept.",
-    "Permissions": "Give each feature the access it needs.",
-    "Usage": "Understand your AI activity and estimates.",
-    "Recovery": "Pick up work that was interrupted.",
-    "Diagnostics": "See where a dictation spent its time.",
-    "Transcription Lab": "Find the local model that hears you best.",
-    "Advanced": "Connections and troubleshooting.",
+    "AI & Assistant": "A thought partner with clear boundaries.",
+    "Privacy & Data": "Your words and how they are kept.",
+    "Advanced": "Usage, recovery, diagnostics and the transcription lab.",
   ]
+  /// `section` may hold an original page name (deep links, renders); this is its section.
+  private var home: String {
+    sections.contains(section)
+      ? section : Self.pages.first { $0.value.contains(section) }?.key ?? "General"
+  }
+  private var advancedPage: String {
+    Self.pages["Advanced"]!.contains(section) ? section : "Advanced"
+  }
+  static func tile(_ name: String, size: CGFloat = 22) -> some View {
+    let tile = tiles[name] ?? ("circle", .gray)
+    return Image(systemName: tile.icon).font(.system(size: size * 0.5, weight: .semibold))
+      .foregroundStyle(.white).frame(width: size, height: size)
+      .background(tile.color, in: RoundedRectangle(cornerRadius: size * 0.27))
+      .accessibilityHidden(true)
+  }
   var body: some View {
     HStack(spacing: 0) {
       ScrollView {
@@ -39,30 +53,48 @@ struct SettingsView: View {
           Text("Settings").font(.system(size: 25, weight: .semibold)).padding(.horizontal, 10).padding(
             .bottom, 20)
           ForEach(sections, id: \.self) { name in
+            if name == "Advanced" { Divider().padding(.vertical, 8) }
             Button {
               section = name
             } label: {
               HStack(spacing: 10) {
-                Image(systemName: icons[name] ?? "circle").frame(width: 17).accessibilityHidden(
-                  true)
+                Self.tile(name)
                 Text(name).font(.system(size: 13))
                 Spacer(minLength: 0)
               }.padding(.horizontal, 10).padding(.vertical, 10).contentShape(Rectangle())
                 .background(
-                  section == name ? Palette.paper : .clear, in: RoundedRectangle(cornerRadius: 9))
-            }.buttonStyle(.plain).foregroundStyle(section == name ? Palette.ink : Palette.secondary)
-              .accessibilityAddTraits(section == name ? .isSelected : [])
+                  home == name ? Palette.paper : .clear, in: RoundedRectangle(cornerRadius: 9))
+            }.buttonStyle(.plain).foregroundStyle(home == name ? Palette.ink : Palette.secondary)
+              .accessibilityLabel(name).accessibilityAddTraits(home == name ? .isSelected : [])
           }
         }.padding(.horizontal, 12).padding(.vertical, 24)
       }.frame(width: 186).background(Palette.sidebar)
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
           VStack(alignment: .leading, spacing: 8) {
-            Text(section).font(Palette.title).accessibilityAddTraits(.isHeader)
-            Text(descriptions[section] ?? "").font(.system(size: 14)).foregroundStyle(
+            HStack(spacing: 12) {
+              Self.tile(home, size: 34)
+              Text(home).font(Palette.title).accessibilityAddTraits(.isHeader)
+            }
+            Text(descriptions[home] ?? "").font(.system(size: 14)).foregroundStyle(
               Palette.secondary)
           }.padding(.bottom, 8)
-          selectedContent
+          if home == "Advanced" {
+            Picker("Advanced", selection: Binding(get: { advancedPage }, set: { section = $0 })) {
+              ForEach(Self.pages["Advanced"]!, id: \.self) { name in
+                Text(name == "Advanced" ? "Connection" : name).tag(name)
+              }
+            }.pickerStyle(.segmented).labelsHidden()
+            page(advancedPage)
+          } else {
+            ForEach(Self.pages[home] ?? [], id: \.self) { name in
+              if (Self.pages[home]?.count ?? 0) > 1 {
+                Text(name).font(.system(size: 18, weight: .semibold)).padding(.top, 10)
+                  .accessibilityAddTraits(.isHeader)
+              }
+              page(name)
+            }
+          }
         }.frame(maxWidth: 720, alignment: .leading).padding(28).frame(maxWidth: .infinity)
       }.background(Palette.workspace)
     }.foregroundStyle(Palette.ink).tint(Palette.accent).textFieldStyle(.roundedBorder)
@@ -82,8 +114,8 @@ struct SettingsView: View {
       }
       .sheet(isPresented: $state.backupSheet) { BackupSettingsView().environmentObject(state) }
   }
-  @ViewBuilder private var selectedContent: some View {
-    switch section {
+  @ViewBuilder private func page(_ name: String) -> some View {
+    switch name {
     case "General":
       WorkspaceCard("At your fingertips", icon: "cursorarrow.rays") {
         SettingSwitch(

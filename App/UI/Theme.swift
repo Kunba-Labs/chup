@@ -185,3 +185,24 @@ struct InlineStatus: View {
     .frame(maxWidth: .infinity, alignment: .leading).insetSurface()
   }
 }
+
+/// The installed app's own icon, read at runtime; nothing third-party is bundled.
+/// Apps that aren't installed show a generic symbol.
+struct InstalledAppIcon: View {
+  var bundleID: String?
+  var image: NSImage?
+  var size: CGFloat = 18
+  var body: some View {
+    if let icon = image ?? bundleID.flatMap(Self.icon) {
+      Image(nsImage: icon).resizable().frame(width: size, height: size).accessibilityHidden(true)
+    } else {
+      Image(systemName: "app.dashed").font(.system(size: size * 0.8)).foregroundStyle(Palette.secondary)
+        .frame(width: size, height: size).accessibilityHidden(true)
+    }
+  }
+  static func icon(_ bundleID: String) -> NSImage? {
+    NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID).map {
+      NSWorkspace.shared.icon(forFile: $0.path)
+    }
+  }
+}

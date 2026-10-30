@@ -231,7 +231,12 @@ struct MeetingsView: View {
                         .textCase(.uppercase)
                     }.foregroundStyle(Palette.secondary).frame(width: 42)
                     VStack(alignment: .leading, spacing: 8) {
-                      Text(meeting.title).font(.system(size: 21, weight: .semibold))
+                      HStack(spacing: 8) {
+                        if let app = state.meetingApps[meeting.id] {
+                          InstalledAppIcon(bundleID: app, size: 20)
+                        }
+                        Text(meeting.title).font(.system(size: 21, weight: .semibold))
+                      }
                       if !query.isEmpty,
                         let hit = searchHits.first(where: { $0.meetingID == meeting.id })
                       {
@@ -910,11 +915,15 @@ struct CaptureSetupView: View {
           MicrophonePicker(devices: state.devices, showsPreview: false)
           WorkspaceCard("Meeting audio", icon: "person.wave.2") {
             Picker("Meeting audio", selection: $state.selectedPID) {
-              Text("In person · microphone only").tag(Int32(0))
+              Label("In person · microphone only", systemImage: "person.2.wave.2").tag(Int32(0))
               ForEach(state.availableApps, id: \.processIdentifier) { app in
-                Text(app.localizedName ?? "App \(app.processIdentifier)").tag(app.processIdentifier)
+                Label {
+                  Text(app.localizedName ?? "App \(app.processIdentifier)")
+                } icon: {
+                  InstalledAppIcon(image: app.icon, size: 16)
+                }.tag(app.processIdentifier)
               }
-            }
+            }.pickerStyle(.radioGroup)
             if state.selectedPID != 0 {
               Text(
                 "App capture may include all audio from that app. Browsers can include other tabs and may use separate audio helper processes."

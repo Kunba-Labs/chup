@@ -153,6 +153,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var assistantHistory: [AssistantExchange] = []
   @Published var trash: [TrashEntry] = []
   @Published var searchOpen = false
+  /// Meeting ID → bundle ID of the app its call audio came from.
+  @Published var meetingApps: [String: String] = [:]
   /// A ⌘K result hands its text to the list it opens, which filters to it.
   @Published var listQuery: String?
   var pendingSeek: Double?
@@ -715,6 +717,10 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     if !stale.isEmpty { try db.restoreFromTrash(stale) }
     trash = try db.trashEntries()
     let trashed = Set(trash.map(\.id))
+    meetingApps = Dictionary(
+      try db.list(RecordingLeg.self, kind: "leg").compactMap { leg in
+        leg.processBundleID.map { (leg.meetingID, $0) }
+      }, uniquingKeysWith: { first, _ in first })
     meetings = allMeetings.filter { !trashed.contains($0.id) }.sorted { $0.created > $1.created }
     history = allHistory.filter { !trashed.contains($0.id) }.sorted { $0.created > $1.created }
     personalization = try db.list(Personalization.self, kind: "personalization").sorted {

@@ -144,7 +144,10 @@ struct MeetingListColumn: View {
               click(meeting)
             } label: {
               VStack(alignment: .leading, spacing: 3) {
-                Text(meeting.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                HStack(spacing: 6) {
+                  if let app = state.meetingApps[meeting.id] { InstalledAppIcon(bundleID: app, size: 14) }
+                  Text(meeting.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                }
                 Text(meeting.created.formatted(date: .abbreviated, time: .shortened))
                   .font(.system(size: 11)).foregroundStyle(Palette.secondary)
               }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
