@@ -62,3 +62,11 @@ Plan: [plans/ui-redesign.md](plans/ui-redesign.md). Spec: [plans/ui-redesign-spe
 Waseem asked to see every screen as a design board before any build work.
 
 **Design board decision (2026-10-30):** Waseem picked palette **A, voice gradient** (backdrop #E6E4F0→#F5ECE6, ink #16151A, muted #615E6D, accent #6A4CF5→#E8735A) and icon **A, pill bars** (five gradient pill bars on a light tile, dark variant for dark appearance). Warm and reference palettes are dropped from the shipped build.
+
+**Wispr Flow realignment (decided 2026-10-30, evening).** Waseem rejected the two-pane meeting page and the window glass ("unusable"), and asked to base the note taker on Wispr Flow Notetaker. Researched from Wispr's help centre (meeting notes and editor, hub, live transcript, recording, Flow Summaries). Decisions:
+
+1. **Meeting page: Wispr tabs.** One column: back, date pill, editable title, tags, ⋯ menu; tabs **My thoughts / Summary / Transcript**; an **Ask anything** bar docked at the bottom. Replaces the two panes, the side Ask panel and the bottom timeline; the audio player moves into the Transcript tab. Supersedes item 3 above.
+2. **Summary: Wispr structure.** TL;DR, themed sections, **Decisions Made**, **Next Steps** grouped by owner (ticking one updates its action item), sources kept. The Granola-style merged grey-line notes are dropped; My thoughts stays the user's own text. Supersedes increment 9 item 2 (enhanced notes).
+3. **Meeting list: day groups, no calendar.** Today / Yesterday / date headers, ⋯ per row (Share as Markdown, Delete), New note, search. Calendar "Upcoming" stays parked.
+4. **Live view: Wispr notepad.** Light notepad with **Transcript** (speaker bubbles You/Others, grey in-progress words, Jump to bottom) and **My thoughts** tabs; Stop in its footer; "isn't getting any audio" card and "Started by mistake?" Keep/Discard card. The island or rail is the recording pill. Supersedes item 4 above.
+5. **Window glass dropped** after two attempts made the window unreadable over busy desktops.

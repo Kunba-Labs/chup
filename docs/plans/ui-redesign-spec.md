@@ -147,3 +147,16 @@ approved before any build work starts.
 - **Custom template editor:** already deferred in increment 9.
 - **Dark-mode workspace:** PRODUCT.md requires the light workspace.
 - **An in-window live recording view:** decided 2026-10-30. The floating sidebar carries the live experience instead.
+
+## F11. Wispr Flow realignment (decided 2026-10-30)
+Supersedes the F3 layout, the F3 Ask panel and timeline, and the F4 dark sidebar. Their data behaviour (title save, find, citations, who-is-this chips, Discard, no-audio warning) carries over.
+- [ ] The meeting page is one column with tabs My thoughts / Summary / Transcript and an Ask anything bar docked at the bottom.
+  - Accept: each tab keeps its scroll position; ⌘F searches Summary and Transcript; Ask history stays per meeting.
+- [ ] The Summary tab shows TL;DR, themed sections, Decisions Made and Next Steps grouped by owner, each with its sources.
+  - Accept: ticking a next step marks its action item done; pinned edits and earlier versions still show.
+- [ ] The Transcript tab shows speaker bubbles with names or You/Others, the audio player and the speaker timeline.
+  - Accept: clicking a line plays from it; "Who is this?" still opens rename.
+- [ ] The meeting list groups notes under Today, Yesterday and dates, with a ⋯ menu (Copy as Markdown, Move to Trash) and New note.
+  - Accept: bulk select and Delete still work; empty state says what to do.
+- [ ] During a call a light notepad shows Transcript (live bubbles, grey in-progress words, Jump to bottom) and My thoughts, with Stop in its footer.
+  - Accept: excluded from screen sharing; no-audio card and Started-by-mistake card work.
