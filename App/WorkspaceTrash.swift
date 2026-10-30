@@ -53,6 +53,10 @@ extension WorkspaceState {
       notice = "Finish active capture and AI work before deleting."
       return
     }
+    if let blocked = recorderCloseFailed, entries.contains(where: { $0.id == blocked }) {
+      notice = "A recording's audio files didn't close cleanly. Quit and reopen Chup! before deleting it for good."
+      return
+    }
     do {
       for entry in entries {
         if entry.kind == "meeting" {

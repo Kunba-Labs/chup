@@ -24,10 +24,18 @@ extension WorkspaceState {
   /// deletion plan is saved, and only then is the meeting cleared and purged.
   func discardMeeting() {
     guard let id = activeMeetingID else { return }
+    guard recorderCloseFailed != id else {
+      notice = "This recording's audio files didn't close cleanly, so it can't be discarded yet. "
+        + "Quit and reopen Chup! (recovery closes them), then delete the meeting from the list."
+      return
+    }
     do {
       if let meetingConsumerID { try audio?.removeConsumer(id: meetingConsumerID) }
     } catch {
-      notice = "Discard stopped: the recording could not be closed, so nothing was deleted. "
+      // Capture has stopped, but the files may still be open: show the error and block deletion.
+      recorderCloseFailed = id
+      meetingStatus = .error
+      notice = "Discard stopped: the recording's audio files could not be closed, so nothing was deleted. "
         + error.localizedDescription
       return
     }

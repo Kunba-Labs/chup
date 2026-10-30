@@ -139,6 +139,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var micLastPacket: Date?
   /// Last time the microphone carried any signal at all; a wedged input delivers exact silence.
   var micHeardAt: Date?
+  /// A meeting whose recorder failed to close its audio files. Discard stays blocked until
+  /// the app restarts and recovery closes them, so nothing is deleted while files may be open.
+  var recorderCloseFailed: String?
   @Published var remoteLastPacket: Date?
   @Published var activeMeetingID: String?
   @Published var elapsed: Double = 0
