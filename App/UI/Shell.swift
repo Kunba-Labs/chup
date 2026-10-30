@@ -47,7 +47,16 @@ struct GlassRail: View {
     VStack(spacing: 6) {
       WaveMark().scaleEffect(0.62).frame(height: 34).padding(.top, 34).padding(.bottom, 14)
       ForEach(Array(RailModule.allCases.enumerated()), id: \.element) { index, module in
-        if module == .settings { Spacer() }
+        if module == .settings {
+          Button {
+            state.searchOpen = true
+          } label: {
+            Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .medium))
+              .frame(width: 40, height: 40).contentShape(RoundedRectangle(cornerRadius: 12))
+          }.buttonStyle(.plain).foregroundStyle(Palette.secondary).help("Search  ⌘K")
+            .accessibilityLabel("Search")
+          Spacer()
+        }
         let active = RailModule.of(state.page) == module
         Button {
           state.page = module.page

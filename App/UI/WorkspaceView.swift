@@ -61,6 +61,17 @@ struct WorkspaceShell: View {
             .allowsHitTesting(false)
         }
         .shadow(color: .black.opacity(0.07), radius: 14, y: 4).padding(10)
+    }.overlay {
+      if state.searchOpen {
+        ZStack(alignment: .top) {
+          Color.black.opacity(0.18).ignoresSafeArea().onTapGesture { state.searchOpen = false }
+            .accessibilityHidden(true)
+          SearchPalette().padding(.top, 90)
+        }
+      }
+    }.background {
+      Button("Search") { state.searchOpen.toggle() }.keyboardShortcut("k", modifiers: .command)
+        .opacity(0).accessibilityHidden(true)
     }.overlay(alignment: .bottom) {
       if let toast = state.undoToast {
         UndoToastView(toast: toast).padding(.bottom, 28).transition(.move(edge: .bottom).combined(with: .opacity))
@@ -89,6 +100,9 @@ struct MeetingsView: View {
   @AppStorage("meetingListCollapsed") private var listCollapsed = false
   @State private var showTrash = false
   @State private var showTags = false
+  @State private var tagFilter: String?
+  @State private var personFilter: String?
+  @State private var sinceDays = 0
   @State private var deletion: Meeting?
   @State private var query = ""
   @State private var starting = false
@@ -104,11 +118,47 @@ struct MeetingsView: View {
     }
   }
   var filtered: [Meeting] {
-    state.meetings.filter { meeting in
-      query.isEmpty || searchHits.contains(where: { hit in hit.meetingID == meeting.id })
+    let since = Calendar.current.date(byAdding: .day, value: -sinceDays, to: Date())
+    return state.meetings.filter { meeting in
+      (query.isEmpty || searchHits.contains(where: { hit in hit.meetingID == meeting.id })
         || "\(meeting.title) \(meeting.participants) \(meeting.tags)"
-          .localizedCaseInsensitiveContains(query)
+          .localizedCaseInsensitiveContains(query))
+        && (tagFilter.map { tag in Meeting.tagList(meeting.tags).contains(tag) } ?? true)
+        && (personFilter.map { person in Self.people(meeting.participants).contains(person) } ?? true)
+        && (sinceDays == 0 || since.map { meeting.created >= $0 } ?? true)
     }
+  }
+  static func people(_ participants: String) -> [String] {
+    participants.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+  }
+  private var filtersActive: Bool { tagFilter != nil || personFilter != nil || sinceDays != 0 }
+  private var filterBar: some View {
+    HStack(spacing: 10) {
+      Menu(tagFilter ?? "Any tag") {
+        Button("Any tag") { tagFilter = nil }
+        ForEach(state.allTags, id: \.self) { tag in Button(tag) { tagFilter = tag } }
+      }.fixedSize()
+      Menu(personFilter ?? "Anyone") {
+        Button("Anyone") { personFilter = nil }
+        ForEach(Array(Set(state.meetings.flatMap { Self.people($0.participants) })).sorted(), id: \.self) {
+          person in Button(person) { personFilter = person }
+        }
+      }.fixedSize()
+      Picker("Date", selection: $sinceDays) {
+        Text("Any time").tag(0)
+        Text("Last 7 days").tag(7)
+        Text("Last 30 days").tag(30)
+        Text("Last 90 days").tag(90)
+      }.labelsHidden().fixedSize()
+      if filtersActive {
+        Button("Clear filters") {
+          tagFilter = nil
+          personFilter = nil
+          sinceDays = 0
+        }.buttonStyle(.plain).foregroundStyle(Palette.accent)
+      }
+      Spacer()
+    }.controlSize(.small)
   }
   var body: some View {
     if state.selectedMeetingID != nil {
@@ -152,6 +202,7 @@ struct MeetingsView: View {
           Spacer()
           Text("\(filtered.count) meetings").font(.caption).foregroundStyle(Palette.secondary)
         }.padding(13).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
+        filterBar
         if let searchError { Text(searchError).font(.caption).foregroundStyle(Palette.red) }
         if filtered.isEmpty {
           QuietEmpty(

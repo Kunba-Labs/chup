@@ -25,8 +25,8 @@ approved before any build work starts.
   - Accept: the same speaker has the same colour in every place in one meeting. Colour is never the only cue, so the name or initial is always shown. (`Palette.speaker` keyed by speaker ID: transcript dot, timeline lanes and the "who is this?" chip.)
 
 ## F2. App shell
-- [ ] A glass icon rail switches between Today, Meetings, Dictation, Notebook, Personal, Search (⌘K) and Settings, with a Record button at the bottom.
-  - Accept: every icon has a tooltip and a VoiceOver label, and the rail can be used from the keyboard. With Reduce Transparency on, the rail has a solid background. (gap: rail with ⌘1–⌘6, tooltips, labels and solid fallback shipped; the Search entry lands with the ⌘K palette in F6.)
+- [x] A glass icon rail switches between Today, Meetings, Dictation, Notebook, Personal, Search (⌘K) and Settings, with a Record button at the bottom.
+  - Accept: every icon has a tooltip and a VoiceOver label, and the rail can be used from the keyboard. With Reduce Transparency on, the rail has a solid background.
 - [x] A list column per module can be collapsed with ⌘\.
   - Accept: you can switch between meetings with one click while the detail stays open. The window stays usable at 900 pt wide. (Meetings has the column; Dictation, Notebook and Personal are lists themselves. Below 940 pt of panel the column steps aside automatically.)
 - [x] Content sits in a floating rounded panel.
@@ -88,11 +88,11 @@ approved before any build work starts.
   - Accept: the existing guard message shows.
 
 ## F6. Search
-- [ ] A ⌘K palette searches meetings, notes, transcripts, dictations, notebook and Personal entries.
+- [x] A ⌘K palette searches meetings, notes, transcripts, dictations, notebook and Personal entries.
   - Accept: results are grouped by type. Choosing a transcript hit opens the meeting at that line with the audio seeked there. Private thoughts, assistant exchanges and trashed items are never shown.
-- [ ] The list column has a search field and filters for tag, person and date range.
-  - Accept: the filters combine, the result count updates, and clearing them restores the full list.
-- [ ] Every module list has its own search, including Notebook and Personal.
+- [x] The list column has a search field and filters for tag, person and date range.
+  - Accept: the filters combine, the result count updates, and clearing them restores the full list. (On the Meetings list; the compact column beside an open meeting keeps a quick filter.)
+- [x] Every module list has its own search, including Notebook and Personal.
   - Accept: a typed query narrows the list as you type.
 
 ## F7. Settings
@@ -106,8 +106,8 @@ approved before any build work starts.
   - Accept: the tiles meet contrast, and VoiceOver reads the section name.
 - [ ] The capture-source picker and meeting rows show the real app icon read from the installed app.
   - Accept: Zoom, Teams, FaceTime and browsers show their own icons. Apps that aren't installed show a generic symbol. No third-party logos are bundled.
-- [ ] Dictionary, Snippets and Styles live in a Personal module in the rail.
-  - Accept: create, edit, delete and search work for each. (gap: Personal module with a Dictionary | Snippets | Styles switch shipped; per-list search lands with F6.)
+- [x] Dictionary, Snippets and Styles live in a Personal module in the rail.
+  - Accept: create, edit, delete and search work for each.
 
 ## F8. Today home
 - [x] Today shows a greeting with Record meeting and Dictate actions.

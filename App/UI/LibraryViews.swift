@@ -153,6 +153,7 @@ struct DictationView: View {
 struct NotebookView: View {
   @EnvironmentObject var state: WorkspaceState
   @State private var deletion: Meeting?
+  @State private var query = ""
   var body: some View {
     VStack(alignment: .leading, spacing: 28) {
       HStack {
@@ -162,6 +163,7 @@ struct NotebookView: View {
         Spacer()
         Button("New note") { state.newMeeting() }
       }
+      ListSearchField(placeholder: "Search notebook", text: $query)
       if state.meetings.isEmpty {
         QuietEmpty(
           icon: "book.closed", title: "A place for your thinking",
@@ -170,7 +172,9 @@ struct NotebookView: View {
       } else {
         ScrollView {
           LazyVStack(spacing: 14) {
-            ForEach(state.meetings) { meeting in
+            ForEach(state.meetings.filter {
+              query.isEmpty || "\($0.title) \($0.participants) \($0.tags)".localizedCaseInsensitiveContains(query)
+            }) { meeting in
               Button {
                 state.selectMeeting(meeting.id)
                 state.page = .meetings
@@ -199,6 +203,7 @@ struct PersonalizationView: View {
   @State private var replacement = ""
   @State private var language = "en"
   @State private var mode = CleanupMode.light
+  @State private var query = ""
   var kind: String { page == .dictionary ? "dictionary" : page == .snippets ? "snippet" : "style" }
   var body: some View {
     VStack(alignment: .leading, spacing: 26) {
@@ -250,6 +255,7 @@ struct PersonalizationView: View {
           }.buttonStyle(.borderedProminent).disabled(trigger.isEmpty || replacement.isEmpty)
         }
       }.textFieldStyle(.roundedBorder)
+      ListSearchField(placeholder: "Search \(page.rawValue.lowercased())", text: $query)
       if !state.personalization.contains(where: { $0.kind == kind }) {
         QuietEmpty(
           icon: page.icon, title: "Make this space yours",
@@ -257,7 +263,10 @@ struct PersonalizationView: View {
       } else {
         ScrollView {
           LazyVStack(spacing: 12) {
-            ForEach(state.personalization.filter { $0.kind == kind }) { item in
+            ForEach(state.personalization.filter {
+              $0.kind == kind
+                && (query.isEmpty || "\($0.trigger) \($0.replacement)".localizedCaseInsensitiveContains(query))
+            }) { item in
               HStack {
                 VStack(alignment: .leading, spacing: 8) {
                   Text(item.trigger).font(.headline)
@@ -397,5 +406,21 @@ struct AssistantView: View {
     guard mode == .privateText, !question.isEmpty, !state.assistantBusy else { return }
     state.ask(question)
     if state.assistantBusy { question = "" }
+  }
+}
+
+/// The filter field every module list shares.
+struct ListSearchField: View {
+  let placeholder: String
+  @Binding var text: String
+  var body: some View {
+    HStack {
+      Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
+      TextField(placeholder, text: $text).textFieldStyle(.plain)
+      if !text.isEmpty {
+        Button { text = "" } label: { Image(systemName: "xmark.circle.fill") }
+          .buttonStyle(.plain).foregroundStyle(Palette.secondary).accessibilityLabel("Clear search")
+      }
+    }.padding(11).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
   }
 }

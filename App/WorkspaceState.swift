@@ -152,6 +152,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var assistantAnswer = ""
   @Published var assistantHistory: [AssistantExchange] = []
   @Published var trash: [TrashEntry] = []
+  @Published var searchOpen = false
+  var pendingSeek: Double?
   @Published var undoToast: UndoToast?
   /// What was deleted on its own from the open meeting (audio and/or transcript).
   @Published var partial = PartialDeletion()
@@ -466,6 +468,11 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       self?.playbackDuration = duration
       self?.playing = running
       self?.playbackLoading = loading
+      // A search hit opened the meeting before its audio was ready; seek once it is.
+      if duration > 0, !loading, let seek = self?.pendingSeek {
+        self?.pendingSeek = nil
+        self?.seekPlayback(to: seek)
+      }
     }
     playback.onWaveform = { [weak self] in self?.waveformBins = $0 }
     playback.onFailure = { [weak self] in self?.notice = $0 }

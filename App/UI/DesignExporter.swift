@@ -415,6 +415,9 @@ import ChupCore
     }
     state.page = .today
     try renderNative(WorkspaceShell().environmentObject(state), size: CGSize(width: 1100, height: 760), to: destination.appendingPathComponent("layout-today.png"))
+    state.searchOpen = true
+    try renderNative(WorkspaceShell().environmentObject(state), size: CGSize(width: 1100, height: 760), to: destination.appendingPathComponent("layout-search.png"))
+    state.searchOpen = false
     state.page = .dictionary
     try renderNative(WorkspaceShell().environmentObject(state), size: CGSize(width: 1100, height: 760), to: destination.appendingPathComponent("layout-personal.png"))
     state.page = .meetings
