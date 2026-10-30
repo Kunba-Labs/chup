@@ -126,56 +126,50 @@ export function validateEnhanced(result, note, segments, sections = []) {
   return {blocks: kept};
 }
 
-// Local meaning check for dictation cleanup (replaces a second model round trip). The candidate may drop
-// filler and spoken self-corrections, but must not invent numbers or names, or change negation.
+// Local meaning check for dictation cleanup (replaces a second model round trip). Light cleanup may
+// only delete: filler, stutters and an explicitly corrected span ("ten, no actually fifteen"). Every
+// other spoken token must survive in order, so swaps, "and" -> "or", moved numbers or dropped phrases fail.
 const units = Object.fromEntries('zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' ').map((w,i)=>[w,i]));
 const tens = Object.fromEntries('twenty thirty forty fifty sixty seventy eighty ninety'.split(' ').map((w,i)=>[w,(i+2)*10]));
 const scales = {thousand:1e3,million:1e6,billion:1e9};
-export function spokenNumbers(text) {
-  const found = new Set(); let total = 0, current = 0, active = false;
-  const flush = () => { if (active) found.add(total + current); total = current = 0; active = false; };
-  for (const token of text.toLowerCase().replace(/(\d),(?=\d{3})/g,'$1').match(/\d+(?:\.\d+)?|[a-z]+/g) ?? []) {
-    if (/^\d/.test(token)) { flush(); found.add(Number(token)); }
-    else if (token in units || token in tens) { current += units[token] ?? tens[token]; active = true; }
+const fillers = new Set('um umm uh uhh uhm er erm ah hm hmm mm'.split(' '));
+const markers = ['no actually','actually no','no wait','wait no','no sorry','sorry','i mean','scratch that','or rather'].map(m => m.split(' '));
+const expand = {"n't":' not',"'ll":' will',"'re":' are',"'m":' am',"'ve":' have',"'d":' would'};
+/** Lowercase word tokens with spoken numbers as digits and "%" as "percent". */
+export function dictationTokens(text) {
+  const raw = text.toLowerCase().replace(/[’]/g,"'").replace(/(\d),(?=\d{3})/g,'$1').replace(/%/g,' percent ')
+    .replace(/n't\b|'ll\b|'re\b|'m\b|'ve\b|'d\b/g, m => expand[m]).match(/\d+(?:\.\d+)?|\p{L}+(?:'\p{L}+)?/gu) ?? [];
+  const out = []; let total = 0, current = 0, active = false;
+  const flush = () => { if (active) out.push(String(total + current)); total = current = 0; active = false; };
+  for (const token of raw) {
+    if (token in units || token in tens) { current += units[token] ?? tens[token]; active = true; }
     else if (token === 'hundred') { current = (current || 1) * 100; active = true; }
-    else if (token in scales) { total += (current || 1) * scales[token]; current = 0; active = true; }
-    else if (!(token === 'and' && active)) flush();
+    else if (token in scales && (active || current)) { total += (current || 1) * scales[token]; current = 0; active = true; }
+    else if (token === 'and' && active) continue;
+    else { flush(); out.push(/^\d/.test(token) ? String(Number(token)) : token); }
   }
   flush();
-  return found;
+  return out;
 }
-// Only grammatical glue may be added; modals, negations and verbs must come from the speaker, in order.
-const connectives = new Set('a an the and or but so to of in on at for'.split(' '));
-// Words that limit a statement; dropping one ("ship if approved" -> "ship") changes its meaning.
-const qualifiers = new Set('if unless only except until before after about around approximately maybe perhaps probably possibly might may should could would can will not never no without'.split(' '));
-const negations = text => (text.toLowerCase().match(/\b(?:not|never|cannot|nothing|nobody|none)\b|n['’]t\b/g) ?? []).length;
-const names = text => text.split(/(?<=[.!?:]\s+|\n)/).flatMap(sentence => sentence.trim().split(/\s+/).slice(1)).map(word => word.replace(/[^\p{L}'’-]/gu,'')).filter(word => /^\p{Lu}/u.test(word));
+const markerAt = (tokens, at) => markers.find(m => m.every((word, k) => tokens[at + k] === word));
 export function cleanupPreserves(source, candidate, preferences = []) {
-  const known = (source + ' ' + JSON.stringify(preferences)).toLowerCase();
-  const before = spokenNumbers(source), after = spokenNumbers(candidate);
-  if ([...after].some(n => !before.has(n))) return false;
-  const corrected = /\b(no|actually|sorry|i mean|scratch that|wait|rather)\b/i.test(source);
-  if ([...before].some(n => !after.has(n)) && !corrected) return false;
-  if (negations(source) !== negations(candidate)) return false;
-  // Light cleanup only removes and punctuates. Any new content word (a swapped verb, a reply,
-  // a paraphrase) could change meaning, so only connective words may be added.
-  const words = text => (text.toLowerCase().replace(/['’](s|ll|re|ve|d|m)\b|n['’]t\b/g,' ').match(/\p{L}+/gu) ?? [])
-    .filter(word => !(word in units || word in tens || word in scales || word === 'hundred'));
-  const said = words(source), preferred = new Set(words(JSON.stringify(preferences)));
-  // Kept words must also keep their order, so "Alice will call Bob" cannot become "Bob will call Alice".
-  let at = 0;
-  for (const word of words(candidate)) {
-    if (connectives.has(word)) continue;
-    const next = said.indexOf(word, at);
-    if (next >= 0) at = next + 1;
-    else if (!preferred.has(word)) return false;  // Preferred spellings may replace a spoken word.
+  const said = dictationTokens(source), kept = dictationTokens(candidate);
+  const preferred = new Set(dictationTokens(JSON.stringify(preferences)));
+  let i = 0;
+  for (let j = 0; j < kept.length;) {
+    if (said[i] === kept[j]) { i++; j++; continue; }
+    if (i >= said.length) return false;
+    if (fillers.has(said[i]) || (i > 0 && said[i] === said[i - 1])) { i++; continue; }  // filler or stutter
+    // A corrected span: up to six words, then a correction phrase, all dropped.
+    let corrected = false;
+    for (let span = 0; span <= 6 && !corrected; span++) {
+      const marker = markerAt(said, i + span);
+      if (marker) { i += span + marker.length; corrected = true; }
+    }
+    if (corrected) continue;
+    if (preferred.has(kept[j])) { i++; j++; continue; }  // a preferred spelling replaces one spoken word
+    return false;
   }
-  if (!names(candidate).every(name => known.includes(name.toLowerCase()))) return false;
-  const count = list => list.reduce((map, word) => map.set(word, (map.get(word) ?? 0) + 1), new Map());
-  const limits = count(said.filter(word => qualifiers.has(word))), spokenAfter = count(words(candidate));
-  // A self-correction may drop a repeated qualifier ("about ten, no, about fifteen") but not the last one.
-  for (const [word, n] of limits) if (!(corrected && word === 'no') && (spokenAfter.get(word) ?? 0) < (corrected ? 1 : n)) return false;
-  // Named people and places stay unless the speaker explicitly corrected themselves.
-  const kept = candidate.toLowerCase();
-  return corrected || names(source).every(name => kept.includes(name.toLowerCase()));
+  // Anything left unspoken in the result must be filler too.
+  return said.slice(i).every(token => fillers.has(token));
 }
