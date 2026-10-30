@@ -146,7 +146,11 @@ struct MeetingListColumn: View {
       }
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 2) {
-          ForEach(meetings) { meeting in row(meeting) }
+          ForEach(MeetingDays.group(meetings), id: \.title) { day in
+            Text(day.title).font(.system(size: 11, weight: .semibold)).foregroundStyle(Palette.secondary)
+              .padding(.horizontal, 10).padding(.top, 10).padding(.bottom, 2).accessibilityAddTraits(.isHeader)
+            ForEach(day.meetings) { meeting in row(meeting) }
+          }
         }
       }
       .focusable().focused($listFocused).focusEffectDisabled()
@@ -403,6 +407,28 @@ struct ShellGlass: View {
           startPoint: .top, endPoint: .bottom)
         Palette.sidebar.opacity(0.12)
       }
+    }
+  }
+}
+
+/// Meetings grouped by calendar day, newest first, titled Today, Yesterday or the date.
+enum MeetingDays {
+  static func group(_ meetings: [Meeting], now: Date = Date()) -> [(title: String, meetings: [Meeting])] {
+    let calendar = Calendar.current
+    var order: [Date] = []
+    var days: [Date: [Meeting]] = [:]
+    for meeting in meetings.sorted(by: { $0.created > $1.created }) {
+      let day = calendar.startOfDay(for: meeting.created)
+      if days[day] == nil { order.append(day) }
+      days[day, default: []].append(meeting)
+    }
+    return order.map { day in
+      let title =
+        calendar.isDate(day, inSameDayAs: now) ? "Today"
+        : calendar.isDate(day, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now) ? "Yesterday"
+        : day.formatted(.dateTime.weekday(.wide).day().month(.wide)
+            .year(calendar.isDate(day, equalTo: now, toGranularity: .year) ? .omitted : .defaultDigits))
+      return (title, days[day]!)
     }
   }
 }

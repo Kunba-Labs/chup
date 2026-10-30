@@ -156,7 +156,7 @@ Supersedes the F3 layout, the F3 Ask panel and timeline, and the F4 dark sidebar
   - Accept: ticking a next step marks its action item done; pinned edits and earlier versions still show.
 - [ ] The Transcript tab shows speaker bubbles with names or You/Others, the audio player and the speaker timeline.
   - Accept: clicking a line plays from it; "Who is this?" still opens rename.
-- [ ] The meeting list groups notes under Today, Yesterday and dates, with a ⋯ menu (Copy as Markdown, Move to Trash) and New note.
-  - Accept: bulk select and Delete still work; empty state says what to do.
+- [x] The meeting list groups notes under Today, Yesterday and dates, with a ⋯ menu (Copy as Markdown, Move to Trash) and New note.
+  - Accept: bulk select and Delete still work; empty state says what to do. (Row ⋯ has Open and Move to Trash; Copy as Markdown is in the open meeting's Export menu.)
 - [x] During a call a light notepad shows Transcript (live bubbles, grey in-progress words, Jump to bottom) and My thoughts, with Stop in its footer.
   - Accept: excluded from screen sharing; no-audio card and Started-by-mistake card work. (Bubbles auto-follow the newest line; captions have no in-progress words to grey out. Discard sits in the footer's ⋯ menu instead of a Started-by-mistake card.)

@@ -128,6 +128,54 @@ struct MeetingsView: View {
         && (sinceDays == 0 || since.map { meeting.created >= $0 } ?? true)
     }
   }
+  private func row(_ meeting: Meeting) -> some View {
+    HStack(spacing: 12) {
+      Button {
+        state.selectMeeting(meeting.id)
+        if let hit = searchHits.first(where: { $0.meetingID == meeting.id }), let segment = hit.segmentID {
+          state.meetingTab = "Transcript"
+          state.selectedTranscriptSource = segment
+        }
+      } label: {
+        HStack(spacing: 12) {
+          if let app = state.meetingApps[meeting.id] {
+            InstalledAppIcon(bundleID: app, size: 22)
+          } else {
+            // In person, or no call app recorded.
+            Image(systemName: "person.2.fill").font(.system(size: 11)).foregroundStyle(Palette.secondary)
+              .frame(width: 22, height: 22).background(Palette.sidebar, in: Circle()).accessibilityHidden(true)
+          }
+          VStack(alignment: .leading, spacing: 3) {
+            Text(meeting.title).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+            HStack(spacing: 6) {
+              Text(meeting.created.formatted(date: .omitted, time: .shortened))
+              if !meeting.participants.isEmpty { Text("· " + meeting.participants).lineLimit(1) }
+              ForEach(Meeting.tagList(meeting.tags).prefix(3), id: \.self) { tag in
+                Text(tag).foregroundStyle(Palette.accent)
+              }
+            }.font(.system(size: 12)).foregroundStyle(Palette.secondary)
+            if !query.isEmpty, let hit = searchHits.first(where: { $0.meetingID == meeting.id }) {
+              Text(hit.excerpt).font(.system(size: 12)).foregroundStyle(Palette.secondary).lineLimit(2)
+            }
+          }
+          Spacer()
+          if meeting.status == "Recording" {
+            Label("Recording", systemImage: "record.circle.fill").font(.caption).foregroundStyle(Palette.red)
+          }
+        }.contentShape(Rectangle())
+      }.buttonStyle(.plain)
+      Menu {
+        Button("Open") { state.selectMeeting(meeting.id) }
+        Button("Move to Trash", role: .destructive) { deletion = meeting }
+          .disabled(!state.privacyWorkAllowed)
+      } label: {
+        Image(systemName: "ellipsis")
+      }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("More options for \(meeting.title)")
+    }.padding(.horizontal, 14).padding(.vertical, 10).workspaceSurface()
+      .contextMenu {
+        Button("Move to Trash", role: .destructive) { deletion = meeting }.disabled(!state.privacyWorkAllowed)
+      }
+  }
   static func people(_ participants: String) -> [String] {
     participants.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
   }
@@ -192,7 +240,7 @@ struct MeetingsView: View {
             state.newMeeting()
             starting = true
           } label: {
-            Label("New meeting", systemImage: "plus")
+            Label("New note", systemImage: "plus")
           }.buttonStyle(.borderedProminent).controlSize(.large)
         }
         HStack {
@@ -211,62 +259,14 @@ struct MeetingsView: View {
               "Press Record in the rail to start your first meeting."
           )
         } else {
+          // Wispr-style: past notes under Today, Yesterday and date headers, one compact row each.
           ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
-              ForEach(filtered) { meeting in
-                Button {
-                  state.selectMeeting(meeting.id)
-                  if let hit = searchHits.first(where: { $0.meetingID == meeting.id }),
-                    let segment = hit.segmentID
-                  {
-                    state.meetingTab = "Transcript"
-                    state.selectedTranscriptSource = segment
-                  }
-                } label: {
-                  HStack(alignment: .top, spacing: 20) {
-                    VStack {
-                      Text(meeting.created.formatted(.dateTime.day())).font(
-                        .system(size: 26, weight: .semibold))
-                      Text(meeting.created.formatted(.dateTime.month(.abbreviated))).font(.caption)
-                        .textCase(.uppercase)
-                    }.foregroundStyle(Palette.secondary).frame(width: 42)
-                    VStack(alignment: .leading, spacing: 8) {
-                      HStack(spacing: 8) {
-                        if let app = state.meetingApps[meeting.id] {
-                          InstalledAppIcon(bundleID: app, size: 20)
-                        }
-                        Text(meeting.title).font(.system(size: 21, weight: .semibold))
-                      }
-                      if !query.isEmpty,
-                        let hit = searchHits.first(where: { $0.meetingID == meeting.id })
-                      {
-                        Text(hit.excerpt).font(.callout).foregroundStyle(Palette.secondary)
-                          .lineLimit(2)
-                      }
-                      Text(
-                        meeting.participants.isEmpty
-                          ? "No people added" : meeting.participants
-                      ).font(.system(size: 13)).foregroundStyle(Palette.secondary)
-                      if !meeting.tags.isEmpty {
-                        Text(meeting.tags).font(.caption).foregroundStyle(Palette.accent)
-                      }
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 8) {
-                      Text(meeting.status).font(.caption).foregroundStyle(
-                        meeting.status == "Recording" ? Palette.red : Palette.secondary)
-                      Text(meeting.created.formatted(date: .omitted, time: .shortened)).font(
-                        .caption
-                      ).foregroundStyle(Palette.secondary)
-                    }
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(
-                      Palette.secondary)
-                  }.padding(22).contentShape(Rectangle()).workspaceSurface()
-                }.buttonStyle(.plain)
-                  .contextMenu {
-                    Button("Move to Trash", role: .destructive) { deletion = meeting }
-                      .disabled(!state.privacyWorkAllowed)
-                  }
+            LazyVStack(alignment: .leading, spacing: 4) {
+              ForEach(MeetingDays.group(filtered), id: \.title) { day in
+                Text(day.title).font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.secondary)
+                  .padding(.top, 14).padding(.bottom, 2).padding(.horizontal, 4)
+                  .accessibilityAddTraits(.isHeader)
+                ForEach(day.meetings) { meeting in row(meeting) }
               }
             }
           }
@@ -588,10 +588,19 @@ struct MeetingDetailView: View {
         HStack(spacing: 6) {
           Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
           TextField("Find in summary", text: $summaryQuery).textFieldStyle(.plain).focused($summaryFindFocused)
+            .onSubmit { nextSummaryMatch(outline) }
+            .onChange(of: summaryQuery) { _, _ in summaryFindIndex = -1; nextSummaryMatch(outline) }
             .onExitCommand {
               summaryQuery = ""
               summaryFinding = false
             }
+          if !summaryQuery.isEmpty {
+            let count = summaryMatches(outline).count
+            Text(count == 0 ? "No matches" : "\(max(0, summaryFindIndex) + 1) of \(count)")
+              .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary)
+            Button { nextSummaryMatch(outline) } label: { Image(systemName: "chevron.down") }
+              .buttonStyle(.plain).disabled(count == 0).accessibilityLabel("Next match")
+          }
           Button {
             summaryQuery = ""
             summaryFinding = false
@@ -609,6 +618,7 @@ struct MeetingDetailView: View {
             ? "It’s written when the meeting ends." : "Press Write summary to make one.")
         addStepField
       } else {
+        ScrollViewReader { proxy in
         ScrollView {
           VStack(alignment: .leading, spacing: 22) {
             if !state.summaryEdits.isEmpty {
@@ -625,7 +635,7 @@ struct MeetingDetailView: View {
                     sourceLinks(item.sources)
                     Spacer(minLength: 0)
                     editButton(item)
-                  }
+                  }.id(item.id)
                 }
               }
             }
@@ -667,6 +677,11 @@ struct MeetingDetailView: View {
             }
           }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
         }.workspaceSurface()
+          .onChange(of: summaryFindIndex) { _, index in
+            let ids = summaryMatches(outline)
+            if ids.indices.contains(index) { withAnimation { proxy.scrollTo(ids[index], anchor: .center) } }
+          }
+        }
       }
     }
   }
@@ -680,6 +695,19 @@ struct MeetingDetailView: View {
   }
   @State private var summaryFinding = false
   @State private var summaryQuery = ""
+  @State private var summaryFindIndex = -1
+  /// Row IDs of summary lines matching the find field, in the order they appear.
+  private func summaryMatches(_ outline: SummaryOutline) -> [String] {
+    var ids: [(String, String)] = state.summaryEdits.map { ($0.id, $0.text) }
+    ids += (outline.tldr + outline.points + outline.decisions).map { ($0.id, $0.text) }
+    ids += outline.nextSteps.flatMap(\.steps).map { ($0.id, $0.text) }
+    ids += outline.questions.map { ($0.id, $0.text) }
+    return ids.filter { found($0.1) }.map(\.0)
+  }
+  private func nextSummaryMatch(_ outline: SummaryOutline) {
+    let count = summaryMatches(outline).count
+    summaryFindIndex = count == 0 ? -1 : (summaryFindIndex + 1) % count
+  }
   @FocusState private var summaryFindFocused: Bool
   private func tabPage(_ name: String, @ViewBuilder _ content: () -> some View) -> some View {
     // Disabled as well as hidden, so inactive editors and buttons leave keyboard focus.
@@ -711,7 +739,7 @@ struct MeetingDetailView: View {
       sourceLinks(sources)
       Spacer(minLength: 0)
       if let edit { editButton(edit) }
-    }
+    }.id(edit?.id ?? text)
   }
   private func editButton(_ item: SummaryItem) -> some View {
     Button { summaryEdit = item } label: { Image(systemName: "pencil") }
@@ -719,7 +747,9 @@ struct MeetingDetailView: View {
       .accessibilityLabel("Edit this line")
   }
   @ViewBuilder private func sourceLinks(_ sources: [Evidence]) -> some View {
-    ForEach(sources.indices, id: \.self) { index in SourceLink(source: sources[index]) }
+    ForEach(sources.indices, id: \.self) { index in
+      SourceLink(source: sources[index], number: sources.count > 1 ? index + 1 : nil)
+    }
   }
   private func nextStep(_ step: SummaryOutline.Step) -> some View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -737,25 +767,25 @@ struct MeetingDetailView: View {
         .foregroundStyle(step.done ? Palette.secondary : Palette.ink)
       if let action = step.action {
         // Saved steps keep their owner and due date editable inline.
-        TextField("Owner", text: Binding(get: { action.owner ?? "" }, set: { value in
+        // Committed on Return or when focus leaves: saving per keystroke would regroup the
+        // list by owner mid-typing and drop the field.
+        CommitField(placeholder: "Owner", value: action.owner ?? "", label: "Owner of " + step.text) { value in
           var copy = action
           copy.owner = value.isEmpty ? nil : value
           state.saveAction(copy)
-        })).textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary).frame(width: 90)
-          .accessibilityLabel("Owner of " + step.text)
-        TextField("Due", text: Binding(get: { action.dueDate ?? "" }, set: { value in
+        }.frame(width: 90)
+        CommitField(placeholder: "Due", value: action.dueDate ?? "", label: "Due date of " + step.text) { value in
           var copy = action
           copy.dueDate = value.isEmpty ? nil : value
           state.saveAction(copy)
-        })).textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary).frame(width: 80)
-          .accessibilityLabel("Due date of " + step.text)
+        }.frame(width: 80)
       } else if let due = step.dueDate {
         Text("due \(due)").font(.caption).foregroundStyle(Palette.secondary)
       }
       sourceLinks(step.sources)
       Spacer(minLength: 0)
       if let item = step.item { editButton(item) }
-    }
+    }.id(step.id)
   }
 
   // MARK: Transcript
@@ -1210,5 +1240,28 @@ struct VoiceSampleConfirmation: View {
         }.buttonStyle(.borderedProminent).disabled(!confirmed)
       }
     }.padding(28).frame(width: 480).background(Palette.workspace)
+  }
+}
+
+/// A small text field that saves once, on Return or when focus leaves.
+struct CommitField: View {
+  let placeholder: String
+  let value: String
+  let label: String
+  let commit: (String) -> Void
+  @State private var draft: String?
+  @FocusState private var focused: Bool
+  var body: some View {
+    TextField(placeholder, text: Binding(get: { draft ?? value }, set: { draft = $0 }))
+      .textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary)
+      .focused($focused).accessibilityLabel(label)
+      .onSubmit(save)
+      .onChange(of: focused) { _, now in if !now { save() } }
+  }
+  private func save() {
+    guard let draft else { return }
+    self.draft = nil
+    let trimmed = draft.trimmingCharacters(in: .whitespaces)
+    if trimmed != value { commit(trimmed) }
   }
 }

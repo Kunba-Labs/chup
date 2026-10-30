@@ -276,6 +276,9 @@ struct SourceLink: View {
   @EnvironmentObject var state: WorkspaceState
   let source: Evidence
   var label: String?
+  /// Set when a line has several sources, so VoiceOver can tell them apart.
+  var number: Int?
+  private var name: String { number.map { "Source \($0)" } ?? "Source" }
   var body: some View {
     if state.partial.transcript {
       Group {
@@ -284,7 +287,7 @@ struct SourceLink: View {
         }
       }.font(.caption).foregroundStyle(Palette.secondary.opacity(0.6))
         .help("Source deleted: the transcript of this meeting was deleted.")
-        .accessibilityLabel("Source deleted")
+        .accessibilityLabel(name + " deleted")
     } else {
       Button {
         state.revealSource(source)
@@ -294,7 +297,8 @@ struct SourceLink: View {
         }
       }.buttonStyle(.borderless).font(.caption)
         .help(state.partial.audio ? source.quote + " (audio deleted)" : source.quote)
-        .accessibilityLabel(state.partial.audio ? "Show source in transcript, audio deleted" : "Show source in transcript")
+        .accessibilityLabel(state.partial.audio ? "Show \(name.lowercased()) in transcript, audio deleted" : "Show \(name.lowercased()) in transcript")
+        .accessibilityHint(source.quote)
     }
   }
 }
