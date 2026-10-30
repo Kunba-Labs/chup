@@ -62,7 +62,8 @@ struct WorkspaceShell: View {
             .allowsHitTesting(false)
         }
         .shadow(color: .black.opacity(0.07), radius: 14, y: 4)
-        .padding(.vertical, 10).padding(.trailing, 10)
+        // 32 pt of glass above the panel clears the traffic lights and is the window's drag area.
+        .padding(.top, 32).padding(.bottom, 10).padding(.trailing, 10)
     }.overlay {
       if state.searchOpen {
         ZStack(alignment: .top) {
@@ -488,7 +489,7 @@ struct MeetingDetailView: View {
   /// Wispr's tabs. Old tab names from deep links and saved state map onto them.
   static func tabName(_ name: String) -> String {
     switch name {
-    case "Summary", "Notes": return "Summary"
+    case "Summary": return "Summary"
     case "Transcript": return "Transcript"
     default: return "My thoughts"
     }
@@ -571,7 +572,10 @@ struct MeetingDetailView: View {
       if !state.liveOutlines.isEmpty, state.activeMeetingID == state.selectedMeetingID {
         LiveOutlineView(outlines: state.liveOutlines)
       }
-      if outline.isEmpty && state.summaryEdits.isEmpty {
+      if outline.isEmpty && state.summaryEdits.isEmpty, state.enhancedNotes?.blocks.isEmpty == false {
+        // Notes written from the transcript when no summary was made still have a home.
+        ScrollView { EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true).padding(4) }
+      } else if outline.isEmpty && state.summaryEdits.isEmpty {
         QuietEmpty(
           icon: "text.alignleft", title: "No summary yet",
           subtitle: state.segments.isEmpty

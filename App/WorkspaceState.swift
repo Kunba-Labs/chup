@@ -1033,7 +1033,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           "Audio saved. To get notes, add your app token in Settings → Advanced, then press Write notes."
       } else if cloudEnabled {
         notice = "Writing your notes…"
-        if selectedMeetingID == id { meetingTab = "Notes" }
+        if selectedMeetingID == id { meetingTab = "Summary" }
         notesQueue.append(id)
         if !processingMeeting { transcribeMeeting(meetingID: id) }
       }

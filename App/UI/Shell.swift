@@ -388,10 +388,21 @@ struct TodayView: View {
   }
 }
 
-/// Solid shell backdrop behind the rail and the floating panel. (Window glass was tried twice
-/// and made the window unreadable over busy desktops; parked until a design calls for it.)
+/// The window's own material (set on the scene with containerBackground) shows through here;
+/// this adds inbox2's sheen and a light lavender tint. Reduce Transparency gets a solid fill.
 struct ShellGlass: View {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   var body: some View {
-    LinearGradient(colors: [Palette.sidebar, Palette.backdrop], startPoint: .topLeading, endPoint: .bottomTrailing)
+    if reduceTransparency {
+      Palette.sidebar
+    } else {
+      ZStack {
+        LinearGradient(
+          stops: [.init(color: .white.opacity(0.22), location: 0), .init(color: .white.opacity(0.05), location: 0.35),
+                  .init(color: .clear, location: 0.6)],
+          startPoint: .top, endPoint: .bottom)
+        Palette.sidebar.opacity(0.12)
+      }
+    }
   }
 }

@@ -138,7 +138,7 @@ struct SearchPalette: View {
     state.page = .meetings
     if hit.meetingID != state.selectedMeetingID { state.selectMeeting(hit.meetingID) }
     guard let id = hit.segmentID else {
-      state.meetingTab = "Notes"
+      state.meetingTab = "Summary"
       return
     }
     state.selectedTranscriptSource = id
