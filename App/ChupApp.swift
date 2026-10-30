@@ -25,7 +25,7 @@ import ChupCore
   }
   var body: some Scene {
     Window("Chup!", id: "workspace") {
-      WorkspaceView().environmentObject(state).frame(minWidth: 960, minHeight: 650)
+      WorkspaceView().environmentObject(state).frame(minWidth: 900, minHeight: 650)
         .background(WorkspaceFrameRestorer())
         .preferredColorScheme(.light)
     }.defaultSize(width: 1240, height: 810)

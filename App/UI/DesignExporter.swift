@@ -409,6 +409,15 @@ import ChupCore
       try renderNative(PersonalizationView(page: page).environmentObject(state).background(Palette.workspace), size: CGSize(width: 900, height: 720), to: destination.appendingPathComponent("layout-" + page.rawValue.lowercased() + ".png"))
     }
     state.selectedMeetingID = "preview-launch"
+    state.page = .meetings
+    for width in [900.0, 1600.0] {
+      try renderNative(WorkspaceShell().environmentObject(state), size: CGSize(width: width, height: 760), to: destination.appendingPathComponent("layout-shell-\(Int(width)).png"))
+    }
+    state.page = .today
+    try renderNative(WorkspaceShell().environmentObject(state), size: CGSize(width: 1100, height: 760), to: destination.appendingPathComponent("layout-today.png"))
+    state.page = .dictionary
+    try renderNative(WorkspaceShell().environmentObject(state), size: CGSize(width: 1100, height: 760), to: destination.appendingPathComponent("layout-personal.png"))
+    state.page = .meetings
     for tab in ["Summary", "My notes", "Transcript", "Actions", "Private thoughts"] {
       try renderNative(MeetingDetailView(initialTab: tab).environmentObject(state).background(Palette.workspace), size: CGSize(width: 900, height: 760), to: destination.appendingPathComponent("layout-meeting-" + tab.lowercased().replacingOccurrences(of: " ", with: "-") + ".png"))
     }

@@ -26,10 +26,10 @@ approved before any build work starts.
 
 ## F2. App shell
 - [ ] A glass icon rail switches between Today, Meetings, Dictation, Notebook, Personal, Search (⌘K) and Settings, with a Record button at the bottom.
-  - Accept: every icon has a tooltip and a VoiceOver label, and the rail can be used from the keyboard. With Reduce Transparency on, the rail has a solid background.
-- [ ] A list column per module can be collapsed with ⌘\.
-  - Accept: you can switch between meetings with one click while the detail stays open. The window stays usable at 900 pt wide.
-- [ ] Content sits in a floating rounded panel.
+  - Accept: every icon has a tooltip and a VoiceOver label, and the rail can be used from the keyboard. With Reduce Transparency on, the rail has a solid background. (gap: rail with ⌘1–⌘6, tooltips, labels and solid fallback shipped; the Search entry lands with the ⌘K palette in F6.)
+- [x] A list column per module can be collapsed with ⌘\.
+  - Accept: you can switch between meetings with one click while the detail stays open. The window stays usable at 900 pt wide. (Meetings has the column; Dictation, Notebook and Personal are lists themselves. Below 940 pt of panel the column steps aside automatically.)
+- [x] Content sits in a floating rounded panel.
   - Accept: content does not clip at 900 pt or at 1600 pt wide.
 
 ## F3. Meeting page
@@ -107,14 +107,14 @@ approved before any build work starts.
 - [ ] The capture-source picker and meeting rows show the real app icon read from the installed app.
   - Accept: Zoom, Teams, FaceTime and browsers show their own icons. Apps that aren't installed show a generic symbol. No third-party logos are bundled.
 - [ ] Dictionary, Snippets and Styles live in a Personal module in the rail.
-  - Accept: create, edit, delete and search work for each.
+  - Accept: create, edit, delete and search work for each. (gap: Personal module with a Dictionary | Snippets | Styles switch shipped; per-list search lands with F6.)
 
 ## F8. Today home
-- [ ] Today shows a greeting with Record meeting and Dictate actions.
+- [x] Today shows a greeting with Record meeting and Dictate actions.
   - Accept: both start the same flows as the rail and menu.
-- [ ] Today shows the 3 most recent meetings and the open action items across all meetings.
+- [x] Today shows the 3 most recent meetings and the open action items across all meetings.
   - Accept: checking off an item updates the item inside its meeting. Trashed meetings are excluded.
-- [ ] On first run, an empty Today works as the first-run guide.
+- [x] On first run, an empty Today works as the first-run guide.
   - Accept: a fresh install with no data shows guidance, not sample data presented as real.
 
 ## F9. Floating surfaces

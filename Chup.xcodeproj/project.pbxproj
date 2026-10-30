@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0140CEC246F4611886A8E1F7 /* Shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210C2DCF47CD4D22236D3484 /* Shell.swift */; };
 		0237E234DF59BE430581E9F5 /* AssistantRouteDevices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C042F45AEF8DD558DCB8D2 /* AssistantRouteDevices.swift */; };
 		0E85B97430E4DE3415627ACC /* LocalSpeechModel.json in Resources */ = {isa = PBXBuildFile; fileRef = 2EFB557A7A12064321D5DB97 /* LocalSpeechModel.json */; };
 		1108AA200B98985E08F14B00 /* FluidAudio-vbx-LICENSE.md in Resources */ = {isa = PBXBuildFile; fileRef = E646FCF429D51F65E2FAE0DE /* FluidAudio-vbx-LICENSE.md */; };
@@ -113,6 +114,7 @@
 		19C86CE903F8B4EFA2CD77E8 /* PasteIntegrationValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteIntegrationValidation.swift; sourceTree = "<group>"; };
 		1E150C2465963FD2E8C8CB71 /* VoiceRenderSink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRenderSink.swift; sourceTree = "<group>"; };
 		1F65760D2F8A98C27A6CF24A /* MeetingMCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingMCPServer.swift; sourceTree = "<group>"; };
+		210C2DCF47CD4D22236D3484 /* Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shell.swift; sourceTree = "<group>"; };
 		2160AF69C5CAF08027AB96ED /* TranscriptionLabValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionLabValidation.swift; sourceTree = "<group>"; };
 		2205AAFCCB3C4650D165FE31 /* SQLCipher.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = SQLCipher.txt; sourceTree = "<group>"; };
 		222145F9B4D63BF301B064CA /* LibraryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViews.swift; sourceTree = "<group>"; };
@@ -283,6 +285,7 @@
 				B1C31C8B411CEBDDD21F7EC5 /* RecordingWaveform.swift */,
 				318193F986D8DD370C887576 /* ReliabilityViews.swift */,
 				91704C2A3DAD8FCFA3C062F3 /* SettingsView.swift */,
+				210C2DCF47CD4D22236D3484 /* Shell.swift */,
 				31DFB027CAFC9249FDB61D3A /* StorageSettingsView.swift */,
 				7CE34B4F998A8B859137194D /* Theme.swift */,
 				153A7A069759A5235EF69E10 /* TranscriptionLabView.swift */,
@@ -526,6 +529,7 @@
 				26E7A1C1B3E25980793A4A5B /* RunningBuild.swift in Sources */,
 				9C539C3EB66F2D15D5FDACBB /* ScreenAudioCapture.swift in Sources */,
 				531CE0A511AD9F4DE5B5DE00 /* SettingsView.swift in Sources */,
+				0140CEC246F4611886A8E1F7 /* Shell.swift in Sources */,
 				F4B8FE8E1C3AFE60488E5532 /* ShortDictationFilter.swift in Sources */,
 				4E7F95533A53352B6709A063 /* ShortcutCallbackDelivery.swift in Sources */,
 				2066E3B860F843A903D58A3A /* ShortcutRegistry.swift in Sources */,

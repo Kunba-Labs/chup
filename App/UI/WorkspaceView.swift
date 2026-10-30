@@ -5,85 +5,7 @@ struct WorkspaceView: View {
   @EnvironmentObject var state: WorkspaceState
   @Environment(\.openWindow) private var openWindow
   var body: some View {
-    HStack(spacing: 0) {
-      VStack(alignment: .leading, spacing: 0) {
-        HStack(spacing: 12) {
-          WaveMark().scaleEffect(0.75).frame(width: 34)
-          Text("Chup!").font(.system(size: 19, weight: .semibold))
-            .lineSpacing(0)
-        }.padding(.top, 28).padding(.bottom, 38).padding(.horizontal, 24)
-        Text("YOUR WORKSPACE").font(.system(size: 10, weight: .semibold)).tracking(1.7)
-          .foregroundStyle(Palette.secondary).padding(.horizontal, 25).padding(.bottom, 12)
-        ForEach(WorkspacePage.allCases.filter { $0 != .settings }) { page in
-          Button {
-            state.page = page
-          } label: {
-            HStack(spacing: 12) {
-              if page == .dictation && state.dictationStatus == .processing {
-                ProcessingCircle().frame(width: 18)
-              } else if page == .dictation && state.dictationStatus == .listening {
-                VoiceWaveform(samples: state.micWaveform, width: 18, height: 20)
-              } else {
-                Image(systemName: page.icon).frame(width: 18)
-              }
-              Text(page.rawValue)
-              Spacer()
-              if page == .dictation && state.pendingDictations > 0 {
-                Text("\(state.pendingDictations)").font(.caption.monospacedDigit())
-                  .foregroundStyle(Palette.secondary)
-                  .accessibilityLabel("\(state.pendingDictations) dictations processing")
-              }
-            }.padding(.vertical, 10).padding(.horizontal, 14).contentShape(Rectangle()).background(
-              state.page == page ? Palette.paper : .clear, in: RoundedRectangle(cornerRadius: 8))
-          }.buttonStyle(.plain).padding(.horizontal, 12).foregroundStyle(
-            state.page == page ? Palette.ink : Palette.secondary)
-        }
-        Spacer()
-        VStack(alignment: .leading, spacing: 9) {
-          HStack(spacing: 7) {
-            Image(
-              systemName: state.meetingStatus == .recording ? "record.circle.fill" : "lock.shield"
-            ).foregroundStyle(state.meetingStatus == .recording ? Palette.red : Palette.accent)
-            Text(state.meetingStatus == .recording ? "Recording locally" : "A space of your own")
-              .font(.caption.weight(.medium))
-          }
-          Text(state.cloudEnabled ? "AI processing enabled" : "Audio & notes stay on this Mac")
-            .font(.caption2).foregroundStyle(Palette.secondary)
-        }.padding(20)
-        Button {
-          state.page = .settings
-        } label: {
-          Label("Settings", systemImage: "gearshape").frame(
-            maxWidth: .infinity, alignment: .leading
-          ).padding(16)
-        }.buttonStyle(.plain).foregroundStyle(Palette.secondary)
-      }.frame(width: 218).background(Palette.sidebar)
-      Rectangle().fill(Palette.border).frame(width: 1)
-      VStack(spacing: 0) {
-        if let notice = state.notice {
-          HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "info.circle").foregroundStyle(Palette.accent)
-            Text(notice).font(.system(size: 12))
-              .fixedSize(horizontal: false, vertical: true)
-              .frame(maxWidth: .infinity, alignment: .leading)
-            Button {
-              state.notice = nil
-            } label: {
-              Image(systemName: "xmark")
-            }.buttonStyle(.plain).accessibilityLabel("Dismiss notice")
-          }.padding(13).background(Palette.paper)
-        }
-        Group {
-          switch state.page {
-          case .meetings: MeetingsView()
-          case .dictation: DictationView()
-          case .notebook: NotebookView()
-          case .dictionary, .snippets, .styles: PersonalizationView(page: state.page).id(state.page)
-          case .settings: SettingsView()
-          }
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
-      }.background(Palette.workspace)
-    }.foregroundStyle(Palette.ink).tint(Palette.accent)
+    WorkspaceShell()
       .onAppear {
         if ProcessInfo.processInfo.arguments.contains("--validate-audio") { return }
         if state.isPreview {
@@ -103,6 +25,48 @@ struct WorkspaceView: View {
       }
   }
 }
+/// Glass rail beside the floating content panel.
+struct WorkspaceShell: View {
+  @EnvironmentObject var state: WorkspaceState
+  var body: some View {
+    HStack(spacing: 0) {
+      GlassRail()
+      VStack(spacing: 0) {
+        if let notice = state.notice {
+          HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "info.circle").foregroundStyle(Palette.accent)
+            Text(notice).font(.system(size: 12))
+              .fixedSize(horizontal: false, vertical: true)
+              .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+              state.notice = nil
+            } label: {
+              Image(systemName: "xmark")
+            }.buttonStyle(.plain).accessibilityLabel("Dismiss notice")
+          }.padding(13).background(Palette.paper)
+        }
+        Group {
+          switch state.page {
+          case .today: TodayView()
+          case .meetings: MeetingsView()
+          case .dictation: DictationView()
+          case .notebook: NotebookView()
+          case .dictionary, .snippets, .styles: PersonalModuleView()
+          case .settings: SettingsView()
+          }
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+      }.background(Palette.workspace).clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay {
+          RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.border.opacity(0.8), lineWidth: 0.5)
+            .allowsHitTesting(false)
+        }
+        .shadow(color: .black.opacity(0.07), radius: 14, y: 4).padding(10)
+    }.background(
+      LinearGradient(
+        colors: [Palette.sidebar, Palette.backdrop], startPoint: .topLeading,
+        endPoint: .bottomTrailing)).foregroundStyle(Palette.ink).tint(Palette.accent)
+  }
+}
 struct PageHeader: View {
   var eyebrow: String
   var title: String
@@ -118,6 +82,7 @@ struct PageHeader: View {
 }
 struct MeetingsView: View {
   @EnvironmentObject var state: WorkspaceState
+  @AppStorage("meetingListCollapsed") private var listCollapsed = false
   @State private var deletion: Meeting?
   @State private var query = ""
   @State private var starting = false
@@ -141,7 +106,19 @@ struct MeetingsView: View {
   }
   var body: some View {
     if state.selectedMeetingID != nil {
-      MeetingDetailView(initialTab: state.meetingTab)
+      // The meeting page needs ~700 pt, so the list steps aside in narrow windows.
+      GeometryReader { geometry in
+        HStack(spacing: 0) {
+          if !listCollapsed && geometry.size.width >= 940 {
+            MeetingListColumn()
+            Rectangle().fill(Palette.border).frame(width: 0.5)
+          }
+          MeetingDetailView(initialTab: state.meetingTab).id(state.selectedMeetingID)
+        }
+      }.background {
+        Button("Toggle meeting list") { listCollapsed.toggle() }
+          .keyboardShortcut("\\", modifiers: .command).opacity(0).accessibilityHidden(true)
+      }
     } else {
       VStack(alignment: .leading, spacing: 26) {
         HStack(alignment: .top) {

@@ -17,6 +17,7 @@ enum Palette {
   static let ink = color(0x16151A, 0xF4F3F8), secondary = color(0x615E6D, 0xA9A6B5),
     accent = color(0x5B3DE6, 0xB9A8FF), red = color(0xB03D30, 0xF29A8C)
   static let border = color(0xDCD9E6, 0x34323D)
+  static let backdrop = color(0xF5ECE6, 0x121116)
   static let violet = Color(red: 106 / 255, green: 76 / 255, blue: 245 / 255)
   static let coral = Color(red: 232 / 255, green: 115 / 255, blue: 90 / 255)
   static let gradient = LinearGradient(

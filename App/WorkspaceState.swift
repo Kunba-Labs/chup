@@ -5,6 +5,7 @@ import CryptoKit
 import ChupCore
 
 enum WorkspacePage: String, CaseIterable, Identifiable {
+  case today = "Today"
   case dictation = "Dictation"
   case meetings = "Meetings"
   case notebook = "Notebook"
@@ -15,6 +16,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   var id: String { rawValue }
   var icon: String {
     switch self {
+    case .today: return "sun.max"
     case .dictation: return "waveform"
     case .meetings: return "person.2"
     case .notebook: return "book.closed"
