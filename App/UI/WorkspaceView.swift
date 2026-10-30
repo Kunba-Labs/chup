@@ -351,18 +351,24 @@ struct MeetingDetailView: View {
       ).padding(.top, 14).padding(.bottom, 16)
       tabBar
       Group {
-        switch tab {
-        case "Summary": summaryTab
-        case "Transcript": transcriptTab
-        default: thoughtsTab
+        // All three stay alive so each keeps its own scroll position.
+        ZStack {
+          tabPage("My thoughts") { thoughtsTab }
+          tabPage("Summary") { summaryTab }
+          tabPage("Transcript") { transcriptTab }
         }
-      }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(.top, 14)
+      }.frame(maxWidth: .infinity, minHeight: 120, maxHeight: .infinity).padding(.top, 14)
       askDock
     }.padding(30)
       .background {
-        Button("Find in transcript") {
-          revealTranscript()
-          findFocused = true
+        Button("Find") {
+          if tab == "Summary" {
+            summaryFinding = true
+            summaryFindFocused = true
+          } else {
+            revealTranscript()
+            findFocused = true
+          }
         }.keyboardShortcut("f", modifiers: .command).opacity(0).accessibilityHidden(true)
       }
       .onChange(of: state.meetingTab) { _, new in
@@ -572,6 +578,21 @@ struct MeetingDetailView: View {
       if !state.liveOutlines.isEmpty, state.activeMeetingID == state.selectedMeetingID {
         LiveOutlineView(outlines: state.liveOutlines)
       }
+      if summaryFinding {
+        HStack(spacing: 6) {
+          Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
+          TextField("Find in summary", text: $summaryQuery).textFieldStyle(.plain).focused($summaryFindFocused)
+            .onExitCommand {
+              summaryQuery = ""
+              summaryFinding = false
+            }
+          Button {
+            summaryQuery = ""
+            summaryFinding = false
+          } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain)
+            .foregroundStyle(Palette.secondary).accessibilityLabel("Close find")
+        }.font(.system(size: 13)).padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
+      }
       if outline.isEmpty && state.summaryEdits.isEmpty, state.enhancedNotes?.blocks.isEmpty == false {
         // Notes written from the transcript when no summary was made still have a home.
         ScrollView { EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true).padding(4) }
@@ -628,12 +649,31 @@ struct MeetingDetailView: View {
                 ForEach(outline.questions) { item in bullet(item.text, sources: item.sources, edit: item) }
               }
             }
+            if state.enhancedNotes?.blocks.isEmpty == false {
+              DisclosureGroup {
+                EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true).padding(.top, 8)
+              } label: {
+                Text("Notes filled in from the transcript").font(.system(size: 15, weight: .semibold))
+              }
+            }
           }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
         }.workspaceSurface()
       }
     }
   }
   @State private var newStep = ""
+  @State private var summaryFinding = false
+  @State private var summaryQuery = ""
+  @FocusState private var summaryFindFocused: Bool
+  private func tabPage(_ name: String, @ViewBuilder _ content: () -> some View) -> some View {
+    content().opacity(tab == name ? 1 : 0).allowsHitTesting(tab == name)
+      .accessibilityHidden(tab != name)
+  }
+  /// Summary lines matching the find field get a highlight.
+  private func found(_ text: String) -> Bool {
+    let query = summaryQuery.trimmingCharacters(in: .whitespaces)
+    return !query.isEmpty && text.localizedCaseInsensitiveContains(query)
+  }
   private func addStep() {
     let text = newStep.trimmingCharacters(in: .whitespaces)
     guard !text.isEmpty else { return }
@@ -650,6 +690,7 @@ struct MeetingDetailView: View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
       Text("•").foregroundStyle(Palette.secondary)
       Text(text).font(.system(size: 15)).textSelection(.enabled)
+        .background(found(text) ? Palette.accent.opacity(0.15) : .clear)
       sourceLinks(sources)
       Spacer(minLength: 0)
       if let edit {
@@ -674,6 +715,7 @@ struct MeetingDetailView: View {
         }
       })).labelsHidden().toggleStyle(.checkbox).accessibilityLabel("Done: " + step.text)
       Text(step.text).font(.system(size: 15)).strikethrough(step.done)
+        .background(found(step.text) ? Palette.accent.opacity(0.15) : .clear)
         .foregroundStyle(step.done ? Palette.secondary : Palette.ink)
       if let due = step.dueDate { Text("due \(due)").font(.caption).foregroundStyle(Palette.secondary) }
       sourceLinks(step.sources)
@@ -746,7 +788,8 @@ struct MeetingDetailView: View {
   /// Wispr's "Ask anything": a bar at the bottom that opens the conversation above it.
   @ViewBuilder private var askDock: some View {
     if askOpen {
-      AssistantView { askOpen = false }.frame(height: 420).padding(16).workspaceSurface().padding(.top, 12)
+      AssistantView { askOpen = false }.padding(16).frame(minHeight: 200, maxHeight: 420)
+        .workspaceSurface().padding(.top, 12).layoutPriority(-1)
     } else {
       Button {
         askOpen = true
