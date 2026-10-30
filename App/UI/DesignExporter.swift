@@ -101,6 +101,7 @@ import ChupCore
             text: line.0, speakerID: line.1, track: line.1.hasSuffix("microphone") ? .microphone : .remote,
             provisional: true)
         }
+        state.liveLines = state.segments
         state.micWaveform = (0..<16).map { Float(0.25 + 0.6 * abs(sin(Double($0) * 0.7))) }
         let sidebar = MeetingSidebar(state: state)
         try renderNative(

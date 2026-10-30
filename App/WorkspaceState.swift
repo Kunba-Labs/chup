@@ -155,6 +155,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var assistantHistory: [AssistantExchange] = []
   @Published var trash: [TrashEntry] = []
   @Published var searchOpen = false
+  /// The recording meeting's newest live captions, whichever meeting is open.
+  @Published var liveLines: [TranscriptSegment] = []
   /// Meeting ID → bundle ID of the app its call audio came from.
   @Published var meetingApps: [String: String] = [:]
   /// A ⌘K result hands its text to the list it opens, which filters to it.
@@ -1420,6 +1422,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   func readWave(_ url: URL) throws -> Data { try AudioJournal.wave(packets: packets(url)) }
   func startLiveCaptions(meetingID: String) async {
     stopLiveCaptions()
+    if liveLines.first?.meetingID != meetingID { liveLines = [] }
     do {
       let client = try backend()
       for track: TrackKind in meetingPID == 0 ? [.microphone] : [.microphone, .remote] {
@@ -1432,6 +1435,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
                 try self.db().put(
                   segment, kind: "segment", id: segment.id, parent: meetingID,
                   searchable: segment.text)
+                if self.activeMeetingID == meetingID {
+                  self.liveLines = Array((self.liveLines + [segment]).suffix(4))
+                }
                 if self.selectedMeetingID == meetingID { try self.refreshDetail() }
                 self.scheduleOutline(meetingID: meetingID)
               } catch {

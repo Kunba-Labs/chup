@@ -365,7 +365,9 @@ public final class WorkspaceStore {
         $0.id == requested.id
       }
       guard (before?.version ?? 0) == expectedVersion else { throw WorkspaceError.staleVersion }
-      if requested.origin == "transcript" {
+      // Evidence is checked when sources are set or change; edits that keep the saved sources
+      // stay possible after the transcript itself was deleted.
+      if requested.origin == "transcript", before?.sources != requested.sources {
         let item = SummaryItem(
           category: "action", text: requested.title, owner: requested.owner,
           dueDate: requested.dueDate, status: requested.status, sources: requested.sources)

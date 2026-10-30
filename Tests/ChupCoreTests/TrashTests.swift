@@ -67,6 +67,22 @@ final class TrashTests: XCTestCase {
     XCTAssertTrue(try store.searchTranscriptLines("launch").isEmpty)
   }
 
+  func testTranscriptActionStaysEditableAfterTranscriptDelete() throws {
+    let (store, _) = try workspace()
+    try store.put(Meeting(id: "m", title: "Launch"), kind: "meeting", id: "m", searchable: "Launch")
+    let segment = TranscriptSegment(id: "s", meetingID: "m", start: 0, end: 2, text: "Sam ships the beta", speakerID: "a", track: .microphone)
+    try store.put(segment, kind: "segment", id: "s", parent: "m", searchable: segment.text)
+    let action = ActionRecord(meetingID: "m", title: "Ship the beta", sources: [Evidence(segmentID: "s", quote: "Sam ships the beta")], origin: "transcript")
+    var saved = try store.writeAction(action, expectedVersion: 0, requestID: "a1").after
+    try store.deleteMeetingTranscript("m")
+    saved.status = "done"
+    XCTAssertEqual(try store.writeAction(saved, expectedVersion: saved.version, requestID: "a2").after.status, "done")
+    var moved = saved
+    moved.version = saved.version + 1
+    moved.sources = [Evidence(segmentID: "gone", quote: "x")]
+    XCTAssertThrowsError(try store.writeAction(moved, expectedVersion: moved.version, requestID: "a3"))
+  }
+
   func testTagListSplitsOnCommaAndDot() {
     XCTAssertEqual(Meeting.tagList("Product · Launch, product,  , Q3"), ["Product", "Launch", "Q3"])
   }

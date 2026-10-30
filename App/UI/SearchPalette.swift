@@ -43,7 +43,7 @@ struct SearchPalette: View {
           id: "d/" + entry.id, group: "Dictations", icon: "waveform",
           title: String(entry.text.prefix(70)), detail: entry.created.formatted(date: .abbreviated, time: .shortened)
         ) {
-          state.listQuery = String(entry.text.prefix(40))
+          state.listQuery = q
           state.page = .dictation
         }
       }

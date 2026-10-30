@@ -76,7 +76,7 @@ struct MeetingSidebarView: View {
       if !sidebar.collapsed {
         level
         if state.inputLost || state.micSilentSeconds != nil { noAudioWarning }
-        if (state.liveCaptionsEnabled && state.cloudEnabled) || state.segments.contains(where: \.provisional) {
+        if (state.liveCaptionsEnabled && state.cloudEnabled) || !state.liveLines.isEmpty {
           liveText
         }
         if onMeeting { notes } else {
@@ -116,6 +116,7 @@ struct MeetingSidebarView: View {
     VStack(spacing: 6) {
       ZStack {
         VoiceWaveform(samples: paused ? [] : state.micWaveform, width: 288, height: 64, barCount: 30)
+          .accessibilityHidden(true)
         Capsule().fill(.white.opacity(0.85)).frame(width: 2, height: 58).accessibilityHidden(true)
       }.frame(maxWidth: .infinity)
       HStack(spacing: 12) {
@@ -126,7 +127,7 @@ struct MeetingSidebarView: View {
             receiving: state.remoteLastPacket.map { Date().timeIntervalSince($0) < 3 } ?? false)
         }
       }
-    }.accessibilityElement(children: .combine).accessibilityLabel("Live audio level")
+    }
   }
 
   private var noAudioWarning: some View {
@@ -150,7 +151,7 @@ struct MeetingSidebarView: View {
 
   /// Older lines fade and blur; the current line is large. Live captions only know mic vs call.
   private var liveText: some View {
-    let recent = Array(state.segments.filter(\.provisional).suffix(4))
+    let recent = state.liveLines
     return VStack(alignment: .leading, spacing: 10) {
       if recent.isEmpty {
         Text("Listening… text appears a few seconds after someone speaks.")
