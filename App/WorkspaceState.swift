@@ -431,6 +431,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         meeting.status = "Recovered — capture interrupted"
         try saveMeeting(meeting)
         let recoveredID = meeting.id
+        // A quit, crash or power loss skipped Stop & save; still write the transcript and notes.
+        if cloudEnabled, !notesQueue.contains(recoveredID) { notesQueue.append(recoveredID) }
         if let key {
           Task {
             do {
