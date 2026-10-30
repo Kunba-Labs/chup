@@ -4,15 +4,19 @@ import SwiftUI
 struct MeetingActionsView: View {
   @EnvironmentObject var state: WorkspaceState
   @State private var title = ""
+  /// Inside the Notes pane: no own scroll view, smaller heading.
+  var embedded = false
   var body: some View {
-    VStack(alignment: .leading, spacing: 18) {
-      Text("What happens next").font(.system(size: 25, weight: .semibold)).padding(.top, 24)
+    VStack(alignment: .leading, spacing: embedded ? 10 : 18) {
+      Text(embedded ? "Action items" : "What happens next")
+        .font(.system(size: embedded ? 17 : 25, weight: .semibold)).padding(.top, embedded ? 0 : 24)
       HStack {
         TextField("Add an action…", text: $title).onSubmit(add)
         Button("Add", action: add).disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
       }
-      ScrollView {
+      scrollable {
         ForEach(state.actions.filter { $0.status != "archived" }) { action in
+          if embedded { compactRow(action) } else {
           VStack(alignment: .leading, spacing: 10) {
             HStack {
               Toggle(
@@ -53,11 +57,58 @@ struct MeetingActionsView: View {
                 .buttonStyle(.borderless).font(.caption)
             }
           }.padding(20).workspaceSurface()
+          }
         }
       }
       Button("Undo last action change") { state.undoAction() }.disabled(
         state.lastActionReceipt == nil)
     }
+  }
+  /// One checklist line: tick, title, owner and date inline, first source as a link.
+  private func compactRow(_ action: ActionRecord) -> some View {
+    HStack(spacing: 10) {
+      Toggle(
+        "",
+        isOn: Binding(
+          get: { action.status == "done" },
+          set: { value in
+            var copy = action
+            copy.status = value ? "done" : "open"
+            state.saveAction(copy)
+          })
+      ).labelsHidden().accessibilityLabel("Complete " + action.title)
+      Text(action.title).font(.system(size: 14)).strikethrough(action.status == "done")
+        .foregroundStyle(action.status == "done" ? Palette.secondary : Palette.ink)
+      Spacer(minLength: 8)
+      TextField(
+        "Owner",
+        text: Binding(
+          get: { action.owner ?? "" },
+          set: { value in
+            var copy = action
+            copy.owner = value.isEmpty ? nil : value
+            state.saveAction(copy)
+          })
+      ).textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary).frame(width: 96)
+      TextField(
+        "Due",
+        text: Binding(
+          get: { action.dueDate ?? "" },
+          set: { value in
+            var copy = action
+            copy.dueDate = value.isEmpty ? nil : value
+            state.saveAction(copy)
+          })
+      ).textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary).frame(width: 90)
+      if let source = action.sources.first {
+        Button { state.revealSource(source) } label: { Image(systemName: "quote.bubble") }
+          .buttonStyle(.borderless).font(.caption).help(source.quote)
+          .accessibilityLabel("Show source in transcript")
+      }
+    }.padding(.vertical, 8).padding(.horizontal, 12).workspaceSurface()
+  }
+  @ViewBuilder private func scrollable(@ViewBuilder _ content: () -> some View) -> some View {
+    if embedded { VStack(spacing: 8) { content() } } else { ScrollView { content() } }
   }
   private func add() {
     guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -67,15 +118,18 @@ struct MeetingActionsView: View {
 }
 struct PrivateThoughtsView: View {
   @EnvironmentObject var state: WorkspaceState
+  var embedded = false
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      Text("Just for you").font(.system(size: 25, weight: .semibold)).padding(.top, 24)
+      if !embedded {
+        Text("Just for you").font(.system(size: 25, weight: .semibold)).padding(.top, 24)
+      }
       Label("These thoughts are never included in AI requests or broadcasts.", systemImage: "lock")
         .font(.caption).foregroundStyle(Palette.secondary)
       TextEditor(text: $state.thoughtsDraft).font(.system(size: 17)).scrollContentBackground(
         .hidden
       )
-      .padding(16).workspaceSurface()
+      .padding(16).frame(minHeight: embedded ? 140 : nil).workspaceSurface()
       .onChange(of: state.thoughtsDraft) { _, text in state.saveThoughts(text) }
       Text("Saved locally · version \(state.thoughts.version)").font(.caption).foregroundStyle(
         Palette.secondary)
@@ -135,10 +189,11 @@ struct SummaryEditView: View {
 struct EnhancedNotesView: View {
   @EnvironmentObject var state: WorkspaceState
   var showTab: (String) -> Void = { _ in }
+  var embedded = false
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack {
-        Text("Your notes, filled in").font(.system(size: 22, weight: .semibold))
+        Text("Your notes, filled in").font(.system(size: embedded ? 17 : 22, weight: .semibold))
         Spacer()
         if busy {
           ProgressView().controlSize(.small)
@@ -150,26 +205,27 @@ struct EnhancedNotesView: View {
           }
         }.fixedSize().disabled(busy || state.activeMeetingID == state.selectedMeetingID)
           .help("Rewrite the notes with this template")
-        Menu("Share") {
-          Button("Copy as Markdown") { state.copyNotesMarkdown() }
-          Button("Draft follow-up email") { state.draftFollowup() }
-        }.fixedSize().disabled(state.enhancedNotes?.blocks.isEmpty ?? true)
-      }.padding(.top, 24)
+        if !embedded {
+          Menu("Share") {
+            Button("Copy as Markdown") { state.copyNotesMarkdown() }
+            Button("Draft follow-up email") { state.draftFollowup() }
+          }.fixedSize().disabled(state.enhancedNotes?.blocks.isEmpty ?? true)
+        }
+      }.padding(.top, embedded ? 0 : 24)
       if let notes = state.enhancedNotes, !notes.blocks.isEmpty {
         Text("Black is what you wrote. Grey is filled in from the transcript.")
           .font(.caption).foregroundStyle(Palette.secondary)
-        ScrollView {
-          VStack(alignment: .leading, spacing: 8) {
-            ForEach(notes.blocks) { block in row(block) }
-          }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
-        }.workspaceSurface()
+        let document = VStack(alignment: .leading, spacing: 8) {
+          ForEach(notes.blocks) { block in row(block) }
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
+        if embedded { document.workspaceSurface() } else { ScrollView { document }.workspaceSurface() }
       } else {
         QuietEmpty(
           icon: "doc.text",
           title: state.activeMeetingID == state.selectedMeetingID
             ? "Notes are written when the meeting ends" : "No notes yet",
           subtitle:
-            "Jot anything in My notes or the sidebar. When you stop, Chup! keeps your lines and fills in the rest from the transcript."
+            "Jot anything in My raw notes or the sidebar. When you stop, Chup! keeps your lines and fills in the rest from the transcript."
         )
         if state.activeMeetingID != state.selectedMeetingID, !busy {
           Button("Write notes") { state.regenerateNotes(template: state.enhancedNotes?.template ?? "general") }

@@ -210,9 +210,24 @@ struct MeetingsView: View {
 }
 struct MeetingDetailView: View {
   @EnvironmentObject var state: WorkspaceState
-  @State private var tab = "My notes"
+  @State private var tab = "Notes"
   @State private var summaryEdit: SummaryItem?
-  init(initialTab: String = "My notes") { _tab = State(initialValue: initialTab) }
+  init(initialTab: String = "Notes") {
+    _tab = State(initialValue: initialTab == "Summary" ? "Summary" : "Notes")
+  }
+  @AppStorage("transcriptCollapsed") private var transcriptCollapsed = false
+  @AppStorage("transcriptWidth") private var transcriptWidth = 400.0
+  @State private var askOpen = false
+  @State private var dragStartWidth: Double?
+  /// Narrow windows show one pane; this asks for the transcript instead of the notes.
+  @State private var narrowSide = false
+  @State private var wideLayout = true
+  private var transcriptVisible: Bool { !transcriptCollapsed && (wideLayout || narrowSide) }
+  @State private var titleEdit: String?
+  @FocusState private var titleFocused: Bool
+  @State private var findQuery = ""
+  @State private var findIndex = 0
+  @FocusState private var findFocused: Bool
   @State private var editMetadata = false
   @State private var deletion: Meeting?
   @State private var title = ""
@@ -228,45 +243,7 @@ struct MeetingDetailView: View {
   @State private var resumeAfterScrub = false
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      HStack {
-        Button {
-          state.leaveMeeting()
-        } label: {
-          Label("All meetings", systemImage: "arrow.left")
-        }.buttonStyle(.plain).foregroundStyle(Palette.secondary)
-        Spacer()
-        Button {
-          state.assistantVisible = true
-        } label: {
-          Label("Ask this meeting", systemImage: "sparkle")
-        }.buttonStyle(.bordered)
-      }.padding(.bottom, 25)
-      HStack(alignment: .top) {
-        VStack(alignment: .leading, spacing: 10) {
-          Text(state.selectedMeeting?.title ?? "Meeting").font(Palette.title)
-          HStack {
-            Text(
-              state.selectedMeeting?.created.formatted(date: .abbreviated, time: .shortened) ?? "")
-            Text("·")
-            Text(
-              state.selectedMeeting?.participants.isEmpty == false
-                ? state.selectedMeeting!.participants : "Participants not named")
-          }.font(.caption).foregroundStyle(Palette.secondary)
-        }
-        Spacer()
-        Menu {
-          Button("Edit details…") {
-            title = state.selectedMeeting?.title ?? ""
-            people = state.selectedMeeting?.participants ?? ""
-            tags = state.selectedMeeting?.tags ?? ""
-            editMetadata = true
-          }
-          Button("Delete meeting…", role: .destructive) { deletion = state.selectedMeeting }
-            .disabled(!state.privacyWorkAllowed)
-        } label: {
-          Image(systemName: "ellipsis")
-        }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Meeting actions")
-      }
+      header
       HStack(spacing: 14) {
         if state.activeMeetingID == state.selectedMeetingID {
           Label(
@@ -303,106 +280,64 @@ struct MeetingDetailView: View {
             Label("Record", systemImage: "record.circle")
           }.buttonStyle(.borderedProminent).disabled(state.activeMeetingID != nil)
         }
-      }.font(.system(size: 12)).padding(14).background(
-        Palette.paper, in: RoundedRectangle(cornerRadius: 8)
-      ).padding(.top, 26).padding(.bottom, 22)
-      HStack(spacing: 25) {
-        ForEach(["Notes", "Summary", "My notes", "Transcript", "Actions", "Private thoughts"], id: \.self) {
-          label in
-          Button {
-            tab = label
-          } label: {
-            VStack(spacing: 12) {
-              Text(label).font(.system(size: 14, weight: tab == label ? .semibold : .regular))
-                .foregroundStyle(tab == label ? Palette.ink : Palette.secondary)
-              Rectangle().fill(tab == label ? Palette.accent : .clear).frame(height: 2)
-            }.frame(width: label == "Private thoughts" ? 115 : (label == "Transcript" ? 80 : 76))
-          }.buttonStyle(.plain)
-        }
-        Spacer()
-        if state.processingMeetingID == state.selectedMeetingID { ProgressView().controlSize(.small) }
-      }.overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 1) }
-      Group {
-        if tab == "My notes" {
-          VStack(alignment: .leading, spacing: 12) {
-            Text("Your side of the conversation").font(.system(size: 22, weight: .semibold)).padding(
-              .top, 24)
-            ZStack(alignment: .topLeading) {
-              if state.noteDraft.isEmpty {
-                Text("A thought, a question, something to come back to…").foregroundStyle(
-                  Palette.secondary
-                ).padding(.top, 8).padding(.leading, 5).allowsHitTesting(false)
-              }
-              TextEditor(text: $state.noteDraft).font(.system(size: 17)).scrollContentBackground(
-                .hidden
-              ).onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
-            }.padding(16).workspaceSurface().frame(maxHeight: .infinity)
-            HStack {
-              Text("Version \(state.note.version) · Stored locally").font(.caption).foregroundStyle(
-                Palette.secondary)
-              Spacer()
-              Button("Undo last edit") { state.undoNote() }.disabled(state.lastReceipt == nil)
-            }
-          }
-        } else if tab == "Actions" {
-          MeetingActionsView()
-        } else if tab == "Private thoughts" {
-          PrivateThoughtsView()
-        } else if tab == "Summary" {
-          summaryBody
-        } else if tab == "Notes" {
-          EnhancedNotesView { tab = $0 }
+      }.font(.system(size: 12)).padding(.vertical, 8).padding(.horizontal, 14).background(
+        Palette.paper, in: Capsule()
+      ).padding(.top, 14).padding(.bottom, 16)
+      GeometryReader { geometry in
+        // The transcript pane steps aside below ~760 pt of page (about an 1100 pt window).
+        let wide = geometry.size.width >= 760
+        let showSide = askOpen || (!transcriptCollapsed && wide)
+        Color.clear.frame(height: 0).onChange(of: wide, initial: true) { _, new in wideLayout = new }
+        if !wide && (askOpen || narrowSide) {
+          // Narrow window: the transcript or Ask takes the notes pane's place.
+          VStack(alignment: .leading, spacing: 10) {
+            Button {
+              askOpen = false
+              narrowSide = false
+            } label: {
+              Label("Back to notes", systemImage: "chevron.left")
+            }.buttonStyle(.plain).foregroundStyle(Palette.secondary)
+            if askOpen { AssistantView { askOpen = false } } else { transcriptBody }
+          }.frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-          transcriptBody
-        }
-      }.frame(maxWidth: .infinity, maxHeight: .infinity)
-      RecordingWaveform(
-        bins: state.waveformBins, duration: state.playbackDuration, position: state.playbackTime
-      ) { time in
-        // Click to jump; the slider below is the accessible equivalent.
-        if !state.playbackLoading { state.seekPlayback(to: time) }  // Resumes if it was playing.
-      }
-      .frame(height: 38).accessibilityHidden(true)
-      HStack {
-        Button {
-          state.playing ? state.stopPlayback() : state.play(at: state.playbackTime)
-        } label: {
-          Image(systemName: state.playing ? "pause.fill" : "play.fill")
-        }.accessibilityLabel(state.playing ? "Pause meeting audio" : "Play meeting audio")
-          .disabled(state.playbackDuration == 0 || (state.playbackLoading && !state.playing))
-        Text(WorkspaceState.time(state.playbackTime)).monospacedDigit().frame(width: 42)
-        Slider(
-          value: Binding(
-            get: { scrubbing ? scrubPosition : state.playbackTime }, set: { scrubPosition = $0 }),
-          in: 0...max(1, state.playbackDuration),
-          onEditingChanged: { editing in
-            if editing {
-              scrubPosition = state.playbackTime
-              resumeAfterScrub = state.playing
-              scrubbing = true
-              state.stopPlayback()
-            } else {
-              scrubbing = false
-              state.seekPlayback(to: scrubPosition)
-              if resumeAfterScrub { state.play(at: scrubPosition) }
-            }
+        HStack(alignment: .top, spacing: 0) {
+          notesPane.frame(maxWidth: .infinity, maxHeight: .infinity)
+          if showSide {
+            Rectangle().fill(Palette.border).frame(width: 1).padding(.horizontal, 10)
+              .overlay { Color.clear.frame(width: 12).contentShape(Rectangle()).onHover { inside in
+                inside ? NSCursor.resizeLeftRight.push() : NSCursor.pop()
+              }.gesture(DragGesture().onChanged { drag in
+                let start = dragStartWidth ?? transcriptWidth
+                dragStartWidth = start
+                transcriptWidth = min(640, max(300, start - drag.translation.width))
+              }.onEnded { _ in dragStartWidth = nil }) }
+              .accessibilityHidden(true)
+            Group {
+              if askOpen {
+                AssistantView { askOpen = false }
+              } else {
+                transcriptBody
+              }
+            }.frame(width: min(transcriptWidth, geometry.size.width * 0.55)).frame(maxHeight: .infinity)
           }
-        )
-        .accessibilityLabel("Meeting audio position")
-        .accessibilityValue(WorkspaceState.time(state.playbackTime))
-        .disabled(state.playbackDuration == 0 || state.playbackLoading)
-        Text(WorkspaceState.time(state.playbackDuration)).monospacedDigit().foregroundStyle(
-          Palette.secondary)
-        if state.playbackLoading { ProgressView().controlSize(.mini) }
-        Text("Original audio").foregroundStyle(Palette.secondary)
-        Button("Show recordings") {
-          NSWorkspace.shared.open(
-            state.root.appendingPathComponent("Recordings/\(state.selectedMeetingID ?? "")"))
         }
-      }.font(.caption).padding(.top, 16)
-    }.padding(34)
-      .onChange(of: state.meetingTab) { _, new in tab = new }
+        }
+      }
+      timeline
+    }.padding(30)
+      .background {
+        Button("Find in transcript") {
+          revealTranscript()
+          findFocused = true
+        }.keyboardShortcut("f", modifiers: .command).opacity(0).accessibilityHidden(true)
+      }
+      .onChange(of: state.meetingTab) { _, new in
+        if new == "Transcript" {
+          revealTranscript()
+        } else if new == "Notes" || new == "Summary" { tab = new }
+      }
       .onChange(of: tab) { _, new in state.meetingTab = new }
+      .onChange(of: titleFocused) { _, focused in if !focused { saveTitle() } }
       .sheet(item: $summaryEdit) { item in SummaryEditView(item: item).environmentObject(state) }
       .sheet(isPresented: $captureSheet) { CaptureSetupView().environmentObject(state) }
       .sheet(isPresented: $editMetadata) {
@@ -497,7 +432,7 @@ struct MeetingDetailView: View {
                       if let segment = state.segments.first(where: {
                         $0.id == item.sources[index].segmentID
                       }) {
-                        tab = "Transcript"
+                        revealTranscript()
                         state.selectedTranscriptSource = segment.id
                         state.play(at: segment.start)
                       }
@@ -519,6 +454,211 @@ struct MeetingDetailView: View {
       }
     }
   }
+  private var header: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(spacing: 10) {
+        Button {
+          state.leaveMeeting()
+        } label: {
+          Image(systemName: "chevron.left").frame(width: 24, height: 24)
+        }.buttonStyle(.plain).foregroundStyle(Palette.secondary).help("All meetings")
+          .accessibilityLabel("All meetings")
+        TextField("Untitled meeting", text: Binding(
+          get: { titleEdit ?? state.selectedMeeting?.title ?? "" }, set: { titleEdit = $0 }))
+          .textFieldStyle(.plain)
+          .font(.system(size: 26, weight: .semibold)).focused($titleFocused).onSubmit(saveTitle)
+          .accessibilityLabel("Meeting title")
+        Spacer(minLength: 12)
+        Menu {
+          Button("Copy notes as Markdown") { state.copyNotesMarkdown() }
+          Button("Draft follow-up email") { state.draftFollowup() }
+        } label: {
+          Label("Export", systemImage: "square.and.arrow.up")
+        }.fixedSize().disabled(state.enhancedNotes?.blocks.isEmpty ?? true)
+        Button {
+          askOpen.toggle()
+        } label: {
+          Label("Ask", systemImage: "sparkle")
+        }.buttonStyle(.bordered).help("Ask about this meeting")
+        Button {
+          if !transcriptVisible { revealTranscript() } else {
+            transcriptCollapsed = true
+            narrowSide = false
+          }
+          askOpen = false
+        } label: {
+          Image(systemName: "sidebar.right")
+        }.buttonStyle(.plain).foregroundStyle(Palette.secondary)
+          .help(transcriptVisible ? "Hide transcript" : "Show transcript")
+          .accessibilityLabel(transcriptVisible ? "Hide transcript" : "Show transcript")
+        Menu {
+          Button("Edit details…") {
+            title = state.selectedMeeting?.title ?? ""
+            people = state.selectedMeeting?.participants ?? ""
+            tags = state.selectedMeeting?.tags ?? ""
+            editMetadata = true
+          }
+          Button("Delete meeting…", role: .destructive) { deletion = state.selectedMeeting }
+            .disabled(!state.privacyWorkAllowed)
+        } label: {
+          Image(systemName: "ellipsis")
+        }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Meeting actions")
+      }
+      HStack(spacing: 6) {
+        Text(state.selectedMeeting?.created.formatted(date: .abbreviated, time: .shortened) ?? "")
+        if let people = state.selectedMeeting?.participants, !people.isEmpty {
+          Text("·")
+          Text(people).lineLimit(1)
+        }
+        ForEach(Meeting.tagList(state.selectedMeeting?.tags ?? ""), id: \.self) { tag in
+          Text(tag).font(.system(size: 11, weight: .medium)).padding(.horizontal, 8)
+            .padding(.vertical, 3).background(Palette.accent.opacity(0.12), in: Capsule())
+            .foregroundStyle(Palette.accent)
+        }
+      }.font(.caption).foregroundStyle(Palette.secondary).padding(.leading, 34)
+    }
+  }
+  private func saveTitle() {
+    // An empty title reverts to the saved one.
+    defer { titleEdit = nil }
+    let trimmed = (titleEdit ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let meeting = state.selectedMeeting, !trimmed.isEmpty, trimmed != meeting.title else { return }
+    state.renameMeeting(trimmed, participants: meeting.participants, tags: meeting.tags)
+  }
+  private var notesPane: some View {
+    VStack(alignment: .leading, spacing: 14) {
+      HStack {
+        Picker("View", selection: $tab) {
+          Text("Notes").tag("Notes")
+          Text("Summary").tag("Summary")
+        }.pickerStyle(.segmented).labelsHidden().frame(width: 200)
+        Spacer()
+        if state.processingMeetingID == state.selectedMeetingID { ProgressView().controlSize(.small) }
+      }
+      if tab == "Summary" {
+        summaryBody
+      } else {
+        ScrollView {
+          VStack(alignment: .leading, spacing: 26) {
+            MeetingActionsView(embedded: true)
+            EnhancedNotesView(showTab: { name in
+              if name == "Transcript" {
+                revealTranscript()
+              } else { tab = name }
+            }, embedded: true)
+            DisclosureGroup {
+              ZStack(alignment: .topLeading) {
+                if state.noteDraft.isEmpty {
+                  Text("A thought, a question, something to come back to…").foregroundStyle(
+                    Palette.secondary
+                  ).padding(.top, 8).padding(.leading, 5).allowsHitTesting(false)
+                }
+                TextEditor(text: $state.noteDraft).font(.system(size: 15)).scrollContentBackground(.hidden)
+                  .onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
+              }.padding(14).frame(minHeight: 160).workspaceSurface().padding(.top, 8)
+              HStack {
+                Text("Version \(state.note.version) · Stored locally").font(.caption)
+                  .foregroundStyle(Palette.secondary)
+                Spacer()
+                Button("Undo last edit") { state.undoNote() }.disabled(state.lastReceipt == nil)
+              }
+            } label: {
+              Label("My raw notes", systemImage: "pencil.line").font(.system(size: 15, weight: .semibold))
+            }
+            DisclosureGroup {
+              PrivateThoughtsView(embedded: true).padding(.top, 8)
+            } label: {
+              Label("Private thoughts", systemImage: "lock.fill").font(.system(size: 15, weight: .semibold))
+                .help("Never sent to AI, never exported, never searched")
+            }
+          }.padding(.trailing, 6).padding(.bottom, 20)
+        }
+      }
+    }
+  }
+  /// Speaker lanes over the recording, then the transport row. No audio, no timeline.
+  @ViewBuilder private var timeline: some View {
+    if state.playbackDuration == 0 && !state.playbackLoading {
+      Label("No audio for this meeting", systemImage: "waveform.slash").font(.caption)
+        .foregroundStyle(Palette.secondary).padding(.top, 12)
+    } else {
+      VStack(spacing: 6) {
+        SpeakerTimeline(
+          segments: state.segments, duration: state.playbackDuration, position: state.playbackTime
+        ) { time in
+          if !state.playbackLoading { state.seekPlayback(to: time) }
+          if let segment = state.segments.last(where: { $0.start <= time }) ?? state.segments.first {
+            revealTranscript()
+            state.selectedTranscriptSource = segment.id
+          }
+        }.frame(height: 22)
+          RecordingWaveform(
+            bins: state.waveformBins, duration: state.playbackDuration, position: state.playbackTime
+          ) { time in
+            // Click to jump; the slider below is the accessible equivalent.
+            if !state.playbackLoading { state.seekPlayback(to: time) }  // Resumes if it was playing.
+          }
+          .frame(height: 38).accessibilityHidden(true)
+          HStack {
+            Button {
+              state.playing ? state.stopPlayback() : state.play(at: state.playbackTime)
+            } label: {
+              Image(systemName: state.playing ? "pause.fill" : "play.fill")
+            }.accessibilityLabel(state.playing ? "Pause meeting audio" : "Play meeting audio")
+              .disabled(state.playbackDuration == 0 || (state.playbackLoading && !state.playing))
+            Text(WorkspaceState.time(state.playbackTime)).monospacedDigit().frame(width: 42)
+            Slider(
+              value: Binding(
+                get: { scrubbing ? scrubPosition : state.playbackTime }, set: { scrubPosition = $0 }),
+              in: 0...max(1, state.playbackDuration),
+              onEditingChanged: { editing in
+                if editing {
+                  scrubPosition = state.playbackTime
+                  resumeAfterScrub = state.playing
+                  scrubbing = true
+                  state.stopPlayback()
+                } else {
+                  scrubbing = false
+                  state.seekPlayback(to: scrubPosition)
+                  if resumeAfterScrub { state.play(at: scrubPosition) }
+                }
+              }
+            )
+            .accessibilityLabel("Meeting audio position")
+            .accessibilityValue(WorkspaceState.time(state.playbackTime))
+            .disabled(state.playbackDuration == 0 || state.playbackLoading)
+            Text(WorkspaceState.time(state.playbackDuration)).monospacedDigit().foregroundStyle(
+              Palette.secondary)
+            if state.playbackLoading { ProgressView().controlSize(.mini) }
+            Text("Original audio").foregroundStyle(Palette.secondary)
+            Button("Show recordings") {
+              NSWorkspace.shared.open(
+                state.root.appendingPathComponent("Recordings/\(state.selectedMeetingID ?? "")"))
+            }
+          }.font(.caption).padding(.top, 4)
+      }.padding(12).background(Palette.paper.opacity(0.7), in: RoundedRectangle(cornerRadius: 14))
+        .padding(.top, 14)
+    }
+  }
+  private func revealTranscript() {
+    transcriptCollapsed = false
+    askOpen = false
+    narrowSide = true
+  }
+  private var refineLocked: Bool {
+    state.processingMeeting || state.activeMeetingID == state.selectedMeetingID
+  }
+  private var findMatches: [String] {
+    let query = findQuery.trimmingCharacters(in: .whitespaces)
+    guard !query.isEmpty else { return [] }
+    return state.segments.filter { $0.text.localizedCaseInsensitiveContains(query) }.map(\.id)
+  }
+  private func nextMatch() {
+    let matches = findMatches
+    guard !matches.isEmpty else { return }
+    findIndex = (findIndex + 1) % matches.count
+    state.selectedTranscriptSource = matches[findIndex]
+  }
   private func speakerMenu(_ segment: TranscriptSegment) -> some View {
     let label = state.speakerLabel(segment.speakerID)
     return Menu(label) {
@@ -538,17 +678,36 @@ struct MeetingDetailView: View {
   }
   private var transcriptBody: some View {
     VStack(alignment: .leading) {
-      HStack {
-        Text("Every voice, in context").font(.system(size: 22, weight: .semibold))
+      HStack(spacing: 8) {
+        Text("Transcript").font(.system(size: 17, weight: .semibold))
         Spacer()
-        Button("Inspect recovery") { state.inspectRecording() }.disabled(
-          state.activeMeetingID == state.selectedMeetingID)
-        Menu("Refine transcript") {
-          Button("Transcribe / retry") { state.transcribeMeeting() }
+        Menu {
+          Button("Transcribe / retry") { state.transcribeMeeting() }.disabled(refineLocked)
           Button("Reprocess and review corrections") { state.transcribeMeeting(reprocess: true) }
-        }.disabled(
-          state.processingMeeting || state.activeMeetingID == state.selectedMeetingID)
-      }.padding(.vertical, 24)
+            .disabled(refineLocked)
+          Divider()
+          Button("Inspect recovery") { state.inspectRecording() }.disabled(
+            state.activeMeetingID == state.selectedMeetingID)
+        } label: {
+          Label("Refine", systemImage: "wand.and.stars")
+        }.fixedSize()
+      }
+      HStack(spacing: 6) {
+        Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
+        TextField("Find in transcript", text: $findQuery).textFieldStyle(.plain)
+          .focused($findFocused).onSubmit(nextMatch)
+          .onChange(of: findQuery) { _, _ in
+            findIndex = -1
+            nextMatch()
+          }
+        if !findQuery.isEmpty {
+          Text(findMatches.isEmpty ? "No matches" : "\(max(0, findIndex) + 1) of \(findMatches.count)")
+            .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary)
+          Button { nextMatch() } label: { Image(systemName: "chevron.down") }
+            .buttonStyle(.plain).disabled(findMatches.isEmpty).accessibilityLabel("Next match")
+        }
+      }.font(.system(size: 13)).padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
+        .padding(.bottom, 6)
       if state.processingMeetingID == state.selectedMeetingID {
         HStack {
           ProgressView().controlSize(.small)
@@ -591,6 +750,15 @@ struct MeetingDetailView: View {
                       Circle().fill(Palette.speaker(segment.speakerID)).frame(width: 8, height: 8)
                         .accessibilityHidden(true)
                       speakerMenu(segment)
+                      if segment.speakerName == nil && state.activeMeetingID != state.selectedMeetingID {
+                        Button("Who is this?") {
+                          newSpeakerName = ""
+                          renaming = segment
+                        }.buttonStyle(.plain).font(.system(size: 11, weight: .medium))
+                          .padding(.horizontal, 8).padding(.vertical, 3)
+                          .background(Palette.speaker(segment.speakerID).opacity(0.14), in: Capsule())
+                          .accessibilityHint("Name this speaker everywhere in the meeting")
+                      }
                     }
                     Text(
                       segment.track == .microphone
@@ -606,7 +774,9 @@ struct MeetingDetailView: View {
                     }.buttonStyle(.plain).accessibilityLabel("Correct transcript or speaker")
                   }
                   Text(segment.text).padding(5).background(
-                    state.selectedTranscriptSource == segment.id ? Palette.sidebar : .clear,
+                    state.selectedTranscriptSource == segment.id
+                      ? Palette.sidebar
+                      : findMatches.contains(segment.id) ? Palette.accent.opacity(0.10) : .clear,
                     in: RoundedRectangle(cornerRadius: 5)
                   ).font(.system(size: 16)).lineSpacing(5).textSelection(.enabled)
                 }

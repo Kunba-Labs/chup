@@ -45,6 +45,15 @@ public struct Meeting: Identifiable, Codable, Equatable {
     self.tags = tags
   }
 }
+extension Meeting {
+  /// Free-text tags split on `,` and `·`, trimmed, without empties or duplicates.
+  public static func tagList(_ tags: String) -> [String] {
+    var seen = Set<String>()
+    return tags.split(whereSeparator: { $0 == "," || $0 == "·" })
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty && seen.insert($0.lowercased()).inserted }
+  }
+}
 public struct Note: Codable, Equatable {
   public var text: String
   public var version: Int

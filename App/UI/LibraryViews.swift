@@ -277,8 +277,11 @@ struct PersonalizationView: View {
 }
 struct AssistantView: View {
   @EnvironmentObject var state: WorkspaceState
-  @Environment(\.dismiss) var dismiss
+  @Environment(\.dismiss) private var dismissSheet
   @State private var question = ""
+  /// Set when shown as the meeting page's side panel instead of a sheet.
+  var onClose: (() -> Void)?
+  private func dismiss() { onClose.map { $0() } ?? dismissSheet() }
   private var mode: AssistantMode { state.voiceMode }
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {

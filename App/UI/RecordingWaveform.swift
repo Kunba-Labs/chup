@@ -32,3 +32,37 @@ struct RecordingWaveform: View {
     }
   }
 }
+
+/// One lane of speaker-coloured spans across the meeting; click to seek.
+struct SpeakerTimeline: View {
+  let segments: [TranscriptSegment]
+  let duration: Double
+  let position: Double
+  var onSeek: (Double) -> Void
+  var body: some View {
+    GeometryReader { geometry in
+      Canvas { context, size in
+        guard duration > 0 else { return }
+        context.fill(
+          Path(roundedRect: CGRect(x: 0, y: size.height / 2 - 1, width: size.width, height: 2), cornerRadius: 1),
+          with: .color(Palette.border))
+        for segment in segments where !segment.provisional {
+          let x = CGFloat(segment.start / duration) * size.width
+          let width = max(3, CGFloat((segment.end - segment.start) / duration) * size.width)
+          context.fill(
+            Path(roundedRect: CGRect(x: x, y: 3, width: width, height: size.height - 6), cornerRadius: 3),
+            with: .color(Palette.speaker(segment.speakerID)))
+        }
+        let playhead = CGFloat(min(1, position / duration)) * size.width
+        context.fill(Path(CGRect(x: playhead - 1, y: 0, width: 2, height: size.height)), with: .color(Palette.ink))
+      }
+      .contentShape(Rectangle())
+      .onTapGesture { location in
+        guard duration > 0, geometry.size.width > 0 else { return }
+        onSeek(min(max(0, location.x / geometry.size.width), 1) * duration)
+      }
+    }
+    // The transport slider below is the accessible way to seek.
+    .accessibilityHidden(true)
+  }
+}

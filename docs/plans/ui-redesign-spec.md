@@ -21,8 +21,8 @@ approved before any build work starts.
   - Accept: no 32 pt serif titles remain in the workspace.
 - [ ] A gradient pill waveform component is used for every surface that hears audio.
   - Accept: the floating sidebar, island, indicator, rail and record pill all use it. With Reduce Motion on, the bars hold still and still show the level. (gap: island, indicator, rail, sidebar list and recording scrubber done; floating sidebar waveform lands with F4, record pill with F3.)
-- [ ] Each speaker in a meeting gets a stable colour, used consistently across the transcript, the timeline and the chips.
-  - Accept: the same speaker has the same colour in every place in one meeting. Colour is never the only cue, so the name or initial is always shown. (gap: `Palette.speaker` keyed by speaker ID, shown in the transcript; timeline and chips land with F3.)
+- [x] Each speaker in a meeting gets a stable colour, used consistently across the transcript, the timeline and the chips.
+  - Accept: the same speaker has the same colour in every place in one meeting. Colour is never the only cue, so the name or initial is always shown. (`Palette.speaker` keyed by speaker ID: transcript dot, timeline lanes and the "who is this?" chip.)
 
 ## F2. App shell
 - [ ] A glass icon rail switches between Today, Meetings, Dictation, Notebook, Personal, Search (⌘K) and Settings, with a Record button at the bottom.
@@ -33,28 +33,28 @@ approved before any build work starts.
   - Accept: content does not clip at 900 pt or at 1600 pt wide.
 
 ## F3. Meeting page
-- [ ] The header holds an inline-editable title, tag chips, the record pill, Export and Ask.
-  - Accept: a title edit is saved and survives a relaunch.
-- [ ] The left pane has a Notes | Summary toggle.
+- [x] The header holds an inline-editable title, tag chips, the record pill, Export and Ask.
+  - Accept: a title edit is saved and survives a relaunch. (Chips are read-only here; adding and removing them is F5.)
+- [x] The left pane has a Notes | Summary toggle.
   - Notes is the merged document, with action items as a checklist at the top and private thoughts as a locked section at the end.
   - Summary keeps today's evidence cards, pins and versions.
   - Accept: pinned edits and summary versions from before the redesign still show. Private thoughts never appear in search or exports.
-- [ ] The transcript sits in the right pane and can be resized or collapsed. It collapses automatically below 1100 pt.
-  - Accept: segment correction and speaker rename still work from this pane.
-- [ ] The transcript pane has a find field that highlights matches and steps through them.
+- [x] The transcript sits in the right pane and can be resized or collapsed. It collapses automatically below 1100 pt.
+  - Accept: segment correction and speaker rename still work from this pane. (In narrow windows a reveal swaps it in place of the notes, with Back to notes.)
+- [x] The transcript pane has a find field that highlights matches and steps through them.
   - Accept: ⌘F inside the meeting focuses it, and Enter moves to the next match.
-- [ ] A timeline scrubber at the bottom shows speaker-coloured segments, with play, pause and skip.
+- [x] A timeline scrubber at the bottom shows speaker-coloured segments, with play, pause and skip.
   - Accept: clicking the timeline seeks the audio and scrolls the transcript to that point. A meeting with no audio shows a timeline-free state.
-- [ ] Clicking a summary or notes citation seeks the audio and highlights the matching transcript line.
+- [x] Clicking a summary or notes citation seeks the audio and highlights the matching transcript line.
   - Accept: works for both AI notes lines and summary cards.
 - [ ] A citation whose source was deleted shows an unavailable state.
   - If the audio was deleted, the citation still highlights the transcript line, and a "no audio" mark replaces the seek.
   - If the transcript was deleted, the citation shows "source deleted": it stays visible, is not clickable, and has a tooltip that names what was deleted.
   - The note text itself is never removed or rewritten.
   - Accept: delete the audio of a meeting and click a citation, then delete its transcript and click again. Each shows the matching state, and there are no crashes or dead seeks.
-- [ ] Unknown speakers show a "who is this?" chip after Stop, and the chip opens the existing rename.
+- [x] Unknown speakers show a "who is this?" chip after Stop, and the chip opens the existing rename.
   - Accept: renaming applies to every place that speaker appears.
-- [ ] Ask opens as a panel over the transcript side, and its history stays with each meeting.
+- [x] Ask opens as a panel over the transcript side, and its history stays with each meeting.
   - Accept: leave the meeting, come back, and the earlier exchanges are still there.
 
 ## F4. Recording (floating live sidebar)
