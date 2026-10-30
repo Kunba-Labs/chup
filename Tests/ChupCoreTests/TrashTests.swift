@@ -87,3 +87,27 @@ final class TrashTests: XCTestCase {
     XCTAssertEqual(Meeting.tagList("Product · Launch, product,  , Q3"), ["Product", "Launch", "Q3"])
   }
 }
+
+final class SummaryOutlineTests: XCTestCase {
+  func testNextStepsGroupByOwnerAndSavedActionsWin() {
+    let ev = [Evidence(segmentID: "s", quote: "q")]
+    let summary = MeetingSummary(items: [
+      SummaryItem(category: "overview", text: "Ship in May.", sources: ev),
+      SummaryItem(category: "decision", text: "Netherlands first.", sources: ev),
+      SummaryItem(category: "action", text: "Write release notes", owner: "Sam", sources: ev),
+      SummaryItem(category: "action", text: "Book the venue", sources: ev),
+      SummaryItem(category: "question", text: "Pricing?", sources: ev),
+    ])
+    let saved = ActionRecord(meetingID: "m", title: "Write release notes", owner: "Sam", status: "done", sources: ev)
+    let outline = SummaryOutline(summary: summary, actions: [saved])
+    XCTAssertEqual(outline.tldr.map(\.text), ["Ship in May."])
+    XCTAssertEqual(outline.decisions.count, 1)
+    XCTAssertEqual(outline.nextSteps.map(\.owner), ["Sam", "No owner"])
+    XCTAssertEqual(outline.nextSteps[0].steps.count, 1)
+    XCTAssertTrue(outline.nextSteps[0].steps[0].done)
+    XCTAssertNotNil(outline.nextSteps[0].steps[0].action)
+    let md = outline.markdown(title: "Launch", thoughts: "budget??")
+    XCTAssertTrue(md.contains("## My thoughts\nbudget??"))
+    XCTAssertTrue(md.contains("- [x] Write release notes"))
+  }
+}

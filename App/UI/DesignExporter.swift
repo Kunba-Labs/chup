@@ -441,7 +441,7 @@ import ChupCore
     state.page = .dictionary
     try renderNative(WorkspaceShell().environmentObject(state), size: CGSize(width: 1100, height: 760), to: destination.appendingPathComponent("layout-personal.png"))
     state.page = .meetings
-    for tab in ["Notes", "Summary"] {
+    for tab in ["My thoughts", "Summary", "Transcript"] {
       try renderNative(MeetingDetailView(initialTab: tab).environmentObject(state).background(Palette.workspace), size: CGSize(width: 1200, height: 800), to: destination.appendingPathComponent("layout-meeting-" + tab.lowercased().replacingOccurrences(of: " ", with: "-") + ".png"))
     }
     for step in 0..<5 {

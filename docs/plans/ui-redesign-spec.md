@@ -150,9 +150,9 @@ approved before any build work starts.
 
 ## F11. Wispr Flow realignment (decided 2026-10-30)
 Supersedes the F3 layout, the F3 Ask panel and timeline, and the F4 dark sidebar. Their data behaviour (title save, find, citations, who-is-this chips, Discard, no-audio warning) carries over.
-- [ ] The meeting page is one column with tabs My thoughts / Summary / Transcript and an Ask anything bar docked at the bottom.
+- [x] The meeting page is one column with tabs My thoughts / Summary / Transcript and an Ask anything bar docked at the bottom.
   - Accept: each tab keeps its scroll position; ⌘F searches Summary and Transcript; Ask history stays per meeting.
-- [ ] The Summary tab shows TL;DR, themed sections, Decisions Made and Next Steps grouped by owner, each with its sources.
+- [x] The Summary tab shows TL;DR, themed sections, Decisions Made and Next Steps grouped by owner, each with its sources.
   - Accept: ticking a next step marks its action item done; pinned edits and earlier versions still show.
 - [ ] The Transcript tab shows speaker bubbles with names or You/Others, the audio player and the speaker timeline.
   - Accept: clicking a line plays from it; "Who is this?" still opens rename.

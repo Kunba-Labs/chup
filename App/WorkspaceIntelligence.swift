@@ -102,11 +102,11 @@ extension WorkspaceState {
     }
   }
   func copyNotesMarkdown() {
-    guard let notes = enhancedNotes else { return }
+    let outline = SummaryOutline(summary: summary, actions: actions)
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(
-      notes.markdown(title: selectedMeeting?.title ?? "Meeting"), forType: .string)
-    notice = "Notes copied as Markdown."
+      outline.markdown(title: selectedMeeting?.title ?? "Meeting", thoughts: noteDraft), forType: .string)
+    notice = "Copied as Markdown."
   }
   func draftFollowup() {
     guard let id = selectedMeetingID, let notes = enhancedNotes else { return }

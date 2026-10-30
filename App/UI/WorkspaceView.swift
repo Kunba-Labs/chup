@@ -279,23 +279,15 @@ struct MeetingsView: View {
 }
 struct MeetingDetailView: View {
   @EnvironmentObject var state: WorkspaceState
-  @State private var tab = "Notes"
+  @State private var tab = "My thoughts"
   @State private var summaryEdit: SummaryItem?
   init(initialTab: String = "Notes") {
-    _tab = State(initialValue: initialTab == "Summary" ? "Summary" : "Notes")
-    _revealOnAppear = State(initialValue: initialTab == "Transcript")
+    _tab = State(initialValue: Self.tabName(initialTab))
   }
-  @State private var revealOnAppear: Bool
-  @AppStorage("transcriptCollapsed") private var transcriptCollapsed = false
-  @AppStorage("transcriptWidth") private var transcriptWidth = 400.0
   @State private var askOpen = false
   private enum PartialDelete { case audio, transcript }
   @State private var partialDelete: PartialDelete?
-  @State private var dragStartWidth: Double?
   /// Narrow windows show one pane; this asks for the transcript instead of the notes.
-  @State private var narrowSide = false
-  @State private var wideLayout = true
-  private var transcriptVisible: Bool { !transcriptCollapsed && (wideLayout || narrowSide) }
   @State private var titleEdit: String?
   @FocusState private var titleFocused: Bool
   @State private var findQuery = ""
@@ -356,47 +348,15 @@ struct MeetingDetailView: View {
       }.font(.system(size: 12)).padding(.vertical, 8).padding(.horizontal, 14).background(
         Palette.paper, in: Capsule()
       ).padding(.top, 14).padding(.bottom, 16)
-      GeometryReader { geometry in
-        // The transcript pane steps aside below ~760 pt of page (about an 1100 pt window).
-        let wide = geometry.size.width >= 760
-        let showSide = askOpen || (!transcriptCollapsed && wide)
-        Color.clear.frame(height: 0).onChange(of: wide, initial: true) { _, new in wideLayout = new }
-        if !wide && (askOpen || narrowSide) {
-          // Narrow window: the transcript or Ask takes the notes pane's place.
-          VStack(alignment: .leading, spacing: 10) {
-            Button {
-              askOpen = false
-              narrowSide = false
-            } label: {
-              Label("Back to notes", systemImage: "chevron.left")
-            }.buttonStyle(.plain).foregroundStyle(Palette.secondary)
-            if askOpen { AssistantView { askOpen = false } } else { transcriptBody }
-          }.frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-        HStack(alignment: .top, spacing: 0) {
-          notesPane.frame(maxWidth: .infinity, maxHeight: .infinity)
-          if showSide {
-            Rectangle().fill(Palette.border).frame(width: 1).padding(.horizontal, 10)
-              .overlay { Color.clear.frame(width: 12).contentShape(Rectangle()).onHover { inside in
-                inside ? NSCursor.resizeLeftRight.push() : NSCursor.pop()
-              }.gesture(DragGesture().onChanged { drag in
-                let start = dragStartWidth ?? transcriptWidth
-                dragStartWidth = start
-                transcriptWidth = min(640, max(300, start - drag.translation.width))
-              }.onEnded { _ in dragStartWidth = nil }) }
-              .accessibilityHidden(true)
-            Group {
-              if askOpen {
-                AssistantView { askOpen = false }
-              } else {
-                transcriptBody
-              }
-            }.frame(width: min(transcriptWidth, geometry.size.width * 0.55)).frame(maxHeight: .infinity)
-          }
+      tabBar
+      Group {
+        switch tab {
+        case "Summary": summaryTab
+        case "Transcript": transcriptTab
+        default: thoughtsTab
         }
-        }
-      }
-      timeline
+      }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(.top, 14)
+      askDock
     }.padding(30)
       .background {
         Button("Find in transcript") {
@@ -405,18 +365,11 @@ struct MeetingDetailView: View {
         }.keyboardShortcut("f", modifiers: .command).opacity(0).accessibilityHidden(true)
       }
       .onChange(of: state.meetingTab) { _, new in
-        if new == "Transcript" {
-          revealTranscript()
-        } else if new == "Notes" || new == "Summary" { tab = new }
+        tab = Self.tabName(new)
+        askOpen = false
       }
       .onChange(of: tab) { _, new in state.meetingTab = new }
       .onChange(of: titleFocused) { _, focused in if !focused { saveTitle() } }
-      .onAppear {
-        if revealOnAppear {
-          revealOnAppear = false
-          revealTranscript()
-        }
-      }
       .sheet(item: $summaryEdit) { item in SummaryEditView(item: item).environmentObject(state) }
       .sheet(isPresented: $captureSheet) { CaptureSetupView().environmentObject(state) }
       .sheet(isPresented: $editMetadata) {
@@ -462,82 +415,6 @@ struct MeetingDetailView: View {
       }
       .confirmDeleteMeeting($deletion)
   }
-  private var summaryBody: some View {
-    VStack(alignment: .leading) {
-      HStack {
-        Text("Summary").font(.system(size: 22, weight: .semibold))
-        Spacer()
-        Button(state.summary == nil ? "Write summary" : "Write a new version") {
-          state.generateSummary()
-        }.disabled(state.segments.isEmpty || state.processingMeeting)
-      }.padding(.vertical, 24)
-      if !state.liveOutlines.isEmpty, state.activeMeetingID == state.selectedMeetingID {
-        LiveOutlineView(outlines: state.liveOutlines)
-      }
-      if !state.summaryVersions.isEmpty {
-        Menu("Earlier versions") {
-          ForEach(state.summaryVersions) { revision in
-            Button(revision.created.formatted()) { state.summary = revision.summary }
-          }
-        }
-      }
-      ForEach(state.summaryEdits) { item in
-        VStack(alignment: .leading, spacing: 6) {
-          Text("Your edit").font(.caption).foregroundStyle(Palette.accent)
-          Text(item.text)
-          Button("Edit") { summaryEdit = item }
-        }.padding(12).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
-      }
-      if let summary = state.summary {
-        ScrollView {
-          VStack(alignment: .leading, spacing: 24) {
-            ForEach(summary.items) { item in
-              VStack(alignment: .leading, spacing: 10) {
-                Text(item.category.uppercased()).font(.caption.weight(.semibold)).tracking(1.4)
-                  .foregroundStyle(Palette.accent)
-                Text(item.text).font(.system(size: 17)).textSelection(.enabled)
-                if let owner = item.owner { Text("Owner: \(owner)").font(.caption) }
-                if let due = item.dueDate { Text("Due: \(due)").font(.caption) }
-                LazyVGrid(
-                  columns: [GridItem(.adaptive(minimum: 110), alignment: .leading)],
-                  alignment: .leading, spacing: 10
-                ) {
-                  Button("Edit") { summaryEdit = item }.font(.caption)
-                  if item.category == "action" {
-                    Button("Save action") { state.createAction(from: item) }.font(.caption)
-                  }
-                  ForEach(item.sources.indices, id: \.self) { index in
-                    if state.partial.transcript {
-                      Label("Source deleted", systemImage: "quote.bubble").font(.caption)
-                        .foregroundStyle(Palette.secondary).help("The transcript of this meeting was deleted.")
-                    } else {
-                    Button {
-                      if let segment = state.segments.first(where: {
-                        $0.id == item.sources[index].segmentID
-                      }) {
-                        revealTranscript()
-                        state.selectedTranscriptSource = segment.id
-                        if !state.partial.audio { state.play(at: segment.start) }
-                      }
-                    } label: {
-                      Label(state.partial.audio ? "Source \(index+1) · no audio" : "Source \(index+1)", systemImage: "quote.bubble")
-                    }.buttonStyle(.borderless).font(.caption)
-                    }
-                  }
-                }
-              }.padding(22).workspaceSurface()
-            }
-          }.frame(maxWidth: .infinity, alignment: .leading)
-        }
-      } else {
-        QuietEmpty(
-          icon: "text.alignleft", title: "No summary yet",
-          subtitle:
-            "Get the transcript first. Then press Write summary."
-        )
-      }
-    }
-  }
   private var header: some View {
     VStack(alignment: .leading, spacing: 8) {
       HStack(spacing: 10) {
@@ -554,27 +431,11 @@ struct MeetingDetailView: View {
           .accessibilityLabel("Meeting title")
         Spacer(minLength: 12)
         Menu {
-          Button("Copy notes as Markdown") { state.copyNotesMarkdown() }
+          Button("Copy as Markdown") { state.copyNotesMarkdown() }
           Button("Draft follow-up email") { state.draftFollowup() }
         } label: {
           Label("Export", systemImage: "square.and.arrow.up")
-        }.fixedSize().disabled(state.enhancedNotes?.blocks.isEmpty ?? true)
-        Button {
-          askOpen.toggle()
-        } label: {
-          Label("Ask", systemImage: "sparkle")
-        }.buttonStyle(.bordered).help("Ask about this meeting")
-        Button {
-          if !transcriptVisible { revealTranscript() } else {
-            transcriptCollapsed = true
-            narrowSide = false
-          }
-          askOpen = false
-        } label: {
-          Image(systemName: "sidebar.right")
-        }.buttonStyle(.plain).foregroundStyle(Palette.secondary)
-          .help(transcriptVisible ? "Hide transcript" : "Show transcript")
-          .accessibilityLabel(transcriptVisible ? "Hide transcript" : "Show transcript")
+        }.fixedSize()
         Menu {
           Button("Edit details…") {
             title = state.selectedMeeting?.title ?? ""
@@ -624,68 +485,210 @@ struct MeetingDetailView: View {
     guard let meeting = state.selectedMeeting, !trimmed.isEmpty, trimmed != meeting.title else { return }
     state.renameMeeting(trimmed, participants: meeting.participants, tags: meeting.tags)
   }
-  private var notesPane: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      HStack {
-        Picker("View", selection: $tab) {
-          Text("Notes").tag("Notes")
-          Text("Summary").tag("Summary")
-        }.pickerStyle(.segmented).labelsHidden().frame(width: 200)
-        Spacer()
-        if state.processingMeetingID == state.selectedMeetingID
-          || (state.notesMeetingID != nil && state.notesMeetingID == state.selectedMeetingID)
-        {
-          ProgressView().controlSize(.small)
-          Button("Cancel") { state.cancelMeetingJobs() }.controlSize(.small)
-            .help("Stop this job. Nothing half-done is saved.")
-        }
+  /// Wispr's tabs. Old tab names from deep links and saved state map onto them.
+  static func tabName(_ name: String) -> String {
+    switch name {
+    case "Summary", "Notes": return "Summary"
+    case "Transcript": return "Transcript"
+    default: return "My thoughts"
+    }
+  }
+  private func revealTranscript() {
+    tab = "Transcript"
+    askOpen = false
+  }
+  private var busy: Bool {
+    state.processingMeetingID == state.selectedMeetingID
+      || (state.notesMeetingID != nil && state.notesMeetingID == state.selectedMeetingID)
+  }
+  private var tabBar: some View {
+    HStack(spacing: 22) {
+      ForEach(["My thoughts", "Summary", "Transcript"], id: \.self) { name in
+        Button {
+          tab = name
+        } label: {
+          VStack(spacing: 8) {
+            Text(name).font(.system(size: 14, weight: tab == name ? .semibold : .regular))
+              .foregroundStyle(tab == name ? Palette.ink : Palette.secondary)
+            Capsule().fill(tab == name ? Palette.accent : .clear).frame(height: 2)
+          }.fixedSize()
+        }.buttonStyle(.plain).accessibilityAddTraits(tab == name ? .isSelected : [])
       }
-      if tab == "Summary" {
-        summaryBody
+      Spacer()
+      if busy {
+        ProgressView().controlSize(.small)
+        Button("Cancel") { state.cancelMeetingJobs() }.controlSize(.small)
+          .help("Stop this job. Nothing half-done is saved.")
+      }
+    }.overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 1) }
+  }
+
+  // MARK: My thoughts
+
+  private var thoughtsTab: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      ZStack(alignment: .topLeading) {
+        if state.noteDraft.isEmpty {
+          Text("Type your notes here. Chup! keeps them as you wrote them.")
+            .foregroundStyle(Palette.secondary).padding(.top, 8).padding(.leading, 5).allowsHitTesting(false)
+        }
+        TextEditor(text: $state.noteDraft).font(.system(size: 16)).lineSpacing(4)
+          .scrollContentBackground(.hidden)
+          .onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
+          .accessibilityLabel("My thoughts")
+      }.padding(16).frame(maxHeight: .infinity).workspaceSurface()
+      HStack {
+        Text("Saved on this Mac").font(.caption).foregroundStyle(Palette.secondary)
+        Spacer()
+        Button("Undo last edit") { state.undoNote() }.disabled(state.lastReceipt == nil).controlSize(.small)
+      }
+      DisclosureGroup {
+        PrivateThoughtsView(embedded: true).frame(height: 160).padding(.top, 6)
+      } label: {
+        Label("Private thoughts", systemImage: "lock.fill").font(.system(size: 13, weight: .semibold))
+          .help("Only you see these. They never go to AI.")
+      }
+    }
+  }
+
+  // MARK: Summary
+
+  private var summaryTab: some View {
+    let outline = SummaryOutline(summary: state.summary, actions: state.actions)
+    return VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        if !state.summaryVersions.isEmpty {
+          Menu("Earlier versions") {
+            ForEach(state.summaryVersions) { revision in
+              Button(revision.created.formatted()) { state.summary = revision.summary }
+            }
+          }.fixedSize()
+        }
+        Spacer()
+        Button(state.summary == nil ? "Write summary" : "Update summary") { state.generateSummary() }
+          .disabled(state.segments.isEmpty || state.processingMeeting)
+      }
+      if !state.liveOutlines.isEmpty, state.activeMeetingID == state.selectedMeetingID {
+        LiveOutlineView(outlines: state.liveOutlines)
+      }
+      if outline.isEmpty && state.summaryEdits.isEmpty {
+        QuietEmpty(
+          icon: "text.alignleft", title: "No summary yet",
+          subtitle: state.segments.isEmpty
+            ? "It’s written when the meeting ends." : "Press Write summary to make one.")
       } else {
         ScrollView {
-          VStack(alignment: .leading, spacing: 26) {
-            MeetingActionsView(embedded: true)
-            EnhancedNotesView(showTab: { name in
-              if name == "Transcript" {
-                revealTranscript()
-              } else { tab = name }
-            }, embedded: true)
-            DisclosureGroup {
-              ZStack(alignment: .topLeading) {
-                if state.noteDraft.isEmpty {
-                  Text("Type your notes here…").foregroundStyle(
-                    Palette.secondary
-                  ).padding(.top, 8).padding(.leading, 5).allowsHitTesting(false)
-                }
-                TextEditor(text: $state.noteDraft).font(.system(size: 15)).scrollContentBackground(.hidden)
-                  .onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
-              }.padding(14).frame(minHeight: 160).workspaceSurface().padding(.top, 8)
-              HStack {
-                Text("Version \(state.note.version) · Stored locally").font(.caption)
-                  .foregroundStyle(Palette.secondary)
-                Spacer()
-                Button("Undo last edit") { state.undoNote() }.disabled(state.lastReceipt == nil)
+          VStack(alignment: .leading, spacing: 22) {
+            if !state.summaryEdits.isEmpty {
+              summarySection("Your edits") {
+                ForEach(state.summaryEdits) { item in bullet(item.text, sources: item.sources, edit: item) }
               }
-            } label: {
-              Label("Your typed notes", systemImage: "pencil.line").font(.system(size: 15, weight: .semibold))
             }
-            DisclosureGroup {
-              PrivateThoughtsView(embedded: true).padding(.top, 8)
-            } label: {
-              Label("Private thoughts", systemImage: "lock.fill").font(.system(size: 15, weight: .semibold))
-                .help("Only you see these. They never go to AI.")
+            if !outline.tldr.isEmpty {
+              summarySection("TL;DR") {
+                ForEach(outline.tldr) { item in
+                  HStack(alignment: .firstTextBaseline) {
+                    Text(item.text).font(.system(size: 17)).textSelection(.enabled)
+                    sourceLinks(item.sources)
+                  }
+                }
+              }
             }
-          }.padding(.trailing, 6).padding(.bottom, 20)
-        }
+            if !outline.points.isEmpty {
+              summarySection("Key points") {
+                ForEach(outline.points) { item in bullet(item.text, sources: item.sources, edit: item) }
+              }
+            }
+            if !outline.decisions.isEmpty {
+              summarySection("Decisions made") {
+                ForEach(outline.decisions) { item in bullet(item.text, sources: item.sources, edit: item) }
+              }
+            }
+            summarySection("Next steps") {
+              if outline.nextSteps.isEmpty {
+                Text("No next steps yet.").foregroundStyle(Palette.secondary)
+              }
+              ForEach(outline.nextSteps, id: \.owner) { group in
+                Text(group.owner).font(.system(size: 13, weight: .semibold)).foregroundStyle(Palette.secondary)
+                  .padding(.top, 4)
+                ForEach(group.steps) { step in nextStep(step) }
+              }
+              HStack {
+                TextField("Add a next step…", text: $newStep).textFieldStyle(.plain).onSubmit(addStep)
+                  .padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
+                Button("Add", action: addStep).disabled(newStep.trimmingCharacters(in: .whitespaces).isEmpty)
+              }.padding(.top, 4)
+            }
+            if !outline.questions.isEmpty {
+              summarySection("Open questions") {
+                ForEach(outline.questions) { item in bullet(item.text, sources: item.sources, edit: item) }
+              }
+            }
+          }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
+        }.workspaceSurface()
       }
+    }
+  }
+  @State private var newStep = ""
+  private func addStep() {
+    let text = newStep.trimmingCharacters(in: .whitespaces)
+    guard !text.isEmpty else { return }
+    state.addAction(text)
+    newStep = ""
+  }
+  private func summarySection(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(title).font(.system(size: 15, weight: .semibold)).accessibilityAddTraits(.isHeader)
+      content()
+    }
+  }
+  private func bullet(_ text: String, sources: [Evidence], edit: SummaryItem?) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: 8) {
+      Text("•").foregroundStyle(Palette.secondary)
+      Text(text).font(.system(size: 15)).textSelection(.enabled)
+      sourceLinks(sources)
+      Spacer(minLength: 0)
+      if let edit {
+        Button { summaryEdit = edit } label: { Image(systemName: "pencil") }
+          .buttonStyle(.plain).foregroundStyle(Palette.secondary).help("Edit this line")
+          .accessibilityLabel("Edit this line")
+      }
+    }
+  }
+  @ViewBuilder private func sourceLinks(_ sources: [Evidence]) -> some View {
+    ForEach(sources.prefix(2).indices, id: \.self) { index in SourceLink(source: sources[index]) }
+  }
+  private func nextStep(_ step: SummaryOutline.Step) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: 8) {
+      Toggle("", isOn: Binding(get: { step.done }, set: { done in
+        if var action = step.action {
+          action.status = done ? "done" : "open"
+          state.saveAction(action)
+        } else if var item = step.item {
+          item.status = done ? "done" : "open"
+          state.createAction(from: item)
+        }
+      })).labelsHidden().toggleStyle(.checkbox).accessibilityLabel("Done: " + step.text)
+      Text(step.text).font(.system(size: 15)).strikethrough(step.done)
+        .foregroundStyle(step.done ? Palette.secondary : Palette.ink)
+      if let due = step.dueDate { Text("due \(due)").font(.caption).foregroundStyle(Palette.secondary) }
+      sourceLinks(step.sources)
+    }
+  }
+
+  // MARK: Transcript
+
+  private var transcriptTab: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      timeline
+      transcriptBody
     }
   }
   /// Speaker lanes over the recording, then the transport row. No audio, no timeline.
   @ViewBuilder private var timeline: some View {
     if state.playbackDuration == 0 && !state.playbackLoading {
-      Label(state.partial.audio ? "Audio deleted" : "No audio for this meeting", systemImage: "waveform.slash").font(.caption)
-        .foregroundStyle(Palette.secondary).padding(.top, 12)
+      Label(state.partial.audio ? "Audio deleted" : "No audio for this meeting", systemImage: "waveform.slash")
+        .font(.caption).foregroundStyle(Palette.secondary)
     } else {
       VStack(spacing: 6) {
         SpeakerTimeline(
@@ -693,62 +696,70 @@ struct MeetingDetailView: View {
         ) { time in
           if !state.playbackLoading { state.seekPlayback(to: time) }
           if let segment = state.segments.last(where: { $0.start <= time }) ?? state.segments.first {
-            revealTranscript()
             state.selectedTranscriptSource = segment.id
           }
-        }.frame(height: 22)
-          RecordingWaveform(
-            bins: state.waveformBins, duration: state.playbackDuration, position: state.playbackTime
-          ) { time in
-            // Click to jump; the slider below is the accessible equivalent.
-            if !state.playbackLoading { state.seekPlayback(to: time) }  // Resumes if it was playing.
-          }
-          .frame(height: 38).accessibilityHidden(true)
-          HStack {
-            Button {
-              state.playing ? state.stopPlayback() : state.play(at: state.playbackTime)
-            } label: {
-              Image(systemName: state.playing ? "pause.fill" : "play.fill")
-            }.accessibilityLabel(state.playing ? "Pause meeting audio" : "Play meeting audio")
-              .disabled(state.playbackDuration == 0 || (state.playbackLoading && !state.playing))
-            Text(WorkspaceState.time(state.playbackTime)).monospacedDigit().frame(width: 42)
-            Slider(
-              value: Binding(
-                get: { scrubbing ? scrubPosition : state.playbackTime }, set: { scrubPosition = $0 }),
-              in: 0...max(1, state.playbackDuration),
-              onEditingChanged: { editing in
-                if editing {
-                  scrubPosition = state.playbackTime
-                  resumeAfterScrub = state.playing
-                  scrubbing = true
-                  state.stopPlayback()
-                } else {
-                  scrubbing = false
-                  state.seekPlayback(to: scrubPosition)
-                  if resumeAfterScrub { state.play(at: scrubPosition) }
-                }
+        }.frame(height: 18)
+        HStack {
+          Button {
+            state.playing ? state.stopPlayback() : state.play(at: state.playbackTime)
+          } label: {
+            Image(systemName: state.playing ? "pause.fill" : "play.fill")
+          }.accessibilityLabel(state.playing ? "Pause meeting audio" : "Play meeting audio")
+            .disabled(state.playbackDuration == 0 || (state.playbackLoading && !state.playing))
+          Text(WorkspaceState.time(state.playbackTime)).monospacedDigit().frame(width: 42)
+          Slider(
+            value: Binding(
+              get: { scrubbing ? scrubPosition : state.playbackTime }, set: { scrubPosition = $0 }),
+            in: 0...max(1, state.playbackDuration),
+            onEditingChanged: { editing in
+              if editing {
+                scrubPosition = state.playbackTime
+                resumeAfterScrub = state.playing
+                scrubbing = true
+                state.stopPlayback()
+              } else {
+                scrubbing = false
+                state.seekPlayback(to: scrubPosition)
+                if resumeAfterScrub { state.play(at: scrubPosition) }
               }
-            )
-            .accessibilityLabel("Meeting audio position")
-            .accessibilityValue(WorkspaceState.time(state.playbackTime))
-            .disabled(state.playbackDuration == 0 || state.playbackLoading)
-            Text(WorkspaceState.time(state.playbackDuration)).monospacedDigit().foregroundStyle(
-              Palette.secondary)
-            if state.playbackLoading { ProgressView().controlSize(.mini) }
-            Text("Original audio").foregroundStyle(Palette.secondary)
-            Button("Show audio files") {
-              NSWorkspace.shared.open(
-                state.root.appendingPathComponent("Recordings/\(state.selectedMeetingID ?? "")"))
             }
-          }.font(.caption).padding(.top, 4)
+          )
+          .accessibilityLabel("Meeting audio position")
+          .accessibilityValue(WorkspaceState.time(state.playbackTime))
+          .disabled(state.playbackDuration == 0 || state.playbackLoading)
+          Text(WorkspaceState.time(state.playbackDuration)).monospacedDigit().foregroundStyle(Palette.secondary)
+          if state.playbackLoading { ProgressView().controlSize(.mini) }
+          Button("Show audio files") {
+            NSWorkspace.shared.open(state.root.appendingPathComponent("Recordings/\(state.selectedMeetingID ?? "")"))
+          }
+        }.font(.caption)
       }.padding(12).background(Palette.paper.opacity(0.7), in: RoundedRectangle(cornerRadius: 14))
-        .padding(.top, 14)
     }
   }
-  private func revealTranscript() {
-    transcriptCollapsed = false
-    askOpen = false
-    narrowSide = true
+
+  // MARK: Ask
+
+  /// Wispr's "Ask anything": a bar at the bottom that opens the conversation above it.
+  @ViewBuilder private var askDock: some View {
+    if askOpen {
+      AssistantView { askOpen = false }.frame(height: 420).padding(16).workspaceSurface().padding(.top, 12)
+    } else {
+      Button {
+        askOpen = true
+      } label: {
+        HStack(spacing: 10) {
+          Image(systemName: "sparkle").foregroundStyle(Palette.accent)
+          Text("Ask anything about this meeting").foregroundStyle(Palette.secondary)
+          Spacer()
+          if !state.assistantHistory.isEmpty {
+            Text("\(state.assistantHistory.count) earlier").font(.caption).foregroundStyle(Palette.secondary)
+          }
+        }.font(.system(size: 14)).padding(.horizontal, 16).padding(.vertical, 12)
+          .background(Palette.paper, in: Capsule())
+          .overlay { Capsule().strokeBorder(Palette.border) }
+          .contentShape(Capsule())
+      }.buttonStyle(.plain).padding(.top, 12).accessibilityLabel("Ask anything about this meeting")
+    }
   }
   private var refineLocked: Bool {
     state.processingMeeting || state.activeMeetingID == state.selectedMeetingID
@@ -784,7 +795,6 @@ struct MeetingDetailView: View {
   private var transcriptBody: some View {
     VStack(alignment: .leading) {
       HStack(spacing: 8) {
-        Text("Transcript").font(.system(size: 17, weight: .semibold))
         Spacer()
         Menu {
           Button("Transcribe again") { state.transcribeMeeting() }.disabled(refineLocked)
