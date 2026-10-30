@@ -143,7 +143,7 @@ struct MeetingSidebarView: View {
   private var noAudioWarning: some View {
     HStack(spacing: 10) {
       VStack(alignment: .leading, spacing: 2) {
-        Text(state.inputLost ? "Microphone stopped" : "No microphone audio for \(state.micSilentSeconds ?? 20) s")
+        Text(state.inputLost ? "Microphone stopped" : "Microphone sending only silence for \(state.micSilentSeconds ?? 20) s")
           .font(.system(size: 13, weight: .semibold))
         Text("Headphones may have disconnected. Restarting keeps this meeting going.")
           .font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
@@ -199,9 +199,15 @@ struct MeetingSidebarView: View {
       }.font(.system(size: 14)).padding(8).frame(minHeight: 90, maxHeight: 150)
         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
       let items = LiveOutlineView.items(state.liveOutlines)
-      if !items.isEmpty {
-        Label("Live notes", systemImage: "sparkle").font(.system(size: 12, weight: .semibold))
-          .padding(.top, 4)
+      Label("Live notes", systemImage: "sparkle").font(.system(size: 12, weight: .semibold))
+        .padding(.top, 4)
+      if items.isEmpty {
+        Text(
+          state.liveOutlineEnabled && state.liveCaptionsEnabled && state.cloudEnabled
+            ? "Notes appear here about a minute into the conversation."
+            : "Turn on Live captions and Live outline in Settings to see notes as you talk."
+        ).font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
+      } else {
         ScrollView {
           VStack(alignment: .leading, spacing: 6) {
             ForEach(items, id: \.key) { _, item in

@@ -535,7 +535,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           self?.microphoneSignal.receive(peak: level, at: ProcessInfo.processInfo.systemUptime)
           self?.micLevel = level
           self?.micLastPacket = Date()
-          if level > 0.0005 { self?.micHeardAt = Date() }
+          // Any non-zero level means a live input; a wedged one sends exact digital silence.
+          if level > 0 { self?.micHeardAt = Date() }
         }
         if track == .remote {
           self?.remoteLevel = level

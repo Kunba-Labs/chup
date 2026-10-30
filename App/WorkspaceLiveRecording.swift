@@ -2,7 +2,8 @@ import ChupCore
 import Foundation
 
 extension WorkspaceState {
-  /// Seconds the recording microphone has been completely silent, once that passes 20 s.
+  /// Seconds the recording microphone has delivered exact digital silence (packets arriving,
+  /// every sample zero), once that passes 20 s. A quiet room never reads exactly zero.
   var micSilentSeconds: Int? {
     guard meetingStatus == .recording, let started = captureStartedAt else { return nil }
     let quiet = Date().timeIntervalSince(max(micHeardAt ?? started, started))
