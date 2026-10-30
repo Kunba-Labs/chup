@@ -149,12 +149,17 @@ extension WorkspaceState {
       notice = "Action saved."
     } catch { notice = error.localizedDescription }
   }
-  func saveAction(_ action: ActionRecord) {
+  /// Returns false when the write failed, so an editor can keep the user's text.
+  @discardableResult func saveAction(_ action: ActionRecord) -> Bool {
     do {
       lastActionReceipt = try db().writeAction(
         action, expectedVersion: action.version, requestID: UUID().uuidString)
       try refreshDetail()
-    } catch { notice = error.localizedDescription }
+      return true
+    } catch {
+      notice = error.localizedDescription
+      return false
+    }
   }
   func undoAction() {
     guard let receipt = lastActionReceipt, receipt.after.meetingID == selectedMeetingID else {

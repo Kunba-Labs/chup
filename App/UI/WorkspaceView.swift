@@ -522,6 +522,7 @@ struct MeetingDetailView: View {
       ForEach(["My thoughts", "Summary", "Transcript"], id: \.self) { name in
         Button {
           tab = name
+          askOpen = false
         } label: {
           VStack(spacing: 8) {
             Text(name).font(.system(size: 14, weight: tab == name ? .semibold : .regular))
@@ -799,12 +800,12 @@ struct MeetingDetailView: View {
         CommitField(placeholder: "Owner", value: action.owner ?? "", label: "Owner of " + step.text) { value in
           var copy = action
           copy.owner = value.isEmpty ? nil : value
-          state.saveAction(copy)
+          return state.saveAction(copy)
         }.frame(width: 90)
         CommitField(placeholder: "Due", value: action.dueDate ?? "", label: "Due date of " + step.text) { value in
           var copy = action
           copy.dueDate = value.isEmpty ? nil : value
-          state.saveAction(copy)
+          return state.saveAction(copy)
         }.frame(width: 80)
       } else if let due = step.dueDate {
         Text("due \(due)").font(.caption).foregroundStyle(Palette.secondary)
@@ -1272,7 +1273,8 @@ struct CommitField: View {
   let placeholder: String
   let value: String
   let label: String
-  let commit: (String) -> Void
+  /// Returns whether the save worked; on failure the draft stays for another try.
+  let commit: (String) -> Bool
   @State private var draft: String?
   @FocusState private var focused: Bool
   var body: some View {
@@ -1284,8 +1286,7 @@ struct CommitField: View {
   }
   private func save() {
     guard let draft else { return }
-    self.draft = nil
     let trimmed = draft.trimmingCharacters(in: .whitespaces)
-    if trimmed != value { commit(trimmed) }
+    if trimmed == value || commit(trimmed) { self.draft = nil }
   }
 }
