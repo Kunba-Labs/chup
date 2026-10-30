@@ -242,6 +242,8 @@ struct MeetingDetailView: View {
   @State private var people = ""
   @State private var tags = ""
   @State private var source: TranscriptSegment?
+  @State private var renaming: TranscriptSegment?
+  @State private var newSpeakerName = ""
   @State private var captureSheet = false
   @State private var scrubbing = false
   @State private var scrubPosition: Double = 0
@@ -442,6 +444,22 @@ struct MeetingDetailView: View {
         }.padding(28).frame(width: 460)
       }
       .sheet(item: $source) { item in SegmentEditor(segment: item).environmentObject(state) }
+      .alert("Rename speaker", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+        TextField("Name", text: $newSpeakerName)
+        Button("Rename") {
+          if let renaming { state.renameSpeaker(renaming.speakerID, name: newSpeakerName.trimmingCharacters(in: .whitespaces)) }
+        }
+        Button("Rename and remember voice") {
+          let name = newSpeakerName.trimmingCharacters(in: .whitespaces)
+          if let renaming, !name.isEmpty {
+            state.renameSpeaker(renaming.speakerID, name: name)
+            state.rememberVoice(of: renaming.speakerID, name: name)
+          }
+        }
+        Button("Cancel", role: .cancel) {}
+      } message: {
+        Text("Changes every line from \(renaming.map { state.speakerLabel($0.speakerID) } ?? "this speaker") in this meeting. Remembering saves an encrypted voice clip on this Mac and sends it with future transcriptions so Chup! can name them.")
+      }
       .confirmDeleteMeeting($deletion)
   }
   private var summaryBody: some View {
@@ -515,6 +533,23 @@ struct MeetingDetailView: View {
       }
     }
   }
+  private func speakerMenu(_ segment: TranscriptSegment) -> some View {
+    let label = state.speakerLabel(segment.speakerID)
+    return Menu(label) {
+      Button("Rename \(label) everywhere…") {
+        newSpeakerName = segment.speakerName ?? ""
+        renaming = segment
+      }
+      Menu("Move this line to") {
+        ForEach(state.speakerIDs.filter { $0 != segment.speakerID }, id: \.self) { id in
+          Button(state.speakerLabel(id)) { state.moveSegment(segment, to: id) }
+        }
+        Divider()
+        Button("New speaker") { state.splitSpeaker(segment) }
+      }
+    }.menuStyle(.borderlessButton).fixedSize().font(.system(size: 12, weight: .semibold))
+      .accessibilityLabel("Speaker \(label)").accessibilityHint("Rename this speaker or move this line")
+  }
   private var transcriptBody: some View {
     VStack(alignment: .leading) {
       HStack {
@@ -564,10 +599,11 @@ struct MeetingDetailView: View {
                 ).buttonStyle(.plain).foregroundStyle(Palette.olive).frame(width: 48)
                 VStack(alignment: .leading, spacing: 8) {
                   HStack {
-                    Text(
-                      segment.provisional
-                        ? "Provisional · speaker unknown" : segment.speakerName ?? "Unknown speaker"
-                    ).font(.system(size: 12, weight: .semibold))
+                    if segment.provisional {
+                      Text("Provisional · speaker unknown").font(.system(size: 12, weight: .semibold))
+                    } else {
+                      speakerMenu(segment)
+                    }
                     Text(
                       segment.track == .microphone
                         ? "MIC" : (segment.track == .assistant ? "ASSISTANT" : "CALL")
@@ -689,12 +725,7 @@ struct SegmentEditor: View {
             }
             Picker("Assign to existing speaker group", selection: $merge) {
               Text("Keep current assignment").tag("")
-              ForEach(Array(Set(state.segments.map(\.speakerID))).sorted(), id: \.self) { id in
-                Text(
-                  state.segments.first(where: { $0.speakerID == id })?.speakerName
-                    ?? "Unknown · \(String(id.suffix(12)))"
-                ).tag(id)
-              }
+              ForEach(state.speakerIDs, id: \.self) { id in Text(state.speakerLabel(id)).tag(id) }
             }
           }
         }
@@ -709,7 +740,9 @@ struct SegmentEditor: View {
         Button("Cancel") { dismiss() }
         Button("Save correction") {
           state.correctSegment(
-            segment, text: text, name: name, mergeID: merge.isEmpty ? nil : merge)
+            segment, text: text,
+            name: merge.isEmpty ? name : state.segments.first { $0.speakerID == merge && $0.speakerName != nil }?.speakerName ?? "",
+            mergeID: merge.isEmpty ? nil : merge)
           if !name.isEmpty && merge.isEmpty { state.renameSpeaker(segment.speakerID, name: name) }
           dismiss()
         }.buttonStyle(.borderedProminent)

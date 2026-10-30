@@ -1597,7 +1597,22 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       try refreshDetail()
     } catch { notice = error.localizedDescription }
   }
-  func enrollVoice(_ segment: TranscriptSegment, name: String, consent: Bool) {
+  /// Enrolls the speaker's clearest single-voice line (2–10 s) and turns on matching for later meetings.
+  func rememberVoice(of speakerID: String, name: String) {
+    let clean = segments.filter { candidate in
+      candidate.speakerID == speakerID && !candidate.provisional && candidate.end - candidate.start >= 2
+        && !segments.contains {
+          $0.id != candidate.id && $0.track == candidate.track && $0.start < min(candidate.end, candidate.start + 10)
+            && $0.end > candidate.start
+        }
+    }
+    guard let best = clean.max(by: { $0.end - $0.start < $1.end - $1.start }) else {
+      notice = "\(name) has no clean line of two seconds or more to learn their voice from."
+      return
+    }
+    enrollVoice(best, name: name, consent: true, matching: true)
+  }
+  func enrollVoice(_ segment: TranscriptSegment, name: String, consent: Bool, matching: Bool = false) {
     guard consent, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
       !segment.provisional, segment.end - segment.start >= 2, segment.meetingID != activeMeetingID,
       let key
@@ -1632,16 +1647,21 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           throw WorkspaceError.corruptJournal
         }
         try encrypted.write(to: path, options: .atomic)
+        let active = try db().list(VoiceEnrollment.self, kind: "enrollment").filter(\.cloudMatching).count
         let profile = VoiceEnrollment(
           name: name, meetingID: segment.meetingID, segmentID: segment.id,
-          duration: end - segment.start, referencePath: path.path)
+          duration: end - segment.start, referencePath: path.path, cloudMatching: matching && active < 4)
         do { try db().put(profile, kind: "enrollment", id: profile.id) } catch {
           try? FileManager.default.removeItem(at: path)
           throw error
         }
         enrollments = try db().list(VoiceEnrollment.self, kind: "enrollment")
         notice =
-          "Encrypted voice reference saved. Cloud matching is off; enable it explicitly in Meetings settings."
+          profile.cloudMatching
+          ? "Chup! will recognise \(name) in meetings you transcribe from now on."
+          : matching
+            ? "\(name)'s voice is saved, but four voices are already matched. Choose which in Meetings settings."
+            : "Encrypted voice reference saved. Cloud matching is off; enable it explicitly in Meetings settings."
       } catch { notice = error.localizedDescription }
     }
   }
@@ -1687,13 +1707,30 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     } catch { notice = error.localizedDescription }
   }
   func renameSpeaker(_ id: String, name: String) {
-    for segment in segments where segment.speakerID == id {
-      correctSegment(segment, text: segment.text, name: name)
-    }
+    do {
+      for var segment in segments where segment.speakerID == id {
+        segment.speakerName = name.isEmpty ? nil : name
+        try db().correct(segment)
+      }
+      try refreshDetail()
+    } catch { notice = error.localizedDescription }
+  }
+  /// Final-transcript speaker groups in order of first appearance.
+  var speakerIDs: [String] {
+    var seen = Set<String>()
+    return segments.filter { !$0.provisional && seen.insert($0.speakerID).inserted }.map(\.speakerID)
+  }
+  /// Unnamed groups are numbered so different voices stay distinguishable.
+  func speakerLabel(_ id: String) -> String {
+    segments.first { $0.speakerID == id && $0.speakerName != nil }?.speakerName
+      ?? "Speaker \((speakerIDs.firstIndex(of: id) ?? speakerIDs.count) + 1)"
+  }
+  func moveSegment(_ segment: TranscriptSegment, to id: String) {
+    let name = segments.first { $0.speakerID == id && $0.speakerName != nil }?.speakerName ?? ""
+    correctSegment(segment, text: segment.text, name: name, mergeID: id)
   }
   func splitSpeaker(_ segment: TranscriptSegment) {
-    correctSegment(
-      segment, text: segment.text, name: segment.speakerName ?? "", mergeID: UUID().uuidString)
+    correctSegment(segment, text: segment.text, name: "", mergeID: UUID().uuidString)
   }
   func preparePlayback() {
     guard let id = selectedMeetingID, id != activeMeetingID, let key else { return }
