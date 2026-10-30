@@ -159,7 +159,8 @@ struct IslandLevel: View {
   var body: some View {
     if state.hasRailActivity {
       VoiceWaveform(
-        samples: state.micWaveform, width: 20, height: 16)
+        samples: state.micWaveform, width: 20, height: 16,
+        color: state.meetingStatus == .recording ? RailPalette.red : nil)
     }
   }
 }
@@ -188,7 +189,8 @@ struct IslandGlyph: View {
       ProcessingCircle(size: size * 0.82).foregroundStyle(.white)
     } else if listening || recording {
       VoiceWaveform(
-        samples: state.micWaveform, width: size, height: size)
+        samples: state.micWaveform, width: size, height: size,
+        color: recording && !listening ? RailPalette.red : nil)
     } else if !hideAtRest || state.hasRailActivity {
       Image(systemName: symbol)
         .font(.system(size: size * 0.6, weight: .medium))
