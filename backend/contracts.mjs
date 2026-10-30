@@ -144,6 +144,7 @@ export function spokenNumbers(text) {
   flush();
   return found;
 }
+const connectives = new Set('a an the and or but so to of in on at for is are was were be it this that i we you he she they do does did will would can could not'.split(' '));
 const negations = text => (text.toLowerCase().match(/\b(?:not|never|cannot|nothing|nobody|none)\b|n['’]t\b/g) ?? []).length;
 const names = text => text.split(/(?<=[.!?:]\s+|\n)/).flatMap(sentence => sentence.trim().split(/\s+/).slice(1)).map(word => word.replace(/[^\p{L}'’-]/gu,'')).filter(word => /^\p{Lu}/u.test(word));
 export function cleanupPreserves(source, candidate, preferences = []) {
@@ -152,9 +153,10 @@ export function cleanupPreserves(source, candidate, preferences = []) {
   if ([...after].some(n => !before.has(n))) return false;
   if ([...before].some(n => !after.has(n)) && !/\b(no|actually|sorry|i mean|scratch that|wait|rather)\b/i.test(source)) return false;
   if (negations(source) !== negations(candidate)) return false;
-  // Cleanup reuses the speaker's words; a reply or paraphrase ("Sure, I will…") brings in new ones.
-  const words = text => text.toLowerCase().match(/\p{L}[\p{L}'’]*/gu) ?? [];
-  const spoken = new Set(words(known)), used = words(candidate).filter(word => word.length > 2);
-  if (used.filter(word => !spoken.has(word)).length > Math.max(1, used.length * 0.15)) return false;
+  // Light cleanup only removes and punctuates. Any new content word (a swapped verb, a reply,
+  // a paraphrase) could change meaning, so only connective words may be added.
+  const words = text => text.toLowerCase().replace(/['’](s|ll|re|ve|d|m)\b|n['’]t\b/g,' ').match(/\p{L}+/gu) ?? [];
+  const spoken = new Set(words(known));
+  if (words(candidate).some(word => !spoken.has(word) && !connectives.has(word))) return false;
   return names(candidate).every(name => known.includes(name.toLowerCase()));
 }

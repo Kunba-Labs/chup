@@ -5,7 +5,16 @@ struct RecordingWaveform: View {
   let bins: [WaveformBin]
   let duration: Double
   let position: Double
+  var onSeek: ((Double) -> Void)? = nil
   var body: some View {
+    GeometryReader { geometry in
+      canvas.contentShape(Rectangle()).onTapGesture { location in
+        guard let onSeek, duration > 0, geometry.size.width > 0 else { return }
+        onSeek(min(max(0, location.x / geometry.size.width), 1) * duration)
+      }
+    }
+  }
+  private var canvas: some View {
     Canvas { context, size in
       guard duration > 0, !bins.isEmpty else { return }
       let count = max(1, Int(size.width / 3))

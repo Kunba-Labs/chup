@@ -101,17 +101,19 @@ struct MeetingSidebarView: View {
             Divider().overlay(.white.opacity(0.12))
             Label("Live transcript", systemImage: "captions.bubble").font(.system(size: 13, weight: .semibold))
             let recent = state.segments.filter(\.provisional).suffix(3)
-            VStack(alignment: .leading, spacing: 6) {
-              if recent.isEmpty {
-                Text("Listening… text appears a few seconds after someone speaks.")
-                  .foregroundStyle(RailPalette.secondary)
-              }
-              ForEach(recent) { segment in
-                Text(segment.text).foregroundStyle(segment.id == recent.last?.id ? RailPalette.ink : RailPalette.secondary)
-                  .textSelection(.enabled)
-              }
-            }.font(.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading)
-              .accessibilityElement(children: .combine).accessibilityLabel("Live transcript")
+            // Bounded so long captions never push Live notes out of the fixed-height panel.
+            ScrollView {
+              VStack(alignment: .leading, spacing: 6) {
+                if recent.isEmpty {
+                  Text("Listening… text appears a few seconds after someone speaks.")
+                    .foregroundStyle(RailPalette.secondary)
+                }
+                ForEach(recent) { segment in
+                  Text(segment.text).foregroundStyle(segment.id == recent.last?.id ? RailPalette.ink : RailPalette.secondary)
+                    .textSelection(.enabled)
+                }
+              }.font(.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading)
+            }.frame(maxHeight: 96).defaultScrollAnchor(.bottom)
           }
           Divider().overlay(.white.opacity(0.12))
           Label("Live notes", systemImage: "sparkle").font(.system(size: 13, weight: .semibold))

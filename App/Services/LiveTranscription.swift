@@ -60,8 +60,8 @@ actor LiveTranscription {
     }
     await send(packet)
   }
-  private func send(_ packet: AudioPacket) async {
-    guard let socket else { return }
+  @discardableResult private func send(_ packet: AudioPacket) async -> Bool {
+    guard let socket else { return false }
     do {
       let data = try resample(packet)
       if start == nil { start = packet.hostTime - origin }
@@ -81,7 +81,9 @@ actor LiveTranscription {
     } catch {
       // Dropping the socket makes receive() fail and reconnect.
       socket.cancel(with: .goingAway, reason: nil)
+      return false
     }
+    return true
   }
   static func quiet(_ packet: AudioPacket) -> Bool {
     packet.pcm.withUnsafeBytes { raw in
@@ -140,8 +142,13 @@ actor LiveTranscription {
         if type == "session.updated" {
           reconnects = 0
           // Packets arriving during the flush queue behind it, keeping audio in order.
-          while !pending.isEmpty { await send(pending.removeFirst()) }
-          ready = true
+          // On a send failure, keep the rest for the next connection.
+          var flushed = true
+          while let packet = pending.first {
+            guard await send(packet) else { flushed = false; break }
+            pending.removeFirst()
+          }
+          ready = flushed
         }
         if type == "input_audio_buffer.committed", let id = event["item_id"] as? String,
           !awaitingWindows.isEmpty

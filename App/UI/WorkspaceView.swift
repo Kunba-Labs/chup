@@ -378,7 +378,10 @@ struct MeetingDetailView: View {
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
       RecordingWaveform(
         bins: state.waveformBins, duration: state.playbackDuration, position: state.playbackTime
-      )
+      ) { time in
+        // Click to jump; the slider below is the accessible equivalent.
+        if !state.playbackLoading { state.seekPlayback(to: time) }  // Resumes if it was playing.
+      }
       .frame(height: 38).accessibilityHidden(true)
       HStack {
         Button {
