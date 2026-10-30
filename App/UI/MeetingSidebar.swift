@@ -97,6 +97,22 @@ struct MeetingSidebarView: View {
               .accessibilityLabel("Your meeting notes")
           }.font(.system(size: 14)).padding(8).frame(minHeight: 140, maxHeight: 220)
             .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+          if state.liveCaptionsEnabled && state.cloudEnabled {
+            Divider().overlay(.white.opacity(0.12))
+            Label("Live transcript", systemImage: "captions.bubble").font(.system(size: 13, weight: .semibold))
+            let recent = state.segments.filter(\.provisional).suffix(3)
+            VStack(alignment: .leading, spacing: 6) {
+              if recent.isEmpty {
+                Text("Listening… text appears a few seconds after someone speaks.")
+                  .foregroundStyle(RailPalette.secondary)
+              }
+              ForEach(recent) { segment in
+                Text(segment.text).foregroundStyle(segment.id == recent.last?.id ? RailPalette.ink : RailPalette.secondary)
+                  .textSelection(.enabled)
+              }
+            }.font(.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading)
+              .accessibilityElement(children: .combine).accessibilityLabel("Live transcript")
+          }
           Divider().overlay(.white.opacity(0.12))
           Label("Live notes", systemImage: "sparkle").font(.system(size: 13, weight: .semibold))
           ScrollView {

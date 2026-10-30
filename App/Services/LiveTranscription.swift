@@ -14,6 +14,11 @@ actor LiveTranscription {
   private var transcript: [String: String] = [:]
   private var converter: AVAudioConverter?
   private var sourceRate: Double = 0
+  // Speech captured while the socket opens is sent once the session is ready, not dropped.
+  private var pending: [AudioPacket] = []
+  private var endpoint: (URL, String)?
+  private var closed = false
+  private var reconnects = 0
   private let meetingID: String
   private let track: TrackKind
   private let origin: Double
@@ -33,6 +38,8 @@ actor LiveTranscription {
     self.onUsage = onUsage
   }
   func connect(backend: URL, token: String) {
+    endpoint = (backend, token)
+    closed = false
     var components = URLComponents(
       url: backend.appendingPathComponent("live-transcribe"), resolvingAgainstBaseURL: false)!
     components.scheme = backend.scheme == "https" ? "wss" : "ws"
@@ -44,7 +51,17 @@ actor LiveTranscription {
     receiver = Task { [weak self] in await self?.receive() }
   }
   func append(_ packet: AudioPacket) async {
-    guard ready, let socket else { return }
+    guard !closed else { return }
+    guard ready else {
+      pending.append(packet)
+      // ponytail: ~20 s of 4096-frame packets; older audio still reaches the final transcript.
+      if pending.count > 240 { pending.removeFirst() }
+      return
+    }
+    await send(packet)
+  }
+  private func send(_ packet: AudioPacket) async {
+    guard let socket else { return }
     do {
       let data = try resample(packet)
       if start == nil { start = packet.hostTime - origin }
@@ -55,14 +72,23 @@ actor LiveTranscription {
             decoding: JSONSerialization.data(withJSONObject: [
               "type": "input_audio_buffer.append", "audio": data.base64EncodedString(),
             ]), as: UTF8.self)))
-      if let start, lastEnd - start >= 8 {
+      // Commit at a pause after 3 s so captions arrive per phrase; never hold more than 8 s.
+      if let start, lastEnd - start >= 8 || (lastEnd - start >= 3 && Self.quiet(packet)) {
         awaitingWindows.append((start, lastEnd))
         self.start = nil
         try await socket.send(.string("{\"type\":\"input_audio_buffer.commit\"}"))
       }
     } catch {
-      onFailure("Live captions unavailable: \(error.localizedDescription)")
-      close()
+      // Dropping the socket makes receive() fail and reconnect.
+      socket.cancel(with: .goingAway, reason: nil)
+    }
+  }
+  static func quiet(_ packet: AudioPacket) -> Bool {
+    packet.pcm.withUnsafeBytes { raw in
+      let samples = raw.bindMemory(to: Int16.self)
+      guard !samples.isEmpty else { return true }
+      let power = samples.reduce(0.0) { $0 + pow(Double(Int16(littleEndian: $1)) / 32768, 2) }
+      return (power / Double(samples.count)).squareRoot() < 0.008
     }
   }
   private func resample(_ packet: AudioPacket) throws -> Data {
@@ -111,7 +137,12 @@ actor LiveTranscription {
         guard let event = try JSONSerialization.jsonObject(with: data) as? [String: Any],
           let type = event["type"] as? String
         else { continue }
-        if type == "session.updated" { ready = true }
+        if type == "session.updated" {
+          reconnects = 0
+          // Packets arriving during the flush queue behind it, keeping audio in order.
+          while !pending.isEmpty { await send(pending.removeFirst()) }
+          ready = true
+        }
         if type == "input_audio_buffer.committed", let id = event["item_id"] as? String,
           !awaitingWindows.isEmpty
         {
@@ -124,11 +155,12 @@ actor LiveTranscription {
           let usage =
             (try? JSONSerialization.data(withJSONObject: event["usage"] ?? [:])) ?? Data("{}".utf8)
           onUsage(id, String(decoding: usage, as: UTF8.self))
-          onSegment(
+          // A pause-only commit is billed but has no words to show.
+          if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { onSegment(
             TranscriptSegment(
               id: "live:\(track.rawValue):\(id)", meetingID: meetingID, start: max(0, window.0),
               end: max(0, window.1), text: text, speakerID: "provisional-\(track.rawValue)",
-              track: track, provisional: true))
+              track: track, provisional: true)) }
         }
         if type == "error" {
           onFailure(
@@ -137,12 +169,28 @@ actor LiveTranscription {
         }
       }
     } catch {
-      if !Task.isCancelled { onFailure("Live captions disconnected. Local recording continues.") }
-      close()
+      guard !Task.isCancelled, !closed else { return }
+      // Sessions end (provider limits, network blips); reopen so captions cover the whole meeting.
+      receiver = nil  // This task; reset() must not cancel it before the backoff.
+      reset()
+      reconnects += 1
+      guard reconnects <= 5, let (backend, token) = endpoint else {
+        onFailure("Live captions disconnected. Local recording continues.")
+        close()
+        return
+      }
+      try? await Task.sleep(for: .seconds(min(reconnects, 3)))
+      if !closed { connect(backend: backend, token: token) }
     }
   }
   func close() {
+    closed = true
+    pending = []
+    reset()
+  }
+  private func reset() {
     ready = false
+    start = nil
     receiver?.cancel()
     socket?.cancel(with: .normalClosure, reason: nil)
     socket = nil

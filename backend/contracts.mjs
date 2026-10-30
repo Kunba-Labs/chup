@@ -125,3 +125,36 @@ export function validateEnhanced(result, note, segments, sections = []) {
   if (remaining.length) kept.push({id:fresh('chup-from-your-notes'),kind:'heading',text:'From your notes',sources:[]}, ...remaining.map(({text})=>({id:fresh('chup-note'),kind:'user',text,sources:[]})));
   return {blocks: kept};
 }
+
+// Local meaning check for dictation cleanup (replaces a second model round trip). The candidate may drop
+// filler and spoken self-corrections, but must not invent numbers or names, or change negation.
+const units = Object.fromEntries('zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' ').map((w,i)=>[w,i]));
+const tens = Object.fromEntries('twenty thirty forty fifty sixty seventy eighty ninety'.split(' ').map((w,i)=>[w,(i+2)*10]));
+const scales = {thousand:1e3,million:1e6,billion:1e9};
+export function spokenNumbers(text) {
+  const found = new Set(); let total = 0, current = 0, active = false;
+  const flush = () => { if (active) found.add(total + current); total = current = 0; active = false; };
+  for (const token of text.toLowerCase().replace(/(\d),(?=\d{3})/g,'$1').match(/\d+(?:\.\d+)?|[a-z]+/g) ?? []) {
+    if (/^\d/.test(token)) { flush(); found.add(Number(token)); }
+    else if (token in units || token in tens) { current += units[token] ?? tens[token]; active = true; }
+    else if (token === 'hundred') { current = (current || 1) * 100; active = true; }
+    else if (token in scales) { total += (current || 1) * scales[token]; current = 0; active = true; }
+    else if (!(token === 'and' && active)) flush();
+  }
+  flush();
+  return found;
+}
+const negations = text => (text.toLowerCase().match(/\b(?:not|never|cannot|nothing|nobody|none)\b|n['’]t\b/g) ?? []).length;
+const names = text => text.split(/(?<=[.!?:]\s+|\n)/).flatMap(sentence => sentence.trim().split(/\s+/).slice(1)).map(word => word.replace(/[^\p{L}'’-]/gu,'')).filter(word => /^\p{Lu}/u.test(word));
+export function cleanupPreserves(source, candidate, preferences = []) {
+  const known = (source + ' ' + JSON.stringify(preferences)).toLowerCase();
+  const before = spokenNumbers(source), after = spokenNumbers(candidate);
+  if ([...after].some(n => !before.has(n))) return false;
+  if ([...before].some(n => !after.has(n)) && !/\b(no|actually|sorry|i mean|scratch that|wait|rather)\b/i.test(source)) return false;
+  if (negations(source) !== negations(candidate)) return false;
+  // Cleanup reuses the speaker's words; a reply or paraphrase ("Sure, I will…") brings in new ones.
+  const words = text => text.toLowerCase().match(/\p{L}[\p{L}'’]*/gu) ?? [];
+  const spoken = new Set(words(known)), used = words(candidate).filter(word => word.length > 2);
+  if (used.filter(word => !spoken.has(word)).length > Math.max(1, used.length * 0.15)) return false;
+  return names(candidate).every(name => known.includes(name.toLowerCase()));
+}
