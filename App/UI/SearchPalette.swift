@@ -90,6 +90,7 @@ struct SearchPalette: View {
           .font(.callout).foregroundStyle(Palette.secondary).padding(16)
           .frame(maxWidth: .infinity, alignment: .leading)
       } else {
+      ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 2) {
           ForEach(Array(list.enumerated()), id: \.element.id) { index, result in
@@ -108,10 +109,14 @@ struct SearchPalette: View {
                 Spacer()
               }.padding(.horizontal, 16).padding(.vertical, 8).contentShape(Rectangle())
                 .background(index == cursor ? Palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 8))
-            }.buttonStyle(.plain).padding(.horizontal, 6)
+            }.buttonStyle(.plain).padding(.horizontal, 6).id(result.id)
           }
         }.padding(.bottom, 10)
       }.frame(maxHeight: 420)
+        .onChange(of: cursor) { _, index in
+          if list.indices.contains(index) { proxy.scrollTo(list[index].id) }
+        }
+      }
       }
     }
     .frame(width: 620).background(Palette.paper, in: RoundedRectangle(cornerRadius: 16))
@@ -131,7 +136,10 @@ struct SearchPalette: View {
   private func open(_ hit: MeetingSearchHit) {
     state.page = .meetings
     if hit.meetingID != state.selectedMeetingID { state.selectMeeting(hit.meetingID) }
-    guard let id = hit.segmentID else { return }
+    guard let id = hit.segmentID else {
+      state.meetingTab = "Notes"
+      return
+    }
     state.selectedTranscriptSource = id
     state.meetingTab = "Transcript"
     if let segment = state.segments.first(where: { $0.id == id }) {

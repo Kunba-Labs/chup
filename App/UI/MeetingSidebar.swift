@@ -66,7 +66,9 @@ import SwiftUI
 struct MeetingSidebarView: View {
   @EnvironmentObject var state: WorkspaceState
   @ObservedObject var sidebar: MeetingSidebar
-  @State private var confirmDiscard = false
+  /// The meeting a Discard confirmation is open for; a later meeting never inherits it.
+  @State private var discardFor: String?
+  private var confirmDiscard: Bool { discardFor != nil && discardFor == state.activeMeetingID }
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   private var onMeeting: Bool { state.selectedMeetingID == state.activeMeetingID }
   private var paused: Bool { state.meetingStatus == .paused }
@@ -216,9 +218,9 @@ struct MeetingSidebarView: View {
         HStack(spacing: 8) {
           Text("Delete this recording and its notes?").font(.system(size: 12))
           Spacer()
-          Button("Keep") { confirmDiscard = false }.controlSize(.small)
+          Button("Keep") { discardFor = nil }.controlSize(.small)
           Button("Discard", role: .destructive) {
-            confirmDiscard = false
+            discardFor = nil
             state.discardMeeting()
           }.buttonStyle(.borderedProminent).tint(RailPalette.red).controlSize(.small)
         }
@@ -240,7 +242,7 @@ struct MeetingSidebarView: View {
             .frame(maxWidth: .infinity).frame(height: 40).background(Palette.gradient, in: Capsule())
             .foregroundStyle(.white)
         }.buttonStyle(.plain)
-        Button { confirmDiscard = true } label: {
+        Button { discardFor = state.activeMeetingID } label: {
           Text("Discard").font(.system(size: 12)).padding(.horizontal, 12).frame(height: 40)
             .background(Capsule().strokeBorder(.white.opacity(0.22)))
         }.buttonStyle(.plain).fixedSize()
