@@ -75,6 +75,9 @@ struct SearchPalette: View {
         TextField("Search meetings, transcripts, dictations and Personal", text: $query)
           .textFieldStyle(.plain).font(.system(size: 17)).focused($focused)
           .onSubmit { if list.indices.contains(cursor) { choose(list[cursor]) } }
+          // Arrows move through results from the field itself, where focus stays.
+          .onKeyPress(.downArrow) { cursor = min(cursor + 1, max(0, list.count - 1)); return .handled }
+          .onKeyPress(.upArrow) { cursor = max(cursor - 1, 0); return .handled }
           .onChange(of: query) { _, new in
             cursor = 0
             hits = (try? state.store?.searchMeetings(new)) ?? []
@@ -123,8 +126,6 @@ struct SearchPalette: View {
     .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Palette.border, lineWidth: 0.5) }
     .shadow(color: .black.opacity(0.2), radius: 30, y: 12)
     .onAppear { focused = true }
-    .onKeyPress(.downArrow) { cursor = min(cursor + 1, max(0, list.count - 1)); return .handled }
-    .onKeyPress(.upArrow) { cursor = max(cursor - 1, 0); return .handled }
     .onExitCommand { state.searchOpen = false }
   }
 

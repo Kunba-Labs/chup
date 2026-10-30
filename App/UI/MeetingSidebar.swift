@@ -105,9 +105,9 @@ struct MeetingSidebarView: View {
 
   private var header: some View {
     HStack(spacing: 8) {
-      Circle().fill(paused ? RailPalette.secondary : RailPalette.red).frame(width: 8, height: 8)
-        .accessibilityHidden(true)
-      Text(paused ? "PAUSED" : "REC").font(.system(size: 10, weight: .semibold)).tracking(1.4)
+      Circle().fill(state.meetingStatus == .recording ? RailPalette.red : RailPalette.secondary)
+        .frame(width: 8, height: 8).accessibilityHidden(true)
+      Text(paused ? "PAUSED" : state.meetingStatus == .recording ? "REC" : "STARTING").font(.system(size: 10, weight: .semibold)).tracking(1.4)
         .foregroundStyle(RailPalette.secondary)
       Text(WorkspaceState.time(state.elapsed)).font(.system(size: 13, weight: .semibold).monospacedDigit())
       Text("· " + (state.activeMeeting?.title ?? "Meeting")).font(.system(size: 12))
