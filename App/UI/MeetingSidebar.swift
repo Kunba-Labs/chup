@@ -11,7 +11,7 @@ import SwiftUI
   private var timer: Timer?
   private weak var state: WorkspaceState?
   private let panel = NonactivatingPanel(
-    contentRect: NSRect(x: 0, y: 0, width: 320, height: 560),
+    contentRect: NSRect(x: 0, y: 0, width: 360, height: 600),
     styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
   init(state: WorkspaceState) {
     self.state = state
@@ -22,11 +22,11 @@ import SwiftUI
     panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     panel.isOpaque = false
     panel.backgroundColor = .clear
-    panel.appearance = NSAppearance(named: .darkAqua)
+    panel.appearance = NSAppearance(named: .aqua)
     panel.hasShadow = true
     panel.contentView = NSHostingView(
       rootView: MeetingSidebarView(sidebar: self).environmentObject(state)
-        .environment(\.colorScheme, .dark))
+        .environment(\.colorScheme, .light))
     timer = MainActorTimer.repeating(every: 1) { [weak self] in self?.tick() }
   }
   private func tick() {
@@ -54,22 +54,25 @@ import SwiftUI
   }
   private func layout() {
     let frame = (NSScreen.main ?? NSScreen.screens[0]).visibleFrame
-    let height = collapsed ? 52 : min(620, frame.height * 0.7)
+    let height = collapsed ? 56 : min(640, frame.height * 0.75)
     let left = state?.railDock == "right"
     panel.setFrame(
       NSRect(
-        x: left ? frame.minX + 16 : frame.maxX - 336, y: frame.maxY - height - 16, width: 320,
+        x: left ? frame.minX + 16 : frame.maxX - 376, y: frame.maxY - height - 16, width: 360,
         height: height), display: true)
   }
 }
 
+/// Wispr-style notepad shown while a meeting records: Transcript (live bubbles) and
+/// My thoughts tabs, warnings on top, recording controls pinned in the footer.
 struct MeetingSidebarView: View {
   @EnvironmentObject var state: WorkspaceState
   @ObservedObject var sidebar: MeetingSidebar
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   /// The meeting a Discard confirmation is open for; a later meeting never inherits it.
   @State private var discardFor: String?
+  @State private var tab = "Transcript"
   private var confirmDiscard: Bool { discardFor != nil && discardFor == state.activeMeetingID }
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   private var onMeeting: Bool { state.selectedMeetingID == state.activeMeetingID }
   private var paused: Bool { state.meetingStatus == .paused }
   private var failed: Bool { state.meetingStatus == .error }
@@ -78,79 +81,115 @@ struct MeetingSidebarView: View {
     state.liveLines.filter { $0.meetingID == state.activeMeetingID }
   }
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: 10) {
       header
       if !sidebar.collapsed {
-        // Everything scrolls except the recording controls, which stay pinned at the bottom.
-        ScrollView {
-          VStack(alignment: .leading, spacing: 12) {
-            level
-            if failed { errorBanner } else if state.inputLost || state.micSilentSeconds != nil { noAudioWarning }
-            if (state.liveCaptionsEnabled && state.cloudEnabled) || !lines.isEmpty {
-              liveText
-            }
-            if onMeeting { notes } else {
-              Button("Show this meeting’s notes") {
-                if let id = state.activeMeetingID { state.selectMeeting(id) }
-              }.buttonStyle(.bordered)
-            }
-          }.frame(maxWidth: .infinity, alignment: .leading)
-        }.scrollIndicators(.automatic).frame(maxHeight: .infinity)
-        controls
+        if failed { errorBanner } else if state.inputLost || state.micSilentSeconds != nil { noAudioWarning }
+        tabBar
+        Group {
+          if tab == "Transcript" { transcript } else { thoughts }
+        }.frame(maxHeight: .infinity)
+        footer
       }
-    }.padding(14).frame(width: 320, alignment: .topLeading)
+    }.padding(14).frame(width: 360, alignment: .topLeading)
       .frame(maxHeight: .infinity, alignment: .top)
-      .background { RailSurface() }
-      .foregroundStyle(RailPalette.ink)
+      .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 18))
+      .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.border) }
+      .foregroundStyle(Palette.ink).tint(Palette.accent)
   }
 
   private var header: some View {
     HStack(spacing: 8) {
-      Circle().fill(state.meetingStatus == .recording || failed ? RailPalette.red : RailPalette.secondary)
+      Circle().fill(state.meetingStatus == .recording || failed ? Palette.red : Palette.secondary)
         .frame(width: 8, height: 8).accessibilityHidden(true)
-      Text(failed ? "ERROR" : paused ? "PAUSED" : state.meetingStatus == .recording ? "REC" : "STARTING").font(.system(size: 10, weight: .semibold)).tracking(1.4)
-        .foregroundStyle(RailPalette.secondary)
+      Text(failed ? "ERROR" : paused ? "PAUSED" : state.meetingStatus == .recording ? "REC" : "STARTING")
+        .font(.system(size: 10, weight: .semibold)).tracking(1.4).foregroundStyle(Palette.secondary)
       Text(WorkspaceState.time(state.elapsed)).font(.system(size: 13, weight: .semibold).monospacedDigit())
-      Text("· " + (state.activeMeeting?.title ?? "Meeting")).font(.system(size: 12))
-        .foregroundStyle(RailPalette.secondary).lineLimit(1)
+      Text(state.activeMeeting?.title ?? "Meeting").font(.system(size: 13, weight: .medium)).lineLimit(1)
       Spacer()
       Button(action: sidebar.toggle) {
         Image(systemName: sidebar.collapsed ? "chevron.down" : "chevron.up")
-      }.buttonStyle(.plain).accessibilityLabel(sidebar.collapsed ? "Expand sidebar" : "Collapse sidebar")
+      }.buttonStyle(.plain).accessibilityLabel(sidebar.collapsed ? "Expand notepad" : "Collapse notepad")
       Button(action: sidebar.close) { Image(systemName: "xmark") }.buttonStyle(.plain)
-        .accessibilityLabel("Hide sidebar for this meeting")
-    }.foregroundStyle(RailPalette.secondary)
+        .accessibilityLabel("Hide notepad for this meeting").help("Recording keeps going")
+    }.foregroundStyle(Palette.secondary)
   }
 
-  /// The big gradient level with a playhead; still bars under Reduce Motion (VoiceWaveform).
-  private var level: some View {
-    VStack(spacing: 6) {
-      ZStack {
-        VoiceWaveform(samples: paused ? [] : state.micWaveform, width: 288, height: 64, barCount: 30)
-          .accessibilityHidden(true)
-        Capsule().fill(.white.opacity(0.85)).frame(width: 2, height: 58).accessibilityHidden(true)
-      }.frame(maxWidth: .infinity)
-      HStack(spacing: 12) {
-        SourceMeter(name: "Mic", level: state.micLevel,
-          receiving: state.micLastPacket.map { Date().timeIntervalSince($0) < 3 } ?? false)
-        if state.meetingPID != 0 {
-          SourceMeter(name: "Call", level: state.remoteLevel,
-            receiving: state.remoteLastPacket.map { Date().timeIntervalSince($0) < 3 } ?? false)
-        }
+  private var tabBar: some View {
+    HStack(spacing: 18) {
+      ForEach(["Transcript", "My thoughts"], id: \.self) { name in
+        Button { tab = name } label: {
+          VStack(spacing: 6) {
+            Text(name).font(.system(size: 13, weight: tab == name ? .semibold : .regular))
+              .foregroundStyle(tab == name ? Palette.ink : Palette.secondary)
+            Capsule().fill(tab == name ? Palette.accent : .clear).frame(height: 2)
+          }.fixedSize()
+        }.buttonStyle(.plain).accessibilityAddTraits(tab == name ? .isSelected : [])
       }
+      Spacer()
+    }.overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 1) }
+  }
+
+  /// Live lines as speaker bubbles: yours on the right, everyone else on the left.
+  /// Live captions know only your mic versus the call, so names come after Stop.
+  private var transcript: some View {
+    ScrollViewReader { proxy in
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 8) {
+          if lines.isEmpty {
+            Text(state.liveCaptionsEnabled && state.cloudEnabled
+              ? "Listening… Text shows a few seconds after someone speaks."
+              : "Turn on Live captions in Settings → Meetings to see text here.")
+              .font(.system(size: 13)).foregroundStyle(Palette.secondary).padding(.top, 8)
+          }
+          ForEach(lines) { segment in
+            let mine = segment.speakerID.hasSuffix("microphone")
+            VStack(alignment: mine ? .trailing : .leading, spacing: 3) {
+              Text(mine ? "You" : "Others").font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Palette.secondary)
+              Text(segment.text).font(.system(size: 14)).textSelection(.enabled)
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(mine ? Palette.accent.opacity(0.12) : Palette.paper, in: RoundedRectangle(cornerRadius: 14))
+            }.frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading)
+              .padding(mine ? .leading : .trailing, 36).id(segment.id)
+          }
+        }.padding(.vertical, 6)
+      }.defaultScrollAnchor(.bottom)
+        .onChange(of: lines.last?.id) { _, id in
+          guard let id else { return }
+          if reduceMotion { proxy.scrollTo(id, anchor: .bottom) } else {
+            withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .bottom) }
+          }
+        }
     }
   }
 
-  /// Capture failed: say so, and point at the two ways out. Audio saved so far is kept.
+  @ViewBuilder private var thoughts: some View {
+    if onMeeting {
+      ZStack(alignment: .topLeading) {
+        if state.noteDraft.isEmpty {
+          Text("Type your notes. Chup! keeps them as you wrote them.")
+            .foregroundStyle(Palette.secondary).padding(.top, 8).padding(.leading, 5).allowsHitTesting(false)
+        }
+        TextEditor(text: $state.noteDraft).scrollContentBackground(.hidden)
+          .onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
+          .accessibilityLabel("My thoughts")
+      }.font(.system(size: 14)).padding(10).workspaceSurface().padding(.top, 8)
+    } else {
+      Button("Show this meeting’s notes") {
+        if let id = state.activeMeetingID { state.selectMeeting(id) }
+      }.buttonStyle(.bordered).padding(.top, 10)
+    }
+  }
+
   private var errorBanner: some View {
     VStack(alignment: .leading, spacing: 4) {
       Text("Recording stopped with an error").font(.system(size: 13, weight: .semibold))
       Text("Your audio so far is safe. Press Stop and save, then record again.")
-        .font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
-        .fixedSize(horizontal: false, vertical: true)
+        .font(.system(size: 12)).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
     }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
-      .background(RailPalette.red.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
-      .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(RailPalette.red.opacity(0.45)) }
+      .background(Palette.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+      .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.red.opacity(0.35)) }
       .accessibilityElement(children: .combine)
   }
 
@@ -160,88 +199,22 @@ struct MeetingSidebarView: View {
         Text(state.inputLost ? "Microphone stopped" : "Microphone sending only silence for \(state.micSilentSeconds ?? 20) s")
           .font(.system(size: 13, weight: .semibold))
         Text("Check your mic is connected, or pick another in Settings → Dictation.")
-          .font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
+          .font(.system(size: 12)).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
       }
       Spacer(minLength: 4)
-      Button { state.restartInput() } label: {
-        Text("Restart input").font(.system(size: 12, weight: .semibold)).foregroundStyle(.black)
-          .padding(.horizontal, 12).frame(height: 30).background(.white, in: Capsule())
-      }.buttonStyle(.plain).fixedSize()
+      Button("Restart input") { state.restartInput() }.buttonStyle(.borderedProminent).controlSize(.small)
     }.padding(10)
-      .background(RailPalette.red.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
-      .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(RailPalette.red.opacity(0.45)) }
+      .background(Palette.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+      .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.red.opacity(0.35)) }
       .accessibilityElement(children: .contain)
   }
 
-  /// Older lines fade and blur; the current line is large. Live captions only know mic vs call.
-  private var liveText: some View {
-    let recent = lines
-    return VStack(alignment: .leading, spacing: 10) {
-      if recent.isEmpty {
-        Text("Listening… Text shows a few seconds after someone speaks.")
-          .font(.system(size: 13)).foregroundStyle(RailPalette.secondary)
-      }
-      ForEach(Array(recent.enumerated()), id: \.element.id) { index, segment in
-        let current = index == recent.count - 1
-        let age = Double(recent.count - 1 - index)
-        VStack(alignment: .leading, spacing: 3) {
-          Text(segment.speakerID.hasSuffix("microphone") ? "YOU" : "THEM")
-            .font(.system(size: 10, weight: .bold)).tracking(1.2)
-            .foregroundStyle(current ? RailPalette.accent : RailPalette.secondary)
-          Text(segment.text)
-            .font(current ? .system(size: 19, weight: .semibold) : .system(size: 14))
-            .lineLimit(current ? 4 : 2).textSelection(.enabled)
-        }.opacity(current ? 1 : max(0.35, 0.8 - age * 0.2)).blur(radius: current ? 0 : age * 0.5)
-      }
-    }.frame(maxWidth: .infinity, alignment: .leading).frame(maxHeight: 210, alignment: .bottom)
-      .clipped().animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: recent.map(\.id))
-  }
-
-  private var notes: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Text("YOUR NOTES").font(.system(size: 10, weight: .semibold)).tracking(1.2)
-        .foregroundStyle(RailPalette.secondary)
-      ZStack(alignment: .topLeading) {
-        if state.noteDraft.isEmpty {
-          Text("Type a note. Chup! adds the rest when you stop.")
-            .foregroundStyle(RailPalette.secondary).padding(.top, 8).padding(.leading, 5)
-            .allowsHitTesting(false)
-        }
-        TextEditor(text: $state.noteDraft).scrollContentBackground(.hidden)
-          .onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
-          .accessibilityLabel("Your meeting notes")
-      }.font(.system(size: 14)).padding(8).frame(minHeight: 90, maxHeight: 150)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
-      let items = LiveOutlineView.items(state.liveOutlines)
-      Label("Live notes", systemImage: "sparkle").font(.system(size: 12, weight: .semibold))
-        .padding(.top, 4)
-      if items.isEmpty {
-        Text(
-          state.liveOutlineEnabled && state.liveCaptionsEnabled && state.cloudEnabled
-            ? "Notes appear here about a minute into the conversation."
-            : "Turn on Live captions and Live notes in Settings → Meetings."
-        ).font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
-      } else {
-        ScrollView {
-          VStack(alignment: .leading, spacing: 6) {
-            ForEach(items, id: \.key) { _, item in
-              HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("•").foregroundStyle(RailPalette.accent)
-                Text(item.text).font(.system(size: 12)).textSelection(.enabled)
-              }
-            }
-          }.frame(maxWidth: .infinity, alignment: .leading)
-        }.frame(maxHeight: 90)
-      }
-    }
-  }
-
-  private var controls: some View {
+  private var footer: some View {
     VStack(spacing: 8) {
       if confirmDiscard {
         VStack(alignment: .leading, spacing: 8) {
           // Discard removes the whole meeting, including anything saved before this recording.
-          Text("Delete the whole meeting “\(state.activeMeeting?.title ?? "Meeting")”? Its recordings, transcript and notes are removed, including anything saved before this recording. This can’t be undone.")
+          Text("Delete the whole meeting “\(state.activeMeeting?.title ?? "Meeting")”? Its recordings, transcript and notes are removed, including anything saved before this recording.")
             .font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
           HStack(spacing: 8) {
             Spacer()
@@ -249,37 +222,37 @@ struct MeetingSidebarView: View {
             Button("Delete meeting", role: .destructive) {
               discardFor = nil
               state.discardMeeting()
-            }.buttonStyle(.borderedProminent).tint(RailPalette.red).controlSize(.small)
+            }.buttonStyle(.borderedProminent).tint(Palette.red).controlSize(.small)
               .disabled(state.meetingStatus == .processing)
           }
-        }
+        }.padding(10).workspaceSurface()
       }
-      // The primary action gets the full width so its label never truncates.
-      Button {
-        state.stopMeeting()
-      } label: {
-        // Notes are written on stop only when cloud processing can run; otherwise audio is saved.
-        Label(state.cloudEnabled && !state.backendToken.isEmpty ? "Stop and write notes" : "Stop and save",
-          systemImage: "stop.fill").font(.system(size: 14, weight: .semibold))
-          .frame(maxWidth: .infinity).frame(height: 42).background(Palette.gradient, in: Capsule())
-          .foregroundStyle(.white)
-      }.buttonStyle(.plain)
       HStack(spacing: 8) {
+        VoiceWaveform(samples: paused ? [] : state.micWaveform, width: 44, height: 22, barCount: 7)
+          .accessibilityHidden(true)
         Button {
           paused ? state.resumeMeeting() : state.pauseMeeting()
         } label: {
-          Label(paused ? "Resume" : "Pause", systemImage: paused ? "play.fill" : "pause.fill")
-            .font(.system(size: 12, weight: .medium)).frame(maxWidth: .infinity).frame(height: 34)
-            .background(.white.opacity(0.10), in: Capsule())
+          Image(systemName: paused ? "play.fill" : "pause.fill").frame(width: 34, height: 34)
+            .background(Palette.paper, in: Circle())
         }.buttonStyle(.plain).accessibilityLabel(paused ? "Resume recording" : "Pause recording")
           .disabled(state.meetingStatus != .recording && !paused)
-        Button { discardFor = state.activeMeetingID } label: {
-          Text("Discard").font(.system(size: 12)).frame(maxWidth: .infinity).frame(height: 34)
-            .overlay(Capsule().inset(by: 0.5).stroke(.white.opacity(0.22)))
-        }.buttonStyle(.plain).padding(.horizontal, 1)
-          .disabled(state.meetingStatus == .processing)
-          .accessibilityHint("Asks before deleting the whole meeting")
+        Button {
+          state.stopMeeting()
+        } label: {
+          // Notes are written on stop only when cloud processing can run; otherwise audio is saved.
+          Label(state.cloudEnabled && !state.backendToken.isEmpty ? "Stop and write notes" : "Stop and save",
+            systemImage: "stop.fill").font(.system(size: 13, weight: .semibold))
+            .frame(maxWidth: .infinity).frame(height: 34).background(Palette.gradient, in: Capsule())
+            .foregroundStyle(.white)
+        }.buttonStyle(.plain)
+        Menu {
+          Button("Discard recording…", role: .destructive) { discardFor = state.activeMeetingID }
+            .disabled(state.meetingStatus == .processing)
+        } label: {
+          Image(systemName: "ellipsis")
+        }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("More recording actions")
       }
-    }
+    }.padding(.top, 4)
   }
 }

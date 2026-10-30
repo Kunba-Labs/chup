@@ -1442,7 +1442,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
                   segment, kind: "segment", id: segment.id, parent: meetingID,
                   searchable: segment.text)
                 if self.activeMeetingID == meetingID {
-                  self.liveLines = Array((self.liveLines + [segment]).suffix(4))
+                  self.liveLines = Array((self.liveLines + [segment]).suffix(300))
                 }
                 if self.selectedMeetingID == meetingID { try self.refreshDetail() }
                 self.scheduleOutline(meetingID: meetingID)

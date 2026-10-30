@@ -105,13 +105,13 @@ import ChupCore
         state.micWaveform = (0..<16).map { Float(0.25 + 0.6 * abs(sin(Double($0) * 0.7))) }
         let sidebar = MeetingSidebar(state: state)
         try renderNative(
-          MeetingSidebarView(sidebar: sidebar).environmentObject(state).environment(\.colorScheme, .dark),
-          size: CGSize(width: 320, height: 680), to: destination.appendingPathComponent("33-notes-sidebar.png"))
+          MeetingSidebarView(sidebar: sidebar).environmentObject(state),
+          size: CGSize(width: 360, height: 640), to: destination.appendingPathComponent("33-notes-sidebar.png"))
         state.meetingStatus = .paused
         state.currentGapReason = "Microphone packets stopped. Recording paused; source-loss gap marked."
         try renderNative(
-          MeetingSidebarView(sidebar: sidebar).environmentObject(state).environment(\.colorScheme, .dark),
-          size: CGSize(width: 320, height: 680), to: destination.appendingPathComponent("33b-sidebar-no-audio.png"))
+          MeetingSidebarView(sidebar: sidebar).environmentObject(state),
+          size: CGSize(width: 360, height: 640), to: destination.appendingPathComponent("33b-sidebar-no-audio.png"))
         state.meetingStatus = .recording
         state.activeMeetingID = nil
         state.enhancedNotes = EnhancedNotes(
