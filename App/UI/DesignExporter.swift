@@ -284,7 +284,7 @@ import ChupCore
             "Native idle controls · actual device availability, no voice session or simulated success"
         ) {
           VStack(alignment: .leading, spacing: 24) {
-            Text("A moment to think aloud.").font(.system(size: 32, design: .serif))
+            Text("A moment to think aloud.").font(.system(size: 32, weight: .semibold))
             AssistantVoiceControls(
               voice: state.voice, router: state.voiceRouter, mode: .privateVoice
             ).environmentObject(state)
@@ -460,7 +460,7 @@ import ChupCore
   }
   private static func renderNative<V: View>(_ view: V, size: CGSize, to url: URL) throws {
     let host = NSHostingView(
-      rootView: view.environment(\.colorScheme, .light).tint(Palette.olive).frame(
+      rootView: view.environment(\.colorScheme, .light).tint(Palette.accent).frame(
         width: size.width, height: size.height))
     let window = NSWindow(
       contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered,
@@ -570,7 +570,7 @@ struct DesignSidebar: View {
     VStack(alignment: .leading, spacing: 30) {
       HStack(spacing: 12) {
         WaveMark().scaleEffect(0.75).frame(width: 32)
-        Text("Chup!").font(.system(size: 19, weight: .medium, design: .serif))
+        Text("Chup!").font(.system(size: 19, weight: .semibold))
       }
       VStack(alignment: .leading, spacing: 5) {
         ForEach(WorkspacePage.allCases, id: \.self) { page in
@@ -596,9 +596,9 @@ struct PanelBoard: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 30) {
       HStack {
-        WaveMark(color: Palette.red)
+        WaveMark()
         VStack(alignment: .leading, spacing: 6) {
-          Text("Small moments. Thoughtfully handled.").font(.system(size: 34, design: .serif))
+          Text("Small moments. Thoughtfully handled.").font(.system(size: 34, weight: .semibold))
           Text("CHUP! / NOTIFICATIONS & FLOATING CONTROLS").font(
             .system(size: 10, weight: .semibold)
           ).tracking(1.8).foregroundStyle(Palette.secondary)
@@ -667,7 +667,7 @@ struct RailDesignBoard: View {
     VStack(alignment: .leading, spacing: 24) {
       Text("CHUP! / DARK GLASS CONTROLS").font(.system(size: 10, weight: .semibold))
         .tracking(1.8).foregroundStyle(Palette.secondary)
-      Text("Warm paper. A darker edge.").font(.system(size: 38, design: .serif))
+      Text("Warm paper. A darker edge.").font(.system(size: 38, weight: .semibold))
       Text("The workspace stays light. The independent rail and its drawers stay dark.")
         .foregroundStyle(Palette.secondary)
       HStack(alignment: .center, spacing: 56) {
@@ -696,7 +696,7 @@ struct RailDesignBoard: View {
           Text("MEETING DRAWER").font(.system(size: 9, weight: .semibold)).tracking(1.5)
         }
         VStack(alignment: .leading, spacing: 18) {
-          Text("A little life.").font(.system(size: 23, design: .serif))
+          Text("A little life.").font(.system(size: 23, weight: .semibold))
           Text("240 ms expansion\n180 ms collapse\n120 ms hover feedback\n450 ms exit delay")
             .font(.system(size: 12)).lineSpacing(10)
           Text("Reduce Motion removes movement. Reduce Transparency uses solid charcoal.")
@@ -725,7 +725,7 @@ struct IslandDesignBoard: View {
     VStack(alignment: .leading, spacing: 26) {
       Text("CHUP! / DYNAMIC ISLAND · PROPOSAL").font(.system(size: 10, weight: .semibold))
         .tracking(1.8).foregroundStyle(Palette.secondary)
-      Text("One surface at the top, instead of two.").font(.system(size: 36, design: .serif))
+      Text("One surface at the top, instead of two.").font(.system(size: 36, weight: .semibold))
       Text(
         "When the island is on, the edge rail stays hidden. Its voice animation, dictate, meeting, assistant and settings controls move under the notch."
       ).font(.system(size: 14)).foregroundStyle(Palette.secondary)
@@ -736,7 +736,7 @@ struct IslandDesignBoard: View {
             HStack(spacing: 0) {
               IslandGlyph(state: compact, size: 18)
               Spacer(minLength: 150)
-              VoiceWaveform(samples: compact.micWaveform, width: 20, height: 16, color: .white)
+              VoiceWaveform(samples: compact.micWaveform, width: 20, height: 16)
             }.padding(.horizontal, 14).frame(width: 300, height: 30)
           }
         }
@@ -833,7 +833,7 @@ private struct PopupStylePreview: View {
     VStack(alignment: .leading, spacing: 28) {
       Text("CHUP! / ONE QUIET VOICE").font(.system(size: 12, weight: .semibold)).tracking(2)
       Text("Charcoal glass. Cream controls. Smaller, calmer popups.")
-        .font(.system(size: 25, design: .serif))
+        .font(.system(size: 25, weight: .semibold))
       HStack(alignment: .top, spacing: 28) {
         VStack(alignment: .leading, spacing: 16) {
           Text("HOVER CONTROLS").font(.system(size: 10, weight: .semibold)).tracking(1)

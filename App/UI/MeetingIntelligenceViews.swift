@@ -6,7 +6,7 @@ struct MeetingActionsView: View {
   @State private var title = ""
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      Text("What happens next").font(.system(size: 25, design: .serif)).padding(.top, 24)
+      Text("What happens next").font(.system(size: 25, weight: .semibold)).padding(.top, 24)
       HStack {
         TextField("Add an action…", text: $title).onSubmit(add)
         Button("Add", action: add).disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -69,7 +69,7 @@ struct PrivateThoughtsView: View {
   @EnvironmentObject var state: WorkspaceState
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      Text("Just for you").font(.system(size: 25, design: .serif)).padding(.top, 24)
+      Text("Just for you").font(.system(size: 25, weight: .semibold)).padding(.top, 24)
       Label("These thoughts are never included in AI requests or broadcasts.", systemImage: "lock")
         .font(.caption).foregroundStyle(Palette.secondary)
       TextEditor(text: $state.thoughtsDraft).font(.system(size: 17)).scrollContentBackground(
@@ -91,7 +91,7 @@ struct LiveOutlineView: View {
   }
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Label("Live notes", systemImage: "sparkle").font(.system(size: 22, design: .serif))
+      Label("Live notes", systemImage: "sparkle").font(.system(size: 22, weight: .semibold))
       Text(
         "Written from completed live text as the meeting goes. Wording may change after final refinement."
       ).font(.caption).foregroundStyle(Palette.secondary)
@@ -113,7 +113,7 @@ struct SummaryEditView: View {
   @State var item: SummaryItem
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      Text("Keep your interpretation").font(.system(size: 25, design: .serif))
+      Text("Keep your interpretation").font(.system(size: 25, weight: .semibold))
       Text(
         "This pinned edit stays separate from regenerated summaries. Its original sources are retained."
       ).foregroundStyle(Palette.secondary)
@@ -138,7 +138,7 @@ struct EnhancedNotesView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack {
-        Text("Your notes, filled in").font(.system(size: 22, design: .serif))
+        Text("Your notes, filled in").font(.system(size: 22, weight: .semibold))
         Spacer()
         if busy {
           ProgressView().controlSize(.small)

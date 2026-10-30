@@ -5,11 +5,12 @@ struct VoiceWaveform: View {
   let samples: [Float]
   var width: CGFloat = 27
   var height: CGFloat = 32
-  var color: Color = RailPalette.red
+  /// nil draws the brand gradient across the bars.
+  var color: Color?
   var barCount: Int = 5
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var body: some View {
-    let barWidth: CGFloat = width < 24 ? 2 : 3
+    let barWidth: CGFloat = width < 24 ? 2 : (width < 60 ? 3 : 4)
     let count = max(2, barCount)
     HStack(spacing: max(1, (width - CGFloat(count) * barWidth) / CGFloat(count - 1))) {
       ForEach(0..<count, id: \.self) { index in
@@ -19,7 +20,7 @@ struct VoiceWaveform: View {
         let raw = samples.isEmpty ? 0 : samples[lower] + (samples[upper] - samples[lower]) * (position - Float(lower))
         let level = raw.isFinite ? min(1, max(0, raw)) : 0
         let scale = CGFloat(0.65 + 0.35 * sin(Double(index) / Double(count - 1) * .pi))
-        Capsule().fill(color).frame(width: barWidth,
+        Capsule().fill(color ?? Palette.gradient(at: Double(index) / Double(count - 1))).frame(width: barWidth,
           height: max(3, height * CGFloat(level) * scale))
       }
     }.frame(width: width, height: height)

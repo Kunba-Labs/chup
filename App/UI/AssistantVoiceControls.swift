@@ -12,7 +12,7 @@ struct AssistantVoiceControls: View {
       HStack {
         Image(systemName: mode == .broadcast ? "dot.radiowaves.left.and.right" : "headphones")
         Text(mode == .broadcast ? "Speak in this meeting" : "A private voice conversation").font(
-          .system(size: 22, design: .serif))
+          .system(size: 22, weight: .semibold))
       }
       Text(
         mode == .broadcast
@@ -85,7 +85,7 @@ struct AssistantVoiceControls: View {
       { timeline in
         HStack(spacing: 4) {
           ForEach(0..<20, id: \.self) { i in
-            Capsule().fill(mode == .broadcast ? Palette.red : Palette.olive)
+            Capsule().fill(mode == .broadcast ? Palette.red : Palette.accent)
               .frame(
                 width: 3,
                 height: 3 + CGFloat(router.level)

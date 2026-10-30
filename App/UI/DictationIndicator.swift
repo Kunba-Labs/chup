@@ -228,7 +228,7 @@ struct DictationIndicatorView: View {
       vertical ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
     return layout {
       if let feedback, feedback.isCompactCompletion {
-        Image(systemName: feedback.icon).foregroundStyle(RailPalette.olive)
+        Image(systemName: feedback.icon).foregroundStyle(RailPalette.accent)
         if !vertical { Text(feedback.title).font(.system(size: 12, weight: .medium)) }
       } else {
         control("xmark", label: "Cancel dictation") { state.cancelDictation() }
@@ -238,7 +238,7 @@ struct DictationIndicatorView: View {
           } else {
             VoiceWaveform(
               samples: state.micWaveform, width: 68, height: 22,
-              color: RailPalette.ink, barCount: 11
+              barCount: 11
             )
             .rotationEffect(.degrees(vertical ? 90 : 0))
             .frame(width: vertical ? 22 : 68, height: vertical ? 68 : 22)

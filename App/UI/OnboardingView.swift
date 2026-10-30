@@ -18,7 +18,7 @@ struct PermissionCards: View {
               } label: {
                 Image(systemName: "arrow.up.right")
                   .font(.system(size: 13, weight: .semibold))
-                  .foregroundStyle(Palette.olive)
+                  .foregroundStyle(Palette.accent)
                   .frame(width: 26, height: 26).contentShape(Rectangle())
               }
               .buttonStyle(.borderless)
@@ -103,22 +103,22 @@ struct PermissionRefreshButton: View {
     } label: {
       HStack(spacing: 10) {
         ZStack {
-          Circle().fill(confirmed ? Palette.olive : Palette.sidebar)
+          Circle().fill(confirmed ? Palette.accent : Palette.sidebar)
           if checking {
             if reduceMotion {
               Image(systemName: "hourglass").font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Palette.olive)
+                .foregroundStyle(Palette.accent)
             } else {
               ProgressView().progressViewStyle(.circular).controlSize(.small)
             }
           } else {
             Image(systemName: resultIcon)
               .font(.system(size: 17, weight: .semibold))
-              .foregroundStyle(confirmed ? Color.white : Palette.olive)
+              .foregroundStyle(confirmed ? Color.white : Palette.accent)
           }
         }.frame(width: 40, height: 40)
         Text(checking ? "Checking access…" : "Check access again")
-          .font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.olive)
+          .font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.accent)
       }.contentShape(Rectangle())
     }
     .buttonStyle(.plain).disabled(checking || setup.requesting != nil)
@@ -153,7 +153,7 @@ struct PermissionStatusBadge: View {
     .font(.system(size: 15, weight: .semibold))
     .foregroundStyle(enabled ? Color.white : Palette.ink)
     .padding(.horizontal, 13).padding(.vertical, 9)
-    .background(enabled ? Palette.olive : Palette.sidebar, in: Capsule())
+    .background(enabled ? Palette.accent : Palette.sidebar, in: Capsule())
     .fixedSize(horizontal: true, vertical: false)
     .accessibilityElement(children: .combine)
   }
@@ -185,10 +185,10 @@ struct OnboardingView: View {
     HStack(spacing: 0) {
       VStack(alignment: .leading, spacing: 28) {
         HStack {
-          WaveMark(color: Palette.red)
-          Text("Chup!").font(.system(size: 30, weight: .medium, design: .serif))
+          WaveMark()
+          Text("Chup!").font(.system(size: 30, weight: .semibold))
         }
-        Text("A little setup.\nA calmer working day.").font(.system(size: 23, design: .serif))
+        Text("A little setup.\nA calmer working day.").font(.system(size: 23, weight: .semibold))
           .lineSpacing(5)
         ForEach(steps.indices, id: \.self) { index in
           HStack(spacing: 12) {
@@ -204,7 +204,7 @@ struct OnboardingView: View {
       VStack(alignment: .leading, spacing: 20) {
         ScrollView {
           VStack(alignment: .leading, spacing: 22) {
-            Text(title).font(.system(size: 33, design: .serif))
+            Text(title).font(.system(size: 33, weight: .semibold))
             switch step {
             case 0:
               Text("Speak naturally. Keep the conversation. Find the thought you need.").font(
@@ -291,7 +291,7 @@ struct OnboardingView: View {
             .buttonStyle(.borderedProminent)
         }
       }.padding(32).background(Palette.workspace)
-    }.frame(width: 950, height: 700).foregroundStyle(Palette.ink).tint(Palette.olive)
+    }.frame(width: 950, height: 700).foregroundStyle(Palette.ink).tint(Palette.accent)
       .preferredColorScheme(.light).onAppear { state.setup.refresh() }
   }
   private var title: String {
@@ -309,10 +309,10 @@ struct OnboardingView: View {
   }
   private func feature(_ icon: String, _ title: String, _ detail: String) -> some View {
     HStack(alignment: .top, spacing: 16) {
-      Image(systemName: icon).font(.system(size: 22)).foregroundStyle(Palette.olive).frame(
+      Image(systemName: icon).font(.system(size: 22)).foregroundStyle(Palette.accent).frame(
         width: 30)
       VStack(alignment: .leading, spacing: 7) {
-        Text(title).font(.system(size: 21, design: .serif))
+        Text(title).font(.system(size: 21, weight: .semibold))
         Text(detail).font(.callout).foregroundStyle(Palette.secondary)
       }
     }.padding(20).workspaceSurface()

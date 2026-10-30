@@ -1,9 +1,12 @@
 {
-  "fill": { "solid": "srgb:0.035,0.030,0.027,1.000" },
+  "fill-specializations": [
+    { "value": { "solid": "srgb:0.980,0.980,0.988,1.000" } },
+    { "appearance": "dark", "value": { "solid": "srgb:0.090,0.086,0.110,1.000" } }
+  ],
   "groups": [
     {
       "layers": [
-        { "image-name": "Waveform.png", "name": "Scanner waveform" }
+        { "image-name": "Waveform.png", "name": "Pill bars" }
       ],
       "name": "Waveform",
       "shadow": { "kind": "neutral", "opacity": 0.0 },

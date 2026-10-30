@@ -16,7 +16,7 @@ struct NotificationCard: View {
   var tertiary: () -> Void = {}
   private var recording: Bool { kind == .recording || kind == .dictating }
   private var accent: Color {
-    [.recording, .dictating, .paused, .routeBlocked].contains(kind) ? RailPalette.red : RailPalette.olive
+    [.recording, .dictating, .paused, .routeBlocked].contains(kind) ? RailPalette.red : RailPalette.accent
   }
   private var icon: String {
     switch kind {
@@ -82,7 +82,7 @@ struct NotificationCard: View {
           ZStack {
             Circle().stroke(.white.opacity(0.16), lineWidth: 1.5)
             Circle().trim(from: 0, to: Double(countdown) / 10).stroke(
-              RailPalette.olive, style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
+              RailPalette.accent, style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
             ).rotationEffect(.degrees(-90))
               .animation(reduceMotion ? nil : .linear(duration: 1), value: countdown)
             Text("\(countdown)").font(.system(size: 9, weight: .medium, design: .monospaced))

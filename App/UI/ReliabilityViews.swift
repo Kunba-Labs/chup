@@ -79,7 +79,7 @@ struct MicrophonePicker: View {
             } else {
               VoiceWaveform(
                 samples: state.microphonePreviewActive ? state.micWaveform : [], width: 120,
-                height: 32, color: Palette.olive, barCount: 15)
+                height: 32, barCount: 15)
             }
           }
           Text(state.microphonePreviewMessage).font(.callout).foregroundStyle(Palette.secondary)

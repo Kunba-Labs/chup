@@ -27,7 +27,7 @@ struct RecordingWaveform: View {
         let height = max(2, CGFloat(peaks[index]) * size.height)
         let x = CGFloat(index) * size.width / CGFloat(count)
         let rect = CGRect(x: x, y: (size.height - height) / 2, width: 2, height: height)
-        context.fill(Path(roundedRect: rect, cornerRadius: 1), with: .color(Palette.olive.opacity(Double(index) / Double(count) <= position / duration ? 1 : 0.35)))
+        context.fill(Path(roundedRect: rect, cornerRadius: 1), with: .color(Palette.gradient(at: Double(index) / Double(count)).opacity(Double(index) / Double(count) <= position / duration ? 1 : 0.3)))
       }
     }
   }

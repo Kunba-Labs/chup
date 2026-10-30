@@ -43,3 +43,22 @@ Benchmarked against Granola, Hyprnote/anarlog, Notion AI Meeting Notes, Fireflie
 3. **Live notes sidebar — notepad + live AI notes.** A floating, collapsible, non-activating side panel during recording: the user's notepad above the live outline. It's excluded from screen sharing (`sharingType = .none`). Live captions and the outline are on by default while recording, so every meeting costs more in the cloud.
 4. **Templates — built-in set only.** General, 1:1, Sales/customer, Standup and Interview set the merge's section headings; regenerate with another template. A custom template editor is deferred, so there's no support yet for "use my own template".
 5. **Export — copy, follow-up draft and MCP.** (2026-10-29: MCP built as read-only, served by the running app over a 0600 socket and switched on in Keychain; see README.) Copy merged notes as Markdown, and "Draft follow-up email" to the clipboard (never sent). Read-only MCP access to meetings needs its own security review before it ships. Slack, Notion and CRM pushes are split off and still to be decided, so there's no support yet for "send to my tools".
+
+## Increment 10 — UI/UX redesign (decided 2026-10-30)
+
+Plan: [plans/ui-redesign.md](plans/ui-redesign.md). Spec: [plans/ui-redesign-spec.md](plans/ui-redesign-spec.md). Benchmarked live against Granola, Notion AI Meeting Notes, Fireflies, Fathom, Wispr Flow Notetaker, Otter, Char, Superwhisper and Raycast. Walked item by item with Waseem:
+
+1. **Palette:** render three directions (voice gradient, warm evolved, reference lavender) and pick from renders. Structure from the references (floating panel, glass rail, big sans type, gradient waveform) either way.
+2. **Shell:** glass icon rail, collapsible list column, floating content panel.
+3. **Meeting page:** Notes | Summary toggle on the left (pins/versions untouched), transcript pane on the right, speaker-colored timeline at the bottom, Ask as a panel with per-meeting history. Six tabs become two views plus a pane.
+4. **Recording:** no in-window live view. The existing floating sidebar gains the gradient waveform, fading You/Them live text, Pause/Stop/Discard and a no-audio warning with Restart input. "Who is this?" chips appear only after Stop, because live captions know just mic vs remote.
+5. **Data operations:** all of it: trash + undo, partial delete, job cancel, tag chips, bulk select, inline title edit.
+6. **Search:** ⌘K across all data types (keyword), list filters, find-in-transcript. Cross-meeting AI Ask parked, so "ask across my meetings" stays unsupported.
+7. **Settings:** 14 pages to 6, colored section tiles, real installed-app icons in pickers. No bundled third-party logos and no integrations gallery, since Chup has no such integrations and brand permission is required.
+8. **Today home:** without an Ask box, so no cross-meeting chat from the home.
+9. **Floating surfaces:** restyle and resize the island for larger live text; click-through regions re-verified.
+10. **App icon:** explore 3–4 marks before committing.
+
+Waseem asked to see every screen as a design board before any build work.
+
+**Design board decision (2026-10-30):** Waseem picked palette **A, voice gradient** (backdrop #E6E4F0→#F5ECE6, ink #16151A, muted #615E6D, accent #6A4CF5→#E8735A) and icon **A, pill bars** (five gradient pill bars on a light tile, dark variant for dark appearance). Warm and reference palettes are dropped from the shipped build.

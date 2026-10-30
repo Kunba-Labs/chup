@@ -9,7 +9,7 @@ struct WorkspaceView: View {
       VStack(alignment: .leading, spacing: 0) {
         HStack(spacing: 12) {
           WaveMark().scaleEffect(0.75).frame(width: 34)
-          Text("Chup!").font(.system(size: 19, weight: .medium, design: .serif))
+          Text("Chup!").font(.system(size: 19, weight: .semibold))
             .lineSpacing(0)
         }.padding(.top, 28).padding(.bottom, 38).padding(.horizontal, 24)
         Text("YOUR WORKSPACE").font(.system(size: 10, weight: .semibold)).tracking(1.7)
@@ -22,7 +22,7 @@ struct WorkspaceView: View {
               if page == .dictation && state.dictationStatus == .processing {
                 ProcessingCircle().frame(width: 18)
               } else if page == .dictation && state.dictationStatus == .listening {
-                VoiceWaveform(samples: state.micWaveform, width: 18, height: 20, color: Palette.red)
+                VoiceWaveform(samples: state.micWaveform, width: 18, height: 20)
               } else {
                 Image(systemName: page.icon).frame(width: 18)
               }
@@ -43,7 +43,7 @@ struct WorkspaceView: View {
           HStack(spacing: 7) {
             Image(
               systemName: state.meetingStatus == .recording ? "record.circle.fill" : "lock.shield"
-            ).foregroundStyle(state.meetingStatus == .recording ? Palette.red : Palette.olive)
+            ).foregroundStyle(state.meetingStatus == .recording ? Palette.red : Palette.accent)
             Text(state.meetingStatus == .recording ? "Recording locally" : "A space of your own")
               .font(.caption.weight(.medium))
           }
@@ -62,7 +62,7 @@ struct WorkspaceView: View {
       VStack(spacing: 0) {
         if let notice = state.notice {
           HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "info.circle").foregroundStyle(Palette.olive)
+            Image(systemName: "info.circle").foregroundStyle(Palette.accent)
             Text(notice).font(.system(size: 12))
               .fixedSize(horizontal: false, vertical: true)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -83,7 +83,7 @@ struct WorkspaceView: View {
           }
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
       }.background(Palette.workspace)
-    }.foregroundStyle(Palette.ink).tint(Palette.olive)
+    }.foregroundStyle(Palette.ink).tint(Palette.accent)
       .onAppear {
         if ProcessInfo.processInfo.arguments.contains("--validate-audio") { return }
         if state.isPreview {
@@ -110,7 +110,7 @@ struct PageHeader: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 9) {
       Text(eyebrow.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(1.8)
-        .foregroundStyle(Palette.olive)
+        .foregroundStyle(Palette.accent)
       Text(title).font(Palette.title)
       Text(subtitle).font(.system(size: 14)).foregroundStyle(Palette.secondary)
     }
@@ -186,12 +186,12 @@ struct MeetingsView: View {
                   HStack(alignment: .top, spacing: 20) {
                     VStack {
                       Text(meeting.created.formatted(.dateTime.day())).font(
-                        .system(size: 26, design: .serif))
+                        .system(size: 26, weight: .semibold))
                       Text(meeting.created.formatted(.dateTime.month(.abbreviated))).font(.caption)
                         .textCase(.uppercase)
                     }.foregroundStyle(Palette.secondary).frame(width: 42)
                     VStack(alignment: .leading, spacing: 8) {
-                      Text(meeting.title).font(.system(size: 21, design: .serif))
+                      Text(meeting.title).font(.system(size: 21, weight: .semibold))
                       if !query.isEmpty,
                         let hit = searchHits.first(where: { $0.meetingID == meeting.id })
                       {
@@ -203,7 +203,7 @@ struct MeetingsView: View {
                           ? "No participants named yet" : meeting.participants
                       ).font(.system(size: 13)).foregroundStyle(Palette.secondary)
                       if !meeting.tags.isEmpty {
-                        Text(meeting.tags).font(.caption).foregroundStyle(Palette.olive)
+                        Text(meeting.tags).font(.caption).foregroundStyle(Palette.accent)
                       }
                     }
                     Spacer()
@@ -338,7 +338,7 @@ struct MeetingDetailView: View {
             VStack(spacing: 12) {
               Text(label).font(.system(size: 14, weight: tab == label ? .semibold : .regular))
                 .foregroundStyle(tab == label ? Palette.ink : Palette.secondary)
-              Rectangle().fill(tab == label ? Palette.olive : .clear).frame(height: 2)
+              Rectangle().fill(tab == label ? Palette.accent : .clear).frame(height: 2)
             }.frame(width: label == "Private thoughts" ? 115 : (label == "Transcript" ? 80 : 76))
           }.buttonStyle(.plain)
         }
@@ -348,7 +348,7 @@ struct MeetingDetailView: View {
       Group {
         if tab == "My notes" {
           VStack(alignment: .leading, spacing: 12) {
-            Text("Your side of the conversation").font(.system(size: 22, design: .serif)).padding(
+            Text("Your side of the conversation").font(.system(size: 22, weight: .semibold)).padding(
               .top, 24)
             ZStack(alignment: .topLeading) {
               if state.noteDraft.isEmpty {
@@ -474,7 +474,7 @@ struct MeetingDetailView: View {
   private var summaryBody: some View {
     VStack(alignment: .leading) {
       HStack {
-        Text("Grounded in the conversation").font(.system(size: 22, design: .serif))
+        Text("Grounded in the conversation").font(.system(size: 22, weight: .semibold))
         Spacer()
         Button(state.summary == nil ? "Generate summary" : "New summary version") {
           state.generateSummary()
@@ -492,7 +492,7 @@ struct MeetingDetailView: View {
       }
       ForEach(state.summaryEdits) { item in
         VStack(alignment: .leading, spacing: 6) {
-          Text("Your pinned edit").font(.caption).foregroundStyle(Palette.olive)
+          Text("Your pinned edit").font(.caption).foregroundStyle(Palette.accent)
           Text(item.text)
           Button("Edit") { summaryEdit = item }
         }.padding(12).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
@@ -503,7 +503,7 @@ struct MeetingDetailView: View {
             ForEach(summary.items) { item in
               VStack(alignment: .leading, spacing: 10) {
                 Text(item.category.uppercased()).font(.caption.weight(.semibold)).tracking(1.4)
-                  .foregroundStyle(Palette.olive)
+                  .foregroundStyle(Palette.accent)
                 Text(item.text).font(.system(size: 17)).textSelection(.enabled)
                 if let owner = item.owner { Text("Owner: \(owner)").font(.caption) }
                 if let due = item.dueDate { Text("Due: \(due)").font(.caption) }
@@ -562,7 +562,7 @@ struct MeetingDetailView: View {
   private var transcriptBody: some View {
     VStack(alignment: .leading) {
       HStack {
-        Text("Every voice, in context").font(.system(size: 22, design: .serif))
+        Text("Every voice, in context").font(.system(size: 22, weight: .semibold))
         Spacer()
         Button("Inspect recovery") { state.inspectRecording() }.disabled(
           state.activeMeetingID == state.selectedMeetingID)
@@ -605,12 +605,14 @@ struct MeetingDetailView: View {
               HStack(alignment: .top, spacing: 18) {
                 Button(WorkspaceState.time(segment.start)) { state.play(at: segment.start) }.font(
                   .caption.monospacedDigit()
-                ).buttonStyle(.plain).foregroundStyle(Palette.olive).frame(width: 48)
+                ).buttonStyle(.plain).foregroundStyle(Palette.accent).frame(width: 48)
                 VStack(alignment: .leading, spacing: 8) {
                   HStack {
                     if segment.provisional {
                       Text("Provisional · speaker unknown").font(.system(size: 12, weight: .semibold))
                     } else {
+                      Circle().fill(Palette.speaker(segment.speakerID)).frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
                       speakerMenu(segment)
                     }
                     Text(
@@ -645,7 +647,7 @@ struct CaptureSetupView: View {
   var permissionSetup = false
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {
-      Text("Be present. We’ll keep the audio.").font(.system(size: 27, design: .serif))
+      Text("Be present. We’ll keep the audio.").font(.system(size: 27, weight: .semibold))
       Text(
         "Let everyone know you’re recording. Microphone and call audio are saved separately on this Mac."
       ).foregroundStyle(Palette.secondary)
@@ -708,7 +710,7 @@ struct SegmentEditor: View {
   }
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      Text("Correct the record").font(.system(size: 25, design: .serif))
+      Text("Correct the record").font(.system(size: 25, weight: .semibold))
       ScrollView {
         VStack(alignment: .leading, spacing: 18) {
           WorkspaceCard("Transcript", icon: "text.bubble") {
@@ -800,7 +802,7 @@ struct PipelineStatus: View {
   }
   private func item(_ ok: Bool?, _ text: String) -> some View {
     HStack(spacing: 5) {
-      Circle().fill(ok == nil ? Palette.secondary : ok! ? Palette.olive : Palette.red)
+      Circle().fill(ok == nil ? Palette.secondary : ok! ? Palette.accent : Palette.red)
         .frame(width: 6, height: 6)
       Text(text)
     }
@@ -837,7 +839,7 @@ struct VoiceSampleConfirmation: View {
   @State private var confirmed = false
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
-      Text("Remember \(sample.name)’s voice").font(.system(size: 22, design: .serif))
+      Text("Remember \(sample.name)’s voice").font(.system(size: 22, weight: .semibold))
       Text("Chup! will save this clip encrypted on this Mac and send it with future transcriptions to recognise \(sample.name).")
         .foregroundStyle(Palette.secondary)
       WorkspaceCard("Clip · \(WorkspaceState.time(sample.segment.start))", icon: "waveform") {

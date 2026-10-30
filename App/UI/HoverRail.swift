@@ -306,9 +306,9 @@ final class TrackingHost<Content: View>: NSHostingView<Content> {
 enum RailPalette {
   static let ink = Color(red: 0.98, green: 0.96, blue: 0.92)
   static let secondary = Color(red: 0.73, green: 0.73, blue: 0.70)
-  static let olive = Color(red: 0.75, green: 0.80, blue: 0.63)
-  static let red = Color(red: 0.98, green: 0.49, blue: 0.42)
-  static let base = Color(red: 0.12, green: 0.13, blue: 0.13)
+  static let accent = Color(red: 0.73, green: 0.66, blue: 1.0)
+  static let red = Color(red: 0.91, green: 0.45, blue: 0.35)
+  static let base = Color(red: 0.07, green: 0.07, blue: 0.09)
 }
 
 /// AppKit material works on macOS 15; no dependency on macOS 26 Liquid Glass.
@@ -442,7 +442,7 @@ struct RailContent: View {
       } else { RailSurface(cornerRadius: presentation.drawer == nil ? 22 : 18, liveGlass: liveGlass) }
     }
     .clipShape(RoundedRectangle(cornerRadius: presentation.drawer == nil ? 22 : 18, style: .continuous))
-    .foregroundStyle(RailPalette.ink).tint(RailPalette.olive)
+    .foregroundStyle(RailPalette.ink).tint(RailPalette.accent)
     .environment(\.colorScheme, .dark)
     .onExitCommand { action("dismiss") }
     .onMoveCommand { direction in

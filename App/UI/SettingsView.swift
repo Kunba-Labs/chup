@@ -36,7 +36,7 @@ struct SettingsView: View {
     HStack(spacing: 0) {
       ScrollView {
         VStack(alignment: .leading, spacing: 4) {
-          Text("Settings").font(.system(size: 25, design: .serif)).padding(.horizontal, 10).padding(
+          Text("Settings").font(.system(size: 25, weight: .semibold)).padding(.horizontal, 10).padding(
             .bottom, 20)
           ForEach(sections, id: \.self) { name in
             Button {
@@ -65,7 +65,7 @@ struct SettingsView: View {
           selectedContent
         }.frame(maxWidth: 720, alignment: .leading).padding(28).frame(maxWidth: .infinity)
       }.background(Palette.workspace)
-    }.foregroundStyle(Palette.ink).tint(Palette.olive).textFieldStyle(.roundedBorder)
+    }.foregroundStyle(Palette.ink).tint(Palette.accent).textFieldStyle(.roundedBorder)
       .onAppear {
         if state.microphoneSettingsRequested {
           section = "Audio"
@@ -358,7 +358,7 @@ struct ShortcutSettingsView: View {
           }
           if registry.rebinding == action && registry.rebindingID == nil {
             Label("Press keys, then release…", systemImage: "keyboard")
-              .font(.system(.callout, design: .monospaced)).foregroundStyle(Palette.olive)
+              .font(.system(.callout, design: .monospaced)).foregroundStyle(Palette.accent)
           } else if assigned.isEmpty {
             Text("No shortcut assigned").font(.caption).foregroundStyle(Palette.secondary)
           }

@@ -13,7 +13,7 @@ struct StorageSettingsView: View {
         Label(
           state.store?.encrypted == true ? "Encrypted on this Mac" : "Workspace unavailable",
           systemImage: "lock.shield"
-        ).font(.callout.weight(.medium)).foregroundStyle(Palette.olive)
+        ).font(.callout.weight(.medium)).foregroundStyle(Palette.accent)
         DetailDisclosure(
           title: "Encryption & backups",
           text:
@@ -114,7 +114,7 @@ struct BackupSettingsView: View {
   @State private var confirmation = ""
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
-      Text("Keep a way back.").font(.system(size: 30, design: .serif))
+      Text("Keep a way back.").font(.system(size: 30, weight: .semibold))
       Text(
         "Recovery archives include encrypted recordings, notes, search data and wrapped encryption keys. Your backend token is excluded. Use a password of at least 12 characters and keep it separately."
       ).foregroundStyle(Palette.secondary)
@@ -152,7 +152,7 @@ struct BackupSettingsView: View {
           dismiss()
         }.disabled(state.storageBusy)
       }
-    }.padding(28).frame(width: 590, height: 650).background(Palette.workspace).tint(Palette.olive)
+    }.padding(28).frame(width: 590, height: 650).background(Palette.workspace).tint(Palette.accent)
       .textFieldStyle(.roundedBorder)
   }
 }

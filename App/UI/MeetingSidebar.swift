@@ -129,7 +129,7 @@ struct MeetingSidebarView: View {
               }
               ForEach(items, id: \.key) { _, item in
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                  Text("•").foregroundStyle(RailPalette.olive)
+                  Text("•").foregroundStyle(RailPalette.accent)
                   Text(item.text).font(.system(size: 13)).textSelection(.enabled)
                 }
               }

@@ -24,3 +24,7 @@ The user requires a fresh build installed in their Applications folder after eve
 
 - Commit source, project configuration, documentation, scripts, and reproducible design assets. Do not commit local credentials, generated build products, crash artifacts, Xcode user state, or MCP/tool configuration.
 - Before handoff, run `git status`, record the tested build/version, and keep `README.md` and `docs/` aligned with the implementation.
+
+## Active plan
+
+The UI/UX redesign (increment 10) builds against `docs/plans/ui-redesign-spec.md`; the reasoning is in `docs/plans/ui-redesign.md`. Check spec items off only when their acceptance criteria verify, and run `/product-planner check` to audit coverage.

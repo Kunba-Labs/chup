@@ -16,7 +16,7 @@ struct AttentionDesignBoard: View {
     VStack(alignment: .leading, spacing: 26) {
       Text("CHUP! / ATTENTION · PROPOSAL").font(.system(size: 10, weight: .semibold))
         .tracking(1.8).foregroundStyle(Palette.secondary)
-      Text("When something quietly broke.").font(.system(size: 36, design: .serif))
+      Text("When something quietly broke.").font(.system(size: 36, weight: .semibold))
       Text(
         "A check every five seconds notices two things you would otherwise discover mid-sentence: the shortcut event stream is gone, or the chosen microphone has nothing to give. Amber means attention. Red stays recording."
       ).font(.system(size: 14)).foregroundStyle(Palette.secondary)

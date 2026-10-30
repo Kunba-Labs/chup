@@ -17,7 +17,7 @@ struct LocalSpeechSettings: View {
         Spacer()
         if service.ready {
           Label("Offline ready", systemImage: "checkmark.circle.fill").foregroundStyle(
-            Palette.olive)
+            Palette.accent)
         }
       }
       Text("Whisper large-v3-turbo · English and Dutch · 630 MB download")

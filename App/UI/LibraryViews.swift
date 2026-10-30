@@ -13,15 +13,15 @@ struct DictationView: View {
       WorkspaceCard {
         HStack(spacing: 22) {
           if state.dictationStatus == .listening {
-            VoiceWaveform(samples: state.micWaveform, width: 46, height: 38, color: Palette.red)
+            VoiceWaveform(samples: state.micWaveform, width: 46, height: 38)
           } else {
-            WaveMark(color: Palette.olive)
+            WaveMark()
           }
           VStack(alignment: .leading, spacing: 8) {
             Text(
               state.dictationStatus == .listening ? "Listening to you…" : "A little less typing."
             )
-            .font(.system(size: 23, design: .serif))
+            .font(.system(size: 23, weight: .semibold))
             Text("Use your global shortcut in another app to preserve the intended text field.")
               .font(
                 .caption
@@ -167,7 +167,7 @@ struct NotebookView: View {
                 state.page = .meetings
               } label: {
                 VStack(alignment: .leading, spacing: 8) {
-                  Text(meeting.title).font(.system(size: 21, design: .serif))
+                  Text(meeting.title).font(.system(size: 21, weight: .semibold))
                   Text(meeting.created.formatted(date: .abbreviated, time: .omitted)).font(.caption)
                     .foregroundStyle(Palette.secondary)
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(22).workspaceSurface()
@@ -283,7 +283,7 @@ struct AssistantView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {
       HStack {
-        Text("A thought partner").font(.system(size: 29, design: .serif))
+        Text("A thought partner").font(.system(size: 29, weight: .semibold))
         Spacer()
         Button {
           dismiss()
@@ -309,7 +309,7 @@ struct AssistantView: View {
           }
           if state.assistantHistory.isEmpty {
             Text("What did we decide?\nWhat should happen next?").font(
-              .system(size: 25, design: .serif)
+              .system(size: 25, weight: .semibold)
             )
             .foregroundStyle(Palette.secondary)
             Text(
@@ -319,7 +319,7 @@ struct AssistantView: View {
           }
           ForEach(state.assistantHistory) { exchange in
             VStack(alignment: .leading, spacing: 12) {
-              Text(exchange.question).font(.system(size: 19, design: .serif)).textSelection(
+              Text(exchange.question).font(.system(size: 19, weight: .semibold)).textSelection(
                 .enabled)
               if exchange.status == "pending" {
                 Label("Looking through this meeting…", systemImage: "ellipsis").foregroundStyle(
@@ -344,7 +344,7 @@ struct AssistantView: View {
                   exchange.write?.operation == "create_action_item"
                     ? "Action saved" : "Saved to My notes", systemImage: "checkmark.circle"
                 ).font(.caption)
-                  .foregroundStyle(Palette.olive)
+                  .foregroundStyle(Palette.accent)
               } else if exchange.write != nil && exchange.status == "completed" {
                 Button(
                   exchange.write?.operation == "create_action_item"
@@ -379,7 +379,7 @@ struct AssistantView: View {
       }
       Label("Only this meeting is shared with your configured AI backend.", systemImage: "lock")
         .font(.caption).foregroundStyle(Palette.secondary)
-    }.padding(30).background(Palette.workspace).foregroundStyle(Palette.ink).tint(Palette.olive)
+    }.padding(30).background(Palette.workspace).foregroundStyle(Palette.ink).tint(Palette.accent)
   }
   func send() {
     guard mode == .privateText, !question.isEmpty, !state.assistantBusy else { return }
