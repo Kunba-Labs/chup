@@ -55,6 +55,18 @@ final class TrashTests: XCTestCase {
     XCTAssertEqual(try store.partialDeletion("m"), PartialDeletion(audio: true, transcript: true))
   }
 
+  func testTranscriptLineSearchReturnsEveryMatchingLine() throws {
+    let (store, _) = try workspace()
+    try store.put(Meeting(id: "m", title: "Launch plan"), kind: "meeting", id: "m", searchable: "Launch plan")
+    for (id, text) in [("a", "launch in May"), ("b", "launch copy review")] {
+      let segment = TranscriptSegment(id: id, meetingID: "m", start: 0, end: 1, text: text, speakerID: "x", track: .microphone)
+      try store.put(segment, kind: "segment", id: id, parent: "m", searchable: text)
+    }
+    XCTAssertEqual(Set(try store.searchTranscriptLines("launch").compactMap(\.segmentID)), ["a", "b"])
+    try store.moveToTrash([TrashEntry(id: "m", kind: "meeting", title: "")])
+    XCTAssertTrue(try store.searchTranscriptLines("launch").isEmpty)
+  }
+
   func testTagListSplitsOnCommaAndDot() {
     XCTAssertEqual(Meeting.tagList("Product · Launch, product,  , Q3"), ["Product", "Launch", "Q3"])
   }

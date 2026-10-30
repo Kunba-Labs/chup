@@ -157,7 +157,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var meetingApps: [String: String] = [:]
   /// A ⌘K result hands its text to the list it opens, which filters to it.
   @Published var listQuery: String?
-  var pendingSeek: Double?
+  /// Meeting and time a search hit wants once that meeting's audio has loaded.
+  var pendingSeek: (meetingID: String, time: Double)?
   @Published var undoToast: UndoToast?
   /// What was deleted on its own from the open meeting (audio and/or transcript).
   @Published var partial = PartialDeletion()
@@ -475,7 +476,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       // A search hit opened the meeting before its audio was ready; seek once it is.
       if duration > 0, !loading, let seek = self?.pendingSeek {
         self?.pendingSeek = nil
-        self?.seekPlayback(to: seek)
+        if seek.meetingID == self?.selectedMeetingID { self?.seekPlayback(to: seek.time) }
       }
     }
     playback.onWaveform = { [weak self] in self?.waveformBins = $0 }
@@ -755,11 +756,13 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     pendingExchangeID = nil
     selectedMeetingID = nil
     assistantHistory = []
+    pendingSeek = nil
   }
   func selectMeeting(_ id: String) {
     endVoice()
     playback.reset()
     cancelAssistant()
+    if pendingSeek?.meetingID != id { pendingSeek = nil }
     selectedMeetingID = id
     pendingWrite = nil
     pendingWriteScope = nil

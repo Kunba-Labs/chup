@@ -53,8 +53,7 @@ struct MeetingActionsView: View {
                   }))
             }
             ForEach(action.sources.indices, id: \.self) { index in
-              Button(action.sources[index].quote) { state.revealSource(action.sources[index]) }
-                .buttonStyle(.borderless).font(.caption)
+              SourceLink(source: action.sources[index], label: action.sources[index].quote)
             }
           }.padding(20).workspaceSurface()
           }
@@ -100,11 +99,7 @@ struct MeetingActionsView: View {
             state.saveAction(copy)
           })
       ).textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary).frame(width: 90)
-      if let source = action.sources.first {
-        Button { state.revealSource(source) } label: { Image(systemName: "quote.bubble") }
-          .buttonStyle(.borderless).font(.caption).help(source.quote)
-          .accessibilityLabel("Show source in transcript")
-      }
+      if let source = action.sources.first { SourceLink(source: source) }
     }.padding(.vertical, 8).padding(.horizontal, 12).workspaceSurface()
   }
   @ViewBuilder private func scrollable(@ViewBuilder _ content: () -> some View) -> some View {
@@ -271,6 +266,35 @@ struct EnhancedNotesView: View {
           }
         }
       }
+    }
+  }
+}
+
+/// A citation that opens its transcript line, or says why it can't: the transcript was
+/// deleted ("source deleted", not clickable) or only the audio was ("no audio", no seek).
+struct SourceLink: View {
+  @EnvironmentObject var state: WorkspaceState
+  let source: Evidence
+  var label: String?
+  var body: some View {
+    if state.partial.transcript {
+      Group {
+        if let label { Label("Source deleted · " + label, systemImage: "quote.bubble") } else {
+          Image(systemName: "quote.bubble")
+        }
+      }.font(.caption).foregroundStyle(Palette.secondary.opacity(0.6))
+        .help("Source deleted: the transcript of this meeting was deleted.")
+        .accessibilityLabel("Source deleted")
+    } else {
+      Button {
+        state.revealSource(source)
+      } label: {
+        if let label { Text(state.partial.audio ? label + " · no audio" : label) } else {
+          Image(systemName: state.partial.audio ? "quote.bubble.fill" : "quote.bubble")
+        }
+      }.buttonStyle(.borderless).font(.caption)
+        .help(state.partial.audio ? source.quote + " (audio deleted)" : source.quote)
+        .accessibilityLabel(state.partial.audio ? "Show source in transcript, audio deleted" : "Show source in transcript")
     }
   }
 }

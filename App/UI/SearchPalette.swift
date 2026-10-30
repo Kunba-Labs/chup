@@ -7,6 +7,7 @@ struct SearchPalette: View {
   @EnvironmentObject var state: WorkspaceState
   @State private var query = ""
   @State private var hits: [MeetingSearchHit] = []
+  @State private var lines: [MeetingSearchHit] = []
   @State private var cursor = 0
   @FocusState private var focused: Bool
 
@@ -23,11 +24,17 @@ struct SearchPalette: View {
     let q = query.trimmingCharacters(in: .whitespaces)
     guard !q.isEmpty else { return [] }
     let titles = Dictionary(state.meetings.map { ($0.id, $0.title) }, uniquingKeysWith: { a, _ in a })
+    // One row per meeting for titles and notes; every matching line for transcripts.
     let meetings = hits.compactMap { hit -> Result? in
       guard let title = titles[hit.meetingID] else { return nil }
       return Result(
-        id: "m/" + hit.meetingID, group: hit.segmentID == nil ? "Meetings and notes" : "Transcripts",
-        icon: hit.segmentID == nil ? "person.2" : "text.quote", title: title, detail: hit.excerpt
+        id: "m/" + hit.meetingID, group: "Meetings and notes", icon: "person.2", title: title,
+        detail: hit.excerpt
+      ) { open(MeetingSearchHit(meetingID: hit.meetingID, segmentID: nil, excerpt: hit.excerpt)) }
+    } + lines.compactMap { hit -> Result? in
+      guard let title = titles[hit.meetingID], let segment = hit.segmentID else { return nil }
+      return Result(
+        id: "s/" + segment, group: "Transcripts", icon: "text.quote", title: title, detail: hit.excerpt
       ) { open(hit) }
     }
     let dictations = state.history.filter { $0.text.localizedCaseInsensitiveContains(q) }.prefix(8)
@@ -68,6 +75,7 @@ struct SearchPalette: View {
           .onChange(of: query) { _, new in
             cursor = 0
             hits = (try? state.store?.searchMeetings(new)) ?? []
+            lines = (try? state.store?.searchTranscriptLines(new)) ?? []
           }
         Text("esc").font(.caption).foregroundStyle(Palette.secondary)
       }.padding(16)
@@ -124,7 +132,9 @@ struct SearchPalette: View {
     state.selectedTranscriptSource = id
     state.meetingTab = "Transcript"
     if let segment = state.segments.first(where: { $0.id == id }) {
-      if state.playbackDuration > 0 { state.seekPlayback(to: segment.start) } else { state.pendingSeek = segment.start }
+      if state.playbackDuration > 0 { state.seekPlayback(to: segment.start) } else {
+        state.pendingSeek = (hit.meetingID, segment.start)
+      }
     }
   }
 }
