@@ -62,7 +62,8 @@ struct WorkspaceShell: View {
             .allowsHitTesting(false)
         }
         .shadow(color: .black.opacity(0.07), radius: 14, y: 4)
-        .padding(.vertical, 10).padding(.trailing, 10)
+        // 32 pt of glass above the panel clears the traffic lights and is the window's drag area.
+        .padding(.top, 32).padding(.bottom, 10).padding(.trailing, 10)
     }.overlay {
       if state.searchOpen {
         ZStack(alignment: .top) {

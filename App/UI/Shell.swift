@@ -150,6 +150,11 @@ struct MeetingListColumn: View {
         }
       }
       .focusable().focused($listFocused).focusEffectDisabled()
+      // Our own focus ring, so it's clear when Delete acts on the list.
+      .overlay {
+        RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.accent.opacity(listFocused ? 0.6 : 0), lineWidth: 2)
+          .allowsHitTesting(false)
+      }
       .onKeyPress(keys: [.delete, .deleteForward]) { _ in
         deleteSelection()
         return .handled
@@ -235,8 +240,9 @@ extension MeetingListColumn {
   private func deleteSelection() {
     // In Select mode only ticked meetings are deleted; otherwise an empty selection means the
     // open meeting.
+    // Only meetings the filter shows can be deleted from here.
     let targets = picked.isEmpty && !selecting
-      ? state.meetings.filter { $0.id == state.selectedMeetingID } : chosen
+      ? meetings.filter { $0.id == state.selectedMeetingID } : chosen
     guard !targets.isEmpty else { return }
     state.trashMeetings(targets)
     picked = []
@@ -252,7 +258,9 @@ extension MeetingListColumn {
       picked = Set(meetings[min(from, to)...max(from, to)].map(\.id))
     } else if selecting || flags.contains(.command) {
       // ⌘-click starts the selection with the open meeting, so it adds a second one.
-      if picked.isEmpty, !selecting, let open = state.selectedMeetingID { picked.insert(open) }
+      if picked.isEmpty, !selecting, let open = state.selectedMeetingID,
+        meetings.contains(where: { $0.id == open })
+      { picked.insert(open) }
       if picked.contains(meeting.id) { picked.remove(meeting.id) } else { picked.insert(meeting.id) }
       anchor = meeting.id
     } else {
@@ -380,9 +388,8 @@ struct TodayView: View {
   }
 }
 
-/// Behind-window glass, done the way inbox2 does it: a transparent window with an overlay
-/// title bar, the native material behind all content kept active, and a thin tinted sheen
-/// on top. Reduce Transparency gets the solid backdrop instead.
+/// The window's own material (set on the scene with containerBackground) shows through here;
+/// this adds inbox2's sheen and a light lavender tint. Reduce Transparency gets a solid fill.
 struct ShellGlass: View {
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   var body: some View {
@@ -390,37 +397,12 @@ struct ShellGlass: View {
       Palette.sidebar
     } else {
       ZStack {
-        BehindWindowMaterial()
-        // Sheen over tint, as in inbox2's chrome: light from the top, a lavender wash below.
         LinearGradient(
-          stops: [.init(color: .white.opacity(0.30), location: 0), .init(color: .white.opacity(0.08), location: 0.35),
+          stops: [.init(color: .white.opacity(0.22), location: 0), .init(color: .white.opacity(0.05), location: 0.35),
                   .init(color: .clear, location: 0.6)],
           startPoint: .top, endPoint: .bottom)
-        Palette.sidebar.opacity(0.22)
+        Palette.sidebar.opacity(0.12)
       }
     }
-  }
-}
-private struct BehindWindowMaterial: NSViewRepresentable {
-  func makeNSView(context: Context) -> NSVisualEffectView {
-    let view = GlassWindowView()
-    view.material = .sidebar
-    view.blendingMode = .behindWindow
-    // Always active: following the window state turns it flat grey when the window is behind.
-    view.state = .active
-    return view
-  }
-  func updateNSView(_ view: NSVisualEffectView, context: Context) {}
-}
-/// Makes its window transparent with an overlay title bar so the material reaches the edges.
-private final class GlassWindowView: NSVisualEffectView {
-  override func viewDidMoveToWindow() {
-    super.viewDidMoveToWindow()
-    guard let window else { return }
-    window.isOpaque = false
-    window.backgroundColor = .clear
-    window.titlebarAppearsTransparent = true
-    window.titleVisibility = .hidden
-    window.styleMask.insert(.fullSizeContentView)
   }
 }
