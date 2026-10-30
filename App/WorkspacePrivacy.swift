@@ -70,6 +70,8 @@ extension WorkspaceState {
     }
   }
   func deleteMeeting(_ meeting: Meeting) {
+    // Delete is offered outside Settings → Storage too, so the outcome shows where the user is.
+    defer { notice = storageMessage }
     guard privacyWorkAllowed else {
       storageMessage = "Finish active capture and AI work before deleting."
       return
@@ -78,6 +80,7 @@ extension WorkspaceState {
       stopPlayback()
       let plan = try db().planMeetingDeletion(meeting.id, root: root)
       try db().finishDeletion(plan, root: root)
+      notesQueue.removeAll { $0 == meeting.id }
       if selectedMeetingID == meeting.id {
         selectedMeetingID = nil
         assistantHistory = []

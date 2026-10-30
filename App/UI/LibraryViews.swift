@@ -143,6 +143,7 @@ struct DictationView: View {
 }
 struct NotebookView: View {
   @EnvironmentObject var state: WorkspaceState
+  @State private var deletion: Meeting?
   var body: some View {
     VStack(alignment: .leading, spacing: 28) {
       HStack {
@@ -171,11 +172,15 @@ struct NotebookView: View {
                     .foregroundStyle(Palette.secondary)
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(22).workspaceSurface()
               }.buttonStyle(.plain)
+                .contextMenu {
+                  Button("Delete meeting…", role: .destructive) { deletion = meeting }
+                    .disabled(!state.privacyWorkAllowed)
+                }
             }
           }
         }
       }
-    }.padding(38)
+    }.padding(38).confirmDeleteMeeting($deletion)
   }
 }
 struct PersonalizationView: View {

@@ -118,6 +118,7 @@ struct PageHeader: View {
 }
 struct MeetingsView: View {
   @EnvironmentObject var state: WorkspaceState
+  @State private var deletion: Meeting?
   @State private var query = ""
   @State private var starting = false
   @State private var searchHits: [MeetingSearchHit] = []
@@ -217,6 +218,10 @@ struct MeetingsView: View {
                       Palette.secondary)
                   }.padding(22).contentShape(Rectangle()).workspaceSurface()
                 }.buttonStyle(.plain)
+                  .contextMenu {
+                    Button("Delete meeting…", role: .destructive) { deletion = meeting }
+                      .disabled(!state.privacyWorkAllowed)
+                  }
               }
             }
           }
@@ -225,7 +230,7 @@ struct MeetingsView: View {
           Image(systemName: "lock")
           Text("Local recording first. Cloud transcription only when you enable it.")
         }.font(.caption).foregroundStyle(Palette.secondary)
-      }.padding(38)
+      }.padding(38).confirmDeleteMeeting($deletion)
     }
   }
 }
@@ -235,6 +240,7 @@ struct MeetingDetailView: View {
   @State private var summaryEdit: SummaryItem?
   init(initialTab: String = "My notes") { _tab = State(initialValue: initialTab) }
   @State private var editMetadata = false
+  @State private var deletion: Meeting?
   @State private var title = ""
   @State private var people = ""
   @State private var tags = ""
@@ -271,14 +277,18 @@ struct MeetingDetailView: View {
           }.font(.caption).foregroundStyle(Palette.secondary)
         }
         Spacer()
-        Button {
-          title = state.selectedMeeting?.title ?? ""
-          people = state.selectedMeeting?.participants ?? ""
-          tags = state.selectedMeeting?.tags ?? ""
-          editMetadata = true
+        Menu {
+          Button("Edit details…") {
+            title = state.selectedMeeting?.title ?? ""
+            people = state.selectedMeeting?.participants ?? ""
+            tags = state.selectedMeeting?.tags ?? ""
+            editMetadata = true
+          }
+          Button("Delete meeting…", role: .destructive) { deletion = state.selectedMeeting }
+            .disabled(!state.privacyWorkAllowed)
         } label: {
           Image(systemName: "ellipsis")
-        }.accessibilityLabel("Edit meeting details")
+        }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Meeting actions")
       }
       HStack(spacing: 14) {
         if state.activeMeetingID == state.selectedMeetingID {
@@ -432,6 +442,7 @@ struct MeetingDetailView: View {
         }.padding(28).frame(width: 460)
       }
       .sheet(item: $source) { item in SegmentEditor(segment: item).environmentObject(state) }
+      .confirmDeleteMeeting($deletion)
   }
   private var summaryBody: some View {
     VStack(alignment: .leading) {
