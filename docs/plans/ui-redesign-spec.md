@@ -34,7 +34,7 @@ approved before any build work starts.
 
 ## F3. Meeting page
 - [x] The header holds an inline-editable title, tag chips, the record pill, Export and Ask.
-  - Accept: a title edit is saved and survives a relaunch. (Chips are read-only here; adding and removing them is F5.)
+  - Accept: a title edit is saved and survives a relaunch.
 - [x] The left pane has a Notes | Summary toggle.
   - Notes is the merged document, with action items as a checklist at the top and private thoughts as a locked section at the end.
   - Summary keeps today's evidence cards, pins and versions.
@@ -47,7 +47,7 @@ approved before any build work starts.
   - Accept: clicking the timeline seeks the audio and scrolls the transcript to that point. A meeting with no audio shows a timeline-free state.
 - [x] Clicking a summary or notes citation seeks the audio and highlights the matching transcript line.
   - Accept: works for both AI notes lines and summary cards.
-- [ ] A citation whose source was deleted shows an unavailable state.
+- [x] A citation whose source was deleted shows an unavailable state.
   - If the audio was deleted, the citation still highlights the transcript line, and a "no audio" mark replaces the seek.
   - If the transcript was deleted, the citation shows "source deleted": it stays visible, is not clickable, and has a tooltip that names what was deleted.
   - The note text itself is never removed or rewritten.
@@ -68,23 +68,23 @@ approved before any build work starts.
   - Accept: unplugging an input during a test recording shows the warning. Restart resumes capture without ending the meeting.
 
 ## F5. Data operations
-- [ ] Deleted meetings, dictations and notebook entries go to a Trash with Restore.
-  - Accept: a trashed item disappears from lists, search and MCP immediately. Restore brings it back intact, audio included.
-- [ ] Every delete shows an Undo toast.
+- [x] Deleted meetings, dictations and notebook entries go to a Trash with Restore.
+  - Accept: a trashed item disappears from lists, search and MCP immediately. Restore brings it back intact, audio included. (Notebook entries are meetings, so they share the meeting Trash. Covered by TrashTests.)
+- [x] Every delete shows an Undo toast.
   - Accept: Undo within 8 s fully restores the item.
-- [ ] The Trash purges items after 30 days, and "Delete forever" uses the existing verified deletion plan.
+- [x] The Trash purges items after 30 days, and "Delete forever" uses the existing verified deletion plan.
   - Accept: the purge removes the encrypted audio and the FTS rows.
-- [ ] A meeting's audio only, transcript only, or the whole meeting can be deleted separately.
+- [x] A meeting's audio only, transcript only, or the whole meeting can be deleted separately.
   - Accept: deleting the audio keeps the notes and transcript, and the timeline shows "audio deleted". Deleting the transcript keeps the notes.
-- [ ] Running summary and refine jobs can be cancelled from the meeting page.
+- [x] Running summary and refine jobs can be cancelled from the meeting page.
   - Accept: after Cancel, no partial summary is saved and the job can be restarted.
-- [ ] Tags are chips that can be added, removed and autocompleted.
+- [x] Tags are chips that can be added, removed and autocompleted.
   - Accept: existing free-text tags migrate into separate chips, split on `·` and `,`.
-- [ ] A tag can be renamed or deleted across all meetings.
+- [x] A tag can be renamed or deleted across all meetings.
   - Accept: the change shows on every meeting that had the tag.
-- [ ] Bulk select in the list column (⌘-click, ⇧-click) offers Delete and Tag.
+- [x] Bulk select in the list column (⌘-click, ⇧-click) offers Delete and Tag.
   - Accept: bulk delete of 3 meetings puts all 3 in the Trash, and one Undo restores all 3.
-- [ ] Deleting is blocked while capture or AI work is active, as it is today.
+- [x] Deleting is blocked while capture or AI work is active, as it is today.
   - Accept: the existing guard message shows.
 
 ## F6. Search

@@ -108,6 +108,11 @@ struct PersonalModuleView: View {
 struct MeetingListColumn: View {
   @EnvironmentObject var state: WorkspaceState
   @State private var query = ""
+  /// ⌘-click and ⇧-click build a selection for bulk Delete and Tag.
+  @State private var picked: Set<String> = []
+  @State private var anchor: String?
+  @State private var tagging = false
+  @State private var bulkTag = ""
   private var meetings: [Meeting] {
     query.isEmpty
       ? state.meetings
@@ -127,7 +132,7 @@ struct MeetingListColumn: View {
           ForEach(meetings) { meeting in
             let selected = meeting.id == state.selectedMeetingID
             Button {
-              if !selected { state.selectMeeting(meeting.id) }
+              click(meeting)
             } label: {
               VStack(alignment: .leading, spacing: 3) {
                 Text(meeting.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
@@ -135,15 +140,66 @@ struct MeetingListColumn: View {
                   .font(.system(size: 11)).foregroundStyle(Palette.secondary)
               }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
                 .padding(.horizontal, 10).contentShape(Rectangle())
-                .background(selected ? Palette.paper : .clear, in: RoundedRectangle(cornerRadius: 9))
-            }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+                .background(
+                  picked.contains(meeting.id)
+                    ? Palette.accent.opacity(0.14) : selected ? Palette.paper : .clear,
+                  in: RoundedRectangle(cornerRadius: 9))
+            }.buttonStyle(.plain)
+              .accessibilityAddTraits(selected || picked.contains(meeting.id) ? .isSelected : [])
+              .accessibilityHint("Command-click to select several")
           }
         }
       }
       if meetings.isEmpty {
         Text("No meetings match.").font(.caption).foregroundStyle(Palette.secondary)
       }
+      if picked.count > 1 {
+        HStack(spacing: 8) {
+          Text("\(picked.count) selected").font(.caption.weight(.semibold))
+          Spacer()
+          Button("Tag…") { tagging = true }.controlSize(.small)
+            .popover(isPresented: $tagging) {
+              TextField("Tag", text: $bulkTag).textFieldStyle(.roundedBorder).frame(width: 180)
+                .padding(12).onSubmit {
+                  let tag = bulkTag.trimmingCharacters(in: .whitespaces)
+                  if !tag.isEmpty { state.addTag(tag, to: chosen) }
+                  bulkTag = ""
+                  tagging = false
+                }
+            }
+          Button("Delete", role: .destructive) {
+            state.trashMeetings(chosen)
+            picked = []
+          }.controlSize(.small).disabled(!state.privacyWorkAllowed)
+          Button {
+            picked = []
+          } label: { Image(systemName: "xmark") }.buttonStyle(.plain).controlSize(.small)
+            .accessibilityLabel("Clear selection")
+        }.padding(10).background(Palette.paper, in: RoundedRectangle(cornerRadius: 10))
+      }
     }.padding(14).frame(width: 236).background(Palette.sidebar.opacity(0.5))
+  }
+}
+
+extension MeetingListColumn {
+  private var chosen: [Meeting] { state.meetings.filter { picked.contains($0.id) } }
+  private func click(_ meeting: Meeting) {
+    let flags = NSEvent.modifierFlags
+    if flags.contains(.shift), let anchor,
+      let from = meetings.firstIndex(where: { $0.id == anchor }),
+      let to = meetings.firstIndex(where: { $0.id == meeting.id })
+    {
+      picked = Set(meetings[min(from, to)...max(from, to)].map(\.id))
+    } else if flags.contains(.command) {
+      // Start the selection with the open meeting so ⌘-click adds a second one.
+      if picked.isEmpty, let open = state.selectedMeetingID { picked.insert(open) }
+      if picked.contains(meeting.id) { picked.remove(meeting.id) } else { picked.insert(meeting.id) }
+      anchor = meeting.id
+    } else {
+      picked = []
+      anchor = meeting.id
+      if meeting.id != state.selectedMeetingID { state.selectMeeting(meeting.id) }
+    }
   }
 }
 

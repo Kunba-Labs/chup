@@ -62,39 +62,13 @@ extension WorkspaceState {
         selectedMeetingID = nil
       }
       syncBackendDeletions()
+      purgeExpiredTrash()
       storageMessage =
         "Cleanup completed. Active work is never removed. External backups and provider retention are separate."
     } catch {
       storageMessage =
         "Cleanup paused; its saved deletion plan will retry. " + error.localizedDescription
     }
-  }
-  func deleteMeeting(_ meeting: Meeting) {
-    // Delete is offered outside Settings → Storage too, so the outcome shows where the user is.
-    defer { notice = storageMessage }
-    guard privacyWorkAllowed else {
-      storageMessage = "Finish active capture and AI work before deleting."
-      return
-    }
-    do {
-      stopPlayback()
-      let plan = try db().planMeetingDeletion(meeting.id, root: root)
-      try db().finishDeletion(plan, root: root)
-      notesQueue.removeAll { $0 == meeting.id }
-      if selectedMeetingID == meeting.id {
-        selectedMeetingID = nil
-        assistantHistory = []
-        segments = []
-        summary = nil
-        noteDraft = ""
-        thoughtsDraft = ""
-      }
-      try refresh()
-      try refreshPrivacy()
-      try db().checkpoint()
-      syncBackendDeletions()
-      storageMessage = "Meeting, notes, private thoughts, references and local audio deleted."
-    } catch { storageMessage = error.localizedDescription }
   }
   func exportMeeting(includePrivate: Bool = false) {
     guard let id = selectedMeetingID, privacyWorkAllowed else { return }

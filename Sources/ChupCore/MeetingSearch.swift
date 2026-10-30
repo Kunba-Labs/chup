@@ -18,6 +18,7 @@ extension WorkspaceStore {
       SELECT m.id,search.kind,search.id,snippet(search,3,'','',' … ',24)
       FROM search JOIN objects AS m ON m.kind='meeting' AND m.id=CASE WHEN search.kind='meeting' THEN search.id ELSE search.parent END
       WHERE search MATCH ? AND search.kind IN ('meeting','segment','note')
+        AND m.id NOT IN (SELECT id FROM objects WHERE kind='trash')
       ORDER BY bm25(search) LIMIT 500
       """, [terms])
     var seen = Set<String>()

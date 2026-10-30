@@ -307,7 +307,7 @@ struct UsageSettingsView: View {
   }
 }
 
-/// The one confirmation every "Delete meeting" entry point goes through.
+/// Every "Move to Trash" entry point goes through here; the Undo toast replaces a confirmation.
 extension View {
   func confirmDeleteMeeting(_ deletion: Binding<Meeting?>) -> some View {
     modifier(DeleteMeetingConfirmation(deletion: deletion))
@@ -317,19 +317,9 @@ struct DeleteMeetingConfirmation: ViewModifier {
   @EnvironmentObject var state: WorkspaceState
   @Binding var deletion: Meeting?
   func body(content: Content) -> some View {
-    content.confirmationDialog(
-      "Delete this meeting and all its local content?",
-      isPresented: Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } }),
-      titleVisibility: .visible
-    ) {
-      Button("Delete meeting", role: .destructive) {
-        if let meeting = deletion { state.deleteMeeting(meeting) }
-        deletion = nil
-      }
-    } message: {
-      Text(
-        "\(deletion?.title ?? "") — recordings, transcripts, notes, private thoughts, actions, assistant history and enrolled references from this meeting. This cannot be undone."
-      )
+    content.onChange(of: deletion) { _, meeting in
+      if let meeting { state.trashMeetings([meeting]) }
+      deletion = nil
     }
   }
 }

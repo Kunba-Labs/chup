@@ -61,7 +61,11 @@ struct WorkspaceShell: View {
             .allowsHitTesting(false)
         }
         .shadow(color: .black.opacity(0.07), radius: 14, y: 4).padding(10)
-    }.background(
+    }.overlay(alignment: .bottom) {
+      if let toast = state.undoToast {
+        UndoToastView(toast: toast).padding(.bottom, 28).transition(.move(edge: .bottom).combined(with: .opacity))
+      }
+    }.animation(.easeOut(duration: 0.2), value: state.undoToast).background(
       LinearGradient(
         colors: [Palette.sidebar, Palette.backdrop], startPoint: .topLeading,
         endPoint: .bottomTrailing)).foregroundStyle(Palette.ink).tint(Palette.accent)
@@ -83,6 +87,8 @@ struct PageHeader: View {
 struct MeetingsView: View {
   @EnvironmentObject var state: WorkspaceState
   @AppStorage("meetingListCollapsed") private var listCollapsed = false
+  @State private var showTrash = false
+  @State private var showTags = false
   @State private var deletion: Meeting?
   @State private var query = ""
   @State private var starting = false
@@ -126,6 +132,12 @@ struct MeetingsView: View {
             eyebrow: "Be here. Keep the details.", title: "Meetings",
             subtitle: "Good conversations deserve a place to land.")
           Spacer()
+          Button("Tags") { showTags = true }.controlSize(.large)
+          Button {
+            showTrash = true
+          } label: {
+            Label(state.trash.isEmpty ? "Trash" : "Trash (\(state.trash.count))", systemImage: "trash")
+          }.controlSize(.large)
           Button {
             state.newMeeting()
             starting = true
@@ -196,7 +208,7 @@ struct MeetingsView: View {
                   }.padding(22).contentShape(Rectangle()).workspaceSurface()
                 }.buttonStyle(.plain)
                   .contextMenu {
-                    Button("Delete meeting…", role: .destructive) { deletion = meeting }
+                    Button("Move to Trash", role: .destructive) { deletion = meeting }
                       .disabled(!state.privacyWorkAllowed)
                   }
               }
@@ -205,6 +217,8 @@ struct MeetingsView: View {
         }
         PipelineStatus()
       }.padding(38).confirmDeleteMeeting($deletion)
+        .sheet(isPresented: $showTrash) { TrashView().environmentObject(state) }
+        .sheet(isPresented: $showTags) { TagManagerView().environmentObject(state) }
     }
   }
 }
@@ -218,6 +232,8 @@ struct MeetingDetailView: View {
   @AppStorage("transcriptCollapsed") private var transcriptCollapsed = false
   @AppStorage("transcriptWidth") private var transcriptWidth = 400.0
   @State private var askOpen = false
+  private enum PartialDelete { case audio, transcript }
+  @State private var partialDelete: PartialDelete?
   @State private var dragStartWidth: Double?
   /// Narrow windows show one pane; this asks for the transcript instead of the notes.
   @State private var narrowSide = false
@@ -428,17 +444,22 @@ struct MeetingDetailView: View {
                     Button("Save action") { state.createAction(from: item) }.font(.caption)
                   }
                   ForEach(item.sources.indices, id: \.self) { index in
+                    if state.partial.transcript {
+                      Label("Source deleted", systemImage: "quote.bubble").font(.caption)
+                        .foregroundStyle(Palette.secondary).help("The transcript of this meeting was deleted.")
+                    } else {
                     Button {
                       if let segment = state.segments.first(where: {
                         $0.id == item.sources[index].segmentID
                       }) {
                         revealTranscript()
                         state.selectedTranscriptSource = segment.id
-                        state.play(at: segment.start)
+                        if !state.partial.audio { state.play(at: segment.start) }
                       }
                     } label: {
-                      Label("Source \(index+1)", systemImage: "quote.bubble")
+                      Label(state.partial.audio ? "Source \(index+1) · no audio" : "Source \(index+1)", systemImage: "quote.bubble")
                     }.buttonStyle(.borderless).font(.caption)
+                    }
                   }
                 }
               }.padding(22).workspaceSurface()
@@ -498,11 +519,30 @@ struct MeetingDetailView: View {
             tags = state.selectedMeeting?.tags ?? ""
             editMetadata = true
           }
-          Button("Delete meeting…", role: .destructive) { deletion = state.selectedMeeting }
+          Divider()
+          Button("Delete audio only…") { partialDelete = .audio }
+            .disabled(!state.privacyWorkAllowed || state.partial.audio)
+          Button("Delete transcript only…") { partialDelete = .transcript }
+            .disabled(!state.privacyWorkAllowed || state.partial.transcript)
+          Button("Move to Trash", role: .destructive) { deletion = state.selectedMeeting }
             .disabled(!state.privacyWorkAllowed)
         } label: {
           Image(systemName: "ellipsis")
         }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Meeting actions")
+          .confirmationDialog(
+            partialDelete == .audio ? "Delete this meeting's audio?" : "Delete this meeting's transcript?",
+            isPresented: Binding(get: { partialDelete != nil }, set: { if !$0 { partialDelete = nil } }),
+            titleVisibility: .visible
+          ) {
+            Button(partialDelete == .audio ? "Delete audio" : "Delete transcript", role: .destructive) {
+              if partialDelete == .audio { state.deleteSelectedAudio() } else { state.deleteSelectedTranscript() }
+              partialDelete = nil
+            }
+          } message: {
+            Text(partialDelete == .audio
+              ? "The recording is removed from this Mac. Transcript, notes and summary stay. This cannot be undone."
+              : "Every transcript line is removed. Notes and summary stay; their sources show as deleted. This cannot be undone.")
+          }
       }
       HStack(spacing: 6) {
         Text(state.selectedMeeting?.created.formatted(date: .abbreviated, time: .shortened) ?? "")
@@ -510,11 +550,7 @@ struct MeetingDetailView: View {
           Text("·")
           Text(people).lineLimit(1)
         }
-        ForEach(Meeting.tagList(state.selectedMeeting?.tags ?? ""), id: \.self) { tag in
-          Text(tag).font(.system(size: 11, weight: .medium)).padding(.horizontal, 8)
-            .padding(.vertical, 3).background(Palette.accent.opacity(0.12), in: Capsule())
-            .foregroundStyle(Palette.accent)
-        }
+        if let meeting = state.selectedMeeting { TagEditor(meeting: meeting).padding(.leading, 4) }
       }.font(.caption).foregroundStyle(Palette.secondary).padding(.leading, 34)
     }
   }
@@ -533,7 +569,13 @@ struct MeetingDetailView: View {
           Text("Summary").tag("Summary")
         }.pickerStyle(.segmented).labelsHidden().frame(width: 200)
         Spacer()
-        if state.processingMeetingID == state.selectedMeetingID { ProgressView().controlSize(.small) }
+        if state.processingMeetingID == state.selectedMeetingID
+          || (state.notesMeetingID != nil && state.notesMeetingID == state.selectedMeetingID)
+        {
+          ProgressView().controlSize(.small)
+          Button("Cancel") { state.cancelMeetingJobs() }.controlSize(.small)
+            .help("Stop refining, summarising or writing notes. Nothing partial is saved.")
+        }
       }
       if tab == "Summary" {
         summaryBody
@@ -579,7 +621,7 @@ struct MeetingDetailView: View {
   /// Speaker lanes over the recording, then the transport row. No audio, no timeline.
   @ViewBuilder private var timeline: some View {
     if state.playbackDuration == 0 && !state.playbackLoading {
-      Label("No audio for this meeting", systemImage: "waveform.slash").font(.caption)
+      Label(state.partial.audio ? "Audio deleted" : "No audio for this meeting", systemImage: "waveform.slash").font(.caption)
         .foregroundStyle(Palette.secondary).padding(.top, 12)
     } else {
       VStack(spacing: 6) {

@@ -49,6 +49,7 @@ extension WorkspaceState {
       guard TranscriptScope.fingerprint(current) == fingerprint else {
         throw WorkspaceError.staleVersion
       }
+      try Task.checkCancellation()
       let revision = SummaryRevision(
         meetingID: meetingID, provisional: false, segments: current, summary: result)
       try db().saveSummaryRevision(revision, segments: current)
@@ -78,6 +79,7 @@ extension WorkspaceState {
         try db().note(meetingID).text == note
       else { throw WorkspaceError.staleVersion }
       try EvidenceValidator.validate(blocks, note: note, meetingID: meetingID, segments: current)
+      try Task.checkCancellation()
       try db().put(
         EnhancedNotes(meetingID: meetingID, template: chosen, blocks: blocks),
         kind: "enhancedNotes", id: meetingID, parent: meetingID)
@@ -91,9 +93,11 @@ extension WorkspaceState {
   }
   func regenerateNotes(template: String) {
     guard let id = selectedMeetingID, !writingNotes else { return }
-    Task {
+    notesTask = Task {
+      defer { notesTask = nil }
       do { try await writeNotes(meetingID: id, template: template) } catch {
-        notice = "Notes weren’t written: " + error.localizedDescription
+        notice = Task.isCancelled || error is CancellationError
+          ? "Notes cancelled. Nothing was saved." : "Notes weren’t written: " + error.localizedDescription
       }
     }
   }
@@ -172,12 +176,14 @@ extension WorkspaceState {
   }
   func revealSource(_ source: Evidence) {
     guard let segment = segments.first(where: { $0.id == source.segmentID }) else {
-      notice = "This source changed. Open its transcript revision."
+      notice = partial.transcript
+        ? "Source deleted: this meeting's transcript was deleted."
+        : "This source changed. Open its transcript revision."
       return
     }
     selectedTranscriptSource = segment.id
     meetingTab = "Transcript"
-    play(at: segment.start)
+    if !partial.audio { play(at: segment.start) }
   }
   @discardableResult func startUsage(category: String, meetingID: String) -> String {
     let item = UsageRecord(meetingID: meetingID, category: category)

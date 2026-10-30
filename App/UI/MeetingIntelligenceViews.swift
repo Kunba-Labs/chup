@@ -255,13 +255,20 @@ struct EnhancedNotesView: View {
           .foregroundStyle(block.kind == "user" ? Palette.ink : Palette.secondary)
           .accessibilityLabel((block.kind == "user" ? "Your note: " : "Added: ") + block.text)
         if let source = block.sources.first {
-          Button {
-            state.revealSource(source)
-            showTab("Transcript")
-          } label: {
-            Image(systemName: "quote.bubble")
-          }.buttonStyle(.borderless).font(.caption).help(source.quote)
-            .accessibilityLabel("Show source in transcript")
+          if state.partial.transcript {
+            Image(systemName: "quote.bubble").font(.caption).foregroundStyle(Palette.secondary.opacity(0.5))
+              .help("Source deleted: the transcript of this meeting was deleted.")
+              .accessibilityLabel("Source deleted")
+          } else {
+            Button {
+              state.revealSource(source)
+              showTab("Transcript")
+            } label: {
+              Image(systemName: state.partial.audio ? "quote.bubble.fill" : "quote.bubble")
+            }.buttonStyle(.borderless).font(.caption)
+              .help(state.partial.audio ? source.quote + " (audio deleted)" : source.quote)
+              .accessibilityLabel(state.partial.audio ? "Show source in transcript, audio deleted" : "Show source in transcript")
+          }
         }
       }
     }

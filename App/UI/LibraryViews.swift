@@ -3,13 +3,22 @@ import SwiftUI
 
 struct DictationView: View {
   @EnvironmentObject var state: WorkspaceState
+  @State private var showTrash = false
   @State private var search = ""
   @State private var showIgnored = false
   var body: some View {
     VStack(alignment: .leading, spacing: 28) {
-      PageHeader(
-        eyebrow: "From thought to words", title: "Dictation",
-        subtitle: "Speak naturally. Keep your voice in what you write.")
+      HStack(alignment: .top) {
+        PageHeader(
+          eyebrow: "From thought to words", title: "Dictation",
+          subtitle: "Speak naturally. Keep your voice in what you write.")
+        Spacer()
+        Button {
+          showTrash = true
+        } label: {
+          Label(state.trash.isEmpty ? "Trash" : "Trash (\(state.trash.count))", systemImage: "trash")
+        }
+      }.sheet(isPresented: $showTrash) { TrashView().environmentObject(state) }
       WorkspaceCard {
         HStack(spacing: 22) {
           if state.dictationStatus == .listening {
@@ -113,7 +122,7 @@ struct DictationView: View {
                   Button("Copy") { TextInsertion.copy(entry.text) }.disabled(entry.text.isEmpty)
                   Button("Retry audio") { state.retryDictation(entry) }
                   Spacer()
-                  Button("Delete", role: .destructive) { state.deleteDictation(entry) }
+                  Button("Delete", role: .destructive) { state.trashDictations([entry]) }
                 }.font(.caption)
                 if state.dictationPlaybackID == entry.id {
                   HStack(spacing: 12) {
@@ -173,7 +182,7 @@ struct NotebookView: View {
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(22).workspaceSurface()
               }.buttonStyle(.plain)
                 .contextMenu {
-                  Button("Delete meeting…", role: .destructive) { deletion = meeting }
+                  Button("Move to Trash", role: .destructive) { deletion = meeting }
                     .disabled(!state.privacyWorkAllowed)
                 }
             }

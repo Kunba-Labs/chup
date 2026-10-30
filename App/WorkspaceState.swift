@@ -151,6 +151,12 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var assistantBusy = false
   @Published var assistantAnswer = ""
   @Published var assistantHistory: [AssistantExchange] = []
+  @Published var trash: [TrashEntry] = []
+  @Published var undoToast: UndoToast?
+  /// What was deleted on its own from the open meeting (audio and/or transcript).
+  @Published var partial = PartialDeletion()
+  var summaryTask: Task<Void, Never>?
+  var notesTask: Task<Void, Never>?
   @Published var assistantSources: [Evidence] = []
   @Published var pendingWrite: AssistantReply.ProposedWrite?
   @Published var playbackTime: Double = 0
@@ -692,8 +698,12 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     }
     enrollments = try db().list(VoiceEnrollment.self, kind: "enrollment")
     let db = try db()
-    meetings = try db.list(Meeting.self, kind: "meeting").sorted { $0.created > $1.created }
-    history = try db.list(DictationEntry.self, kind: "dictation").sorted { $0.created > $1.created }
+    trash = try db.trashEntries()
+    let trashed = Set(trash.map(\.id))
+    meetings = try db.list(Meeting.self, kind: "meeting").filter { !trashed.contains($0.id) }
+      .sorted { $0.created > $1.created }
+    history = try db.list(DictationEntry.self, kind: "dictation").filter { !trashed.contains($0.id) }
+      .sorted { $0.created > $1.created }
     personalization = try db.list(Personalization.self, kind: "personalization").sorted {
       $0.trigger < $1.trigger
     }
@@ -755,6 +765,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     summaryVersions = try db().list(SummaryRevision.self, kind: "summaryVersion", parent: id)
     summaryEdits = try db().list(SummaryItem.self, kind: "summaryEdit", parent: id)
     actions = try db().list(ActionRecord.self, kind: "action", parent: id)
+    partial = try db().partialDeletion(id)
     thoughts = try db().note("private-thoughts/" + id)
     thoughtsDraft = thoughts.text
     usageRecords = try db().list(UsageRecord.self, kind: "usage").sorted { $0.started > $1.started }
@@ -1369,22 +1380,6 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     enqueueDictation(entry, captured: nil, traceID: traceID, insertResult: false, trigger: "Retry audio")
   }
 
-  func deleteDictation(_ entry: DictationEntry) {
-    guard privacyWorkAllowed else {
-      notice = "Finish capture and AI work before deleting history."
-      return
-    }
-    do {
-      if dictationPlaybackID == entry.id { stopDictationPlayback() }
-      try db().finishDeletion(
-        db().planItemDeletion(
-          id: entry.id, kind: "dictation", directory: entry.audioDirectory, root: root), root: root)
-      try refresh()
-      try refreshPrivacy()
-      syncBackendDeletions()
-    } catch { notice = error.localizedDescription }
-  }
-
   func journalFiles(_ directory: URL) throws -> [URL] {
     try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
       .filter { $0.pathExtension == "vwj" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
@@ -1709,15 +1704,18 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     guard let id = selectedMeetingID, !processingMeeting else { return }
     processingMeeting = true
     processingMeetingID = id
-    Task {
+    summaryTask = Task {
       defer {
         processingMeeting = false
         processingMeetingID = nil
+        summaryTask = nil
       }
       do {
         try await finalizeSummary(meetingID: id)
         notice = "Summary saved with transcript sources. Your pinned edits are preserved."
-      } catch { notice = error.localizedDescription }
+      } catch is CancellationError {
+        notice = "Summary cancelled. Nothing was saved."
+      } catch { notice = Task.isCancelled ? "Summary cancelled. Nothing was saved." : error.localizedDescription }
     }
   }
   func correctSegment(

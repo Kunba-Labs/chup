@@ -65,7 +65,9 @@ public struct MeetingMCP {
   }
 
   func call(_ name: String, _ arguments: [String: Any]) throws -> String {
-    let meetings = try store.list(Meeting.self, kind: "meeting").sorted { $0.created > $1.created }
+    let trashed = try store.trashedIDs()
+    let meetings = try store.list(Meeting.self, kind: "meeting").filter { !trashed.contains($0.id) }
+      .sorted { $0.created > $1.created }
     func meeting() throws -> Meeting {
       guard let id = arguments["meeting_id"] as? String, let found = meetings.first(where: { $0.id == id })
       else { throw WorkspaceError.message("No meeting with that meeting_id. Use list_meetings.") }

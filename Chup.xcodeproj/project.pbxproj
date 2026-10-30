@@ -77,6 +77,7 @@
 		B57191E4541EC0D1BD038377 /* ChupIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = A01F56E0423B016C0BDADB70 /* ChupIcon.icon */; };
 		B5A0DAFDC5A9C136EFD482F9 /* WorkspaceDictationQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D85A1422C6A5ECF37CC34F /* WorkspaceDictationQueue.swift */; };
 		B607E07D85BCBA23B4346893 /* RecordingWaveform.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C31C8B411CEBDDD21F7EC5 /* RecordingWaveform.swift */; };
+		B88EB15DD3DC66501F297337 /* WorkspaceTrash.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4956A4A6ED8015EEE48364 /* WorkspaceTrash.swift */; };
 		BA116B451AAAA9C1539EACD1 /* LocalSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75315071669B2A0588F7BF4A /* LocalSpeech.swift */; };
 		BC4B9F43444415FEDCADDF36 /* TranscriptionLabValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2160AF69C5CAF08027AB96ED /* TranscriptionLabValidation.swift */; };
 		BDDEF3D55FE2365AC072820E /* Whisper-MIT.txt in Resources */ = {isa = PBXBuildFile; fileRef = BB630D6AEE638AD154083435 /* Whisper-MIT.txt */; };
@@ -101,6 +102,7 @@
 		E94E71C4638FDC1782257081 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = C4D206058510A6CB61BC49E4 /* WhisperKit */; };
 		EA4F73068F62DE1526DBCB4E /* RecordingRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 113A6DE6DF7F41EFE06E1163 /* RecordingRecovery.swift */; };
 		EC6CE8261B0EC2C2936730A2 /* LibraryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 222145F9B4D63BF301B064CA /* LibraryViews.swift */; };
+		F289C465246D05817ABB8BF2 /* DataViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC8CB95E2A7951CDD4BFAB49 /* DataViews.swift */; };
 		F337528E95E9625922C54BC1 /* VoiceWaveform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 254DBA09AC8B291A4FF035F7 /* VoiceWaveform.swift */; };
 		F4B8FE8E1C3AFE60488E5532 /* ShortDictationFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E7E4DB82F90E8811E2C8510 /* ShortDictationFilter.swift */; };
 /* End PBXBuildFile section */
@@ -188,6 +190,7 @@
 		C8D90900FDDDD21C7DA8433B /* LiveSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSession.swift; sourceTree = "<group>"; };
 		CA5CE29FBD662DCD5A2193CC /* AttentionDesignBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttentionDesignBoard.swift; sourceTree = "<group>"; };
 		CA6515593DFB0FC88682A64D /* NotificationCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationCard.swift; sourceTree = "<group>"; };
+		CC8CB95E2A7951CDD4BFAB49 /* DataViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataViews.swift; sourceTree = "<group>"; };
 		CD46CB93BBAEEF9446BA9C2B /* ParakeetModel.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ParakeetModel.json; sourceTree = "<group>"; };
 		CE4BDA2CFB6B8BD22953EDA1 /* WorkspaceDictationPlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDictationPlayback.swift; sourceTree = "<group>"; };
 		E4C0AB363B22B7AED4A2D67E /* ProcessAudioCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessAudioCapture.swift; sourceTree = "<group>"; };
@@ -199,6 +202,7 @@
 		F05457FD4D16B86955D3C590 /* WorkspaceDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDiagnostics.swift; sourceTree = "<group>"; };
 		F0B4B63340D2DBAFC04D8730 /* Argmax-NOTICES.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Argmax-NOTICES.txt"; sourceTree = "<group>"; };
 		F857B811F96B29D7B0FB9018 /* ChupApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChupApp.swift; sourceTree = "<group>"; };
+		FE4956A4A6ED8015EEE48364 /* WorkspaceTrash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTrash.swift; sourceTree = "<group>"; };
 		FE7DAE6469E33635695B0344 /* WorkspaceState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -269,6 +273,7 @@
 			children = (
 				ACF8462C4E9520E24926C4D4 /* AssistantVoiceControls.swift */,
 				CA5CE29FBD662DCD5A2193CC /* AttentionDesignBoard.swift */,
+				CC8CB95E2A7951CDD4BFAB49 /* DataViews.swift */,
 				EB4B76130F88388DB9DACCC4 /* DesignExporter.swift */,
 				3FB826D1866EBEBA9B6D3160 /* DictationDiagnosticsView.swift */,
 				C64A14F11CCE3285A0EF5709 /* DictationIndicator.swift */,
@@ -366,6 +371,7 @@
 				30D87B2AFA2A99341C9D698E /* WorkspacePrivacy.swift */,
 				FE7DAE6469E33635695B0344 /* WorkspaceState.swift */,
 				E8F3550A25FB84F2BD9D8F23 /* WorkspaceTracing.swift */,
+				FE4956A4A6ED8015EEE48364 /* WorkspaceTrash.swift */,
 				822A5A0E5F82C6AE36BDF9ED /* WorkspaceVoice.swift */,
 				74CD6D4D1DCC6B86216B1768 /* Audio */,
 				6043BA7D90037CBCC78A7AC4 /* Resources */,
@@ -490,6 +496,7 @@
 				779450CD4EDDD0407C74F786 /* BackendClient.swift in Sources */,
 				93B471458ADEDB7997C19146 /* ChupApp.swift in Sources */,
 				4C2FDEC57F6E0CE00C96BB3C /* ClipboardDelivery.swift in Sources */,
+				F289C465246D05817ABB8BF2 /* DataViews.swift in Sources */,
 				5017142198171646609D4E9F /* DesignExporter.swift in Sources */,
 				495A8D2912FA563DEB8F0A41 /* DictationDiagnosticsView.swift in Sources */,
 				2B25AC0F94905FE0E732AC22 /* DictationIndicator.swift in Sources */,
@@ -554,6 +561,7 @@
 				70197911B5098AD0E9C7681C /* WorkspacePrivacy.swift in Sources */,
 				D111B61DE0A89C4C6F2F61FF /* WorkspaceState.swift in Sources */,
 				4F1F597673A43FB75F2380E1 /* WorkspaceTracing.swift in Sources */,
+				B88EB15DD3DC66501F297337 /* WorkspaceTrash.swift in Sources */,
 				15E4806FA4797BA76D2F9CEF /* WorkspaceView.swift in Sources */,
 				8764A39DDAF974B048716FB1 /* WorkspaceVoice.swift in Sources */,
 			);
