@@ -116,6 +116,15 @@ extension WorkspaceState {
         }
       } catch {
         finishTrace(traceID, Task.isCancelled ? .cancelled : .failed)
+        // Keep the reason on the dictation so its row says why it wasn't transcribed.
+        if !Task.isCancelled, !(error is DictationSignalError),
+          var failed = try? db().list(DictationEntry.self, kind: "dictation").first(where: { $0.id == entry.id }),
+          failed.text.isEmpty
+        {
+          failed.processingNote = "Not transcribed: " + error.localizedDescription
+          try? db().put(failed, kind: "dictation", id: failed.id)
+          try? refresh()
+        }
         if !Task.isCancelled, dictationStatus != .listening, pendingDictations == 1 {
           dictationStatus = .error
           if error is DictationSignalError { showMicrophoneMessage(error.localizedDescription) }
