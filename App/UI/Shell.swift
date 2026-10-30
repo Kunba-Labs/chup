@@ -134,6 +134,8 @@ struct MeetingListColumn: View {
         HStack(spacing: 6) {
           Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
           TextField("Filter meetings", text: $query).textFieldStyle(.plain)
+            // A selection never includes meetings the filter hides.
+            .onChange(of: query) { _, _ in picked.formIntersection(meetings.map(\.id)) }
         }.font(.system(size: 13)).padding(9)
           .background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
         Button(selecting ? "Done" : "Select") {
@@ -185,7 +187,7 @@ struct MeetingListColumn: View {
           isPicked ? Palette.accent.opacity(0.14) : selected && !selecting ? Palette.paper : .clear,
           in: RoundedRectangle(cornerRadius: 9))
     }.buttonStyle(.plain)
-      .accessibilityAddTraits(selected || isPicked ? .isSelected : [])
+      .accessibilityAddTraits((selecting ? isPicked : selected || isPicked) ? .isSelected : [])
       .accessibilityHint(selecting ? "Selects this meeting" : "Opens this meeting")
       .contextMenu {
         Button("Select") {
@@ -231,7 +233,10 @@ extension MeetingListColumn {
   /// meeting. A window-wide ⌘⌫ would also fire while typing notes, so there isn't one.
   /// Everything goes to the Trash with an Undo toast.
   private func deleteSelection() {
-    let targets = picked.isEmpty ? state.meetings.filter { $0.id == state.selectedMeetingID } : chosen
+    // In Select mode only ticked meetings are deleted; otherwise an empty selection means the
+    // open meeting.
+    let targets = picked.isEmpty && !selecting
+      ? state.meetings.filter { $0.id == state.selectedMeetingID } : chosen
     guard !targets.isEmpty else { return }
     state.trashMeetings(targets)
     picked = []
@@ -375,25 +380,47 @@ struct TodayView: View {
   }
 }
 
-/// Behind-window glass (the Finder sidebar material): the desktop blurs through the window.
-/// Reduce Transparency gets the solid backdrop instead.
+/// Behind-window glass, done the way inbox2 does it: a transparent window with an overlay
+/// title bar, the native material behind all content kept active, and a thin tinted sheen
+/// on top. Reduce Transparency gets the solid backdrop instead.
 struct ShellGlass: View {
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   var body: some View {
     if reduceTransparency {
       Palette.sidebar
     } else {
-      BehindWindowMaterial().overlay(Palette.sidebar.opacity(0.35))
+      ZStack {
+        BehindWindowMaterial()
+        // Sheen over tint, as in inbox2's chrome: light from the top, a lavender wash below.
+        LinearGradient(
+          stops: [.init(color: .white.opacity(0.30), location: 0), .init(color: .white.opacity(0.08), location: 0.35),
+                  .init(color: .clear, location: 0.6)],
+          startPoint: .top, endPoint: .bottom)
+        Palette.sidebar.opacity(0.22)
+      }
     }
   }
 }
 private struct BehindWindowMaterial: NSViewRepresentable {
   func makeNSView(context: Context) -> NSVisualEffectView {
-    let view = NSVisualEffectView()
+    let view = GlassWindowView()
     view.material = .sidebar
     view.blendingMode = .behindWindow
-    view.state = .followsWindowActiveState
+    // Always active: following the window state turns it flat grey when the window is behind.
+    view.state = .active
     return view
   }
   func updateNSView(_ view: NSVisualEffectView, context: Context) {}
+}
+/// Makes its window transparent with an overlay title bar so the material reaches the edges.
+private final class GlassWindowView: NSVisualEffectView {
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    guard let window else { return }
+    window.isOpaque = false
+    window.backgroundColor = .clear
+    window.titlebarAppearsTransparent = true
+    window.titleVisibility = .hidden
+    window.styleMask.insert(.fullSizeContentView)
+  }
 }
