@@ -556,7 +556,7 @@ struct MeetingDetailView: View {
         Button("Undo last edit") { state.undoNote() }.disabled(state.lastReceipt == nil).controlSize(.small)
       }
       DisclosureGroup {
-        PrivateThoughtsView(embedded: true).frame(height: 160).padding(.top, 6)
+        PrivateThoughtsView(embedded: true).padding(.top, 6)
       } label: {
         Label("Private thoughts", systemImage: "lock.fill").font(.system(size: 13, weight: .semibold))
           .help("Only you see these. They never go to AI.")
@@ -622,6 +622,8 @@ struct MeetingDetailView: View {
                     Text(item.text).font(.system(size: 17)).textSelection(.enabled)
                       .background(found(item.text) ? Palette.accent.opacity(0.15) : .clear)
                     sourceLinks(item.sources)
+                    Spacer(minLength: 0)
+                    editButton(item)
                   }
                 }
               }
@@ -700,12 +702,13 @@ struct MeetingDetailView: View {
         .background(found(text) ? Palette.accent.opacity(0.15) : .clear)
       sourceLinks(sources)
       Spacer(minLength: 0)
-      if let edit {
-        Button { summaryEdit = edit } label: { Image(systemName: "pencil") }
-          .buttonStyle(.plain).foregroundStyle(Palette.secondary).help("Edit this line")
-          .accessibilityLabel("Edit this line")
-      }
+      if let edit { editButton(edit) }
     }
+  }
+  private func editButton(_ item: SummaryItem) -> some View {
+    Button { summaryEdit = item } label: { Image(systemName: "pencil") }
+      .buttonStyle(.plain).foregroundStyle(Palette.secondary).help("Edit this line")
+      .accessibilityLabel("Edit this line")
   }
   @ViewBuilder private func sourceLinks(_ sources: [Evidence]) -> some View {
     ForEach(sources.indices, id: \.self) { index in SourceLink(source: sources[index]) }
@@ -726,6 +729,8 @@ struct MeetingDetailView: View {
         .foregroundStyle(step.done ? Palette.secondary : Palette.ink)
       if let due = step.dueDate { Text("due \(due)").font(.caption).foregroundStyle(Palette.secondary) }
       sourceLinks(step.sources)
+      Spacer(minLength: 0)
+      if let item = step.item { editButton(item) }
     }
   }
 

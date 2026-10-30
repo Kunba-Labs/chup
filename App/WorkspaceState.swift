@@ -769,12 +769,14 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     selectedMeetingID = nil
     assistantHistory = []
     pendingSeek = nil
+    noteSaveFailed = false
   }
   func selectMeeting(_ id: String) {
     endVoice()
     playback.reset()
     cancelAssistant()
     if pendingSeek?.meetingID != id { pendingSeek = nil }
+    noteSaveFailed = false
     selectedMeetingID = id
     pendingWrite = nil
     pendingWriteScope = nil
