@@ -103,7 +103,7 @@ struct SettingsView: View {
           if !sections.contains(name) { DispatchQueue.main.async { proxy.scrollTo(name, anchor: .top) } }
         }
       }
-    }.foregroundStyle(Palette.ink).tint(Palette.accent).textFieldStyle(.roundedBorder)
+    }.foregroundStyle(Palette.ink).tint(Palette.accent).textFieldStyle(.roundedBorder).buttonStyle(.pill)
       .onAppear {
         if state.microphoneSettingsRequested {
           section = "Audio"

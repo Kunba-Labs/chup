@@ -175,7 +175,7 @@ struct SummaryEditView: View {
         Button("Save edit") {
           state.saveSummaryEdit(item)
           dismiss()
-        }.buttonStyle(.borderedProminent)
+        }.buttonStyle(.pillPrimary)
       }
     }.padding(28).frame(width: 560).background(Palette.workspace)
   }
@@ -230,7 +230,7 @@ struct EnhancedNotesView: View {
         )
         if state.activeMeetingID != state.selectedMeetingID, !busy {
           Button("Write notes") { state.regenerateNotes(template: state.enhancedNotes?.template ?? "general") }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pillPrimary)
         }
       }
     }

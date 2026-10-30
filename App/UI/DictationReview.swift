@@ -55,7 +55,7 @@ struct DictationReviewView: View {
         Spacer()
         Button("Cancel") { state.cancelDictationReview() }
         Button("OK") { state.approveDictationReview() }.keyboardShortcut(.return)
-          .buttonStyle(.borderedProminent)
+          .buttonStyle(.pillPrimary)
       }
     }
     .padding(20)

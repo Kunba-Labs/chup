@@ -212,10 +212,13 @@ struct InstalledAppIcon: View {
 struct PillButtonStyle: ButtonStyle {
   var primary = false
   @Environment(\.isEnabled) private var enabled
+  @Environment(\.controlSize) private var controlSize
+  /// Small controls in dense rows stay compact; everything else gets the full 40 pt pill.
+  private var compact: Bool { controlSize == .small || controlSize == .mini }
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.system(size: 14, weight: .semibold)).labelStyle(PillLabelStyle())
-      .padding(.horizontal, 18).frame(minHeight: 40)
+      .font(.system(size: compact ? 12 : 14, weight: .semibold)).labelStyle(PillLabelStyle())
+      .padding(.horizontal, compact ? 12 : 18).frame(minHeight: compact ? 28 : 40)
       .foregroundStyle(primary ? Color.white : Palette.ink)
       .background {
         if primary { Capsule().fill(Palette.gradient) } else {

@@ -288,7 +288,7 @@ struct OnboardingView: View {
           Spacer()
           if step > 0 { Button("Back") { move(-1) } }
           Button(step == 4 ? "Open Chup!" : "Continue") { step == 4 ? finish() : move(1) }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pillPrimary)
         }
       }.padding(32).background(Palette.workspace)
     }.frame(width: 950, height: 700).foregroundStyle(Palette.ink).tint(Palette.accent)

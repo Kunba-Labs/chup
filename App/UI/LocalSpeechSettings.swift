@@ -38,7 +38,7 @@ struct LocalSpeechSettings: View {
           Button(service.installed ? "Repair / download model" : "Download model") {
             service.install()
           }
-          .buttonStyle(.borderedProminent)
+          .buttonStyle(.pillPrimary)
         }
         if (service.installed || service.partialDownload) && !service.working {
           Button(service.installed ? "Remove model" : "Remove download", role: .destructive) {

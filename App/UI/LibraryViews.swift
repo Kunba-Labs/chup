@@ -46,7 +46,7 @@ struct DictationView: View {
           Spacer()
           Button(state.dictationStatus == .listening ? "Finish" : "test") {
             state.toggleDictation()
-          }.buttonStyle(.borderedProminent)
+          }.buttonStyle(.pillPrimary)
           if state.dictationStatus == .listening { Button("Cancel") { state.cancelDictation() } }
         }
         Divider()
@@ -271,7 +271,7 @@ struct PersonalizationView: View {
               mode: page == .styles ? mode.rawValue : nil)
             trigger = ""
             replacement = ""
-          }.buttonStyle(.borderedProminent).disabled(trigger.isEmpty || replacement.isEmpty)
+          }.buttonStyle(.pillPrimary).disabled(trigger.isEmpty || replacement.isEmpty)
         }
       }.textFieldStyle(.roundedBorder)
       ListSearchField(placeholder: "Search \(page.rawValue.lowercased())", text: $query)
@@ -420,7 +420,7 @@ struct AssistantView: View {
           ProgressView().controlSize(.small)
           Button("Cancel") { state.cancelAssistant() }
         }
-        Button("Ask", action: send).buttonStyle(.borderedProminent).disabled(
+        Button("Ask", action: send).buttonStyle(.pillPrimary).disabled(
           state.assistantBusy || question.isEmpty || mode != .privateText)
       }
       Label("Only this meeting goes to AI.", systemImage: "lock")

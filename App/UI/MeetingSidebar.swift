@@ -178,7 +178,7 @@ struct MeetingSidebarView: View {
     } else {
       Button("Show this meeting’s notes") {
         if let id = state.activeMeetingID { state.selectMeeting(id) }
-      }.buttonStyle(.bordered).padding(.top, 10)
+      }.buttonStyle(.pill).padding(.top, 10)
     }
   }
 
@@ -202,7 +202,7 @@ struct MeetingSidebarView: View {
           .font(.system(size: 12)).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
       }
       Spacer(minLength: 4)
-      Button("Restart input") { state.restartInput() }.buttonStyle(.borderedProminent).controlSize(.small)
+      Button("Restart input") { state.restartInput() }.buttonStyle(.pillPrimary).controlSize(.small)
     }.padding(10)
       .background(Palette.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
       .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.red.opacity(0.35)) }
@@ -222,7 +222,7 @@ struct MeetingSidebarView: View {
             Button("Delete meeting", role: .destructive) {
               discardFor = nil
               state.discardMeeting()
-            }.buttonStyle(.borderedProminent).tint(Palette.red).controlSize(.small)
+            }.buttonStyle(.pillPrimary).tint(Palette.red).controlSize(.small)
               .disabled(state.meetingStatus == .processing)
           }
         }.padding(10).workspaceSurface()

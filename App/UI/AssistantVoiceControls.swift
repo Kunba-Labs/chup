@@ -47,11 +47,11 @@ struct AssistantVoiceControls: View {
       Divider()
       HStack(spacing: 14) {
         if state.voiceScope == nil {
-          Button("Connect voice") { state.connectVoice(mode: mode) }.buttonStyle(.borderedProminent)
+          Button("Connect voice") { state.connectVoice(mode: mode) }.buttonStyle(.pillPrimary)
         } else {
           Button(state.addressing ? "Finish question" : "Ask by voice") {
             state.addressing ? state.finishAddressing() : state.startAddressing()
-          }.disabled(!voice.ready).buttonStyle(.borderedProminent)
+          }.disabled(!voice.ready).buttonStyle(.pillPrimary)
           Text("Hold to address").padding(.horizontal, 12).padding(.vertical, 7)
             .background(Palette.sidebar, in: Capsule())
             .gesture(

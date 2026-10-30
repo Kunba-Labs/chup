@@ -56,7 +56,7 @@ struct TranscriptionLabView: View {
                 journals: try state.journalFiles(URL(fileURLWithPath: entry.audioDirectory)),
                 key: key)
             } catch { state.notice = error.localizedDescription }
-          }.buttonStyle(.borderedProminent).disabled(
+          }.buttonStyle(.pillPrimary).disabled(
             lab.busy || captureBusy || lab.selectedEntryID.isEmpty)
           if lab.busy {
             Button("Cancel") { lab.cancel() }

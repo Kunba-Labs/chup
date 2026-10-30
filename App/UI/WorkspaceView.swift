@@ -62,8 +62,8 @@ struct WorkspaceShell: View {
             .allowsHitTesting(false)
         }
         .shadow(color: .black.opacity(0.07), radius: 14, y: 4)
-        // 32 pt of glass above the panel clears the traffic lights and is the window's drag area.
-        .padding(.top, 32).padding(.bottom, 10).padding(.trailing, 10)
+        // The title-bar safe area already clears the traffic lights; only a hairline gap on top.
+        .padding(.top, 4).padding(.bottom, 10).padding(.trailing, 10)
     }.overlay {
       if state.searchOpen {
         ZStack(alignment: .top) {
@@ -80,6 +80,8 @@ struct WorkspaceShell: View {
         UndoToastView(toast: toast).padding(.bottom, 28).transition(.move(edge: .bottom).combined(with: .opacity))
       }
     }.animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: state.undoToast).background(ShellGlass().ignoresSafeArea()).foregroundStyle(Palette.ink).tint(Palette.accent)
+      // Buttons without their own style are pills everywhere in the workspace.
+      .buttonStyle(.pill)
   }
 }
 struct PageHeader: View {
@@ -345,18 +347,23 @@ struct MeetingDetailView: View {
             state.refreshApps()
           } label: {
             Label("Record", systemImage: "record.circle")
-          }.buttonStyle(.borderedProminent).disabled(state.activeMeetingID != nil)
+          }.buttonStyle(.pillPrimary).disabled(state.activeMeetingID != nil)
         }
       }.font(.system(size: 12)).padding(.vertical, 8).padding(.horizontal, 14).background(
         Palette.paper, in: Capsule()
       ).padding(.top, 14).padding(.bottom, 16)
       tabBar
       Group {
-        // All three stay alive so each keeps its own scroll position.
+        // All three stay alive so each keeps its own scroll position. An open Ask takes their
+        // place, so the page always fits the window.
         ZStack {
           tabPage("My thoughts") { thoughtsTab }
           tabPage("Summary") { summaryTab }
           tabPage("Transcript") { transcriptTab }
+          if askOpen {
+            AssistantView { askOpen = false }.padding(16).frame(maxWidth: .infinity, maxHeight: .infinity)
+              .workspaceSurface()
+          }
         }
       }.frame(maxWidth: .infinity, minHeight: 120, maxHeight: .infinity).padding(.top, 14)
       askDock
@@ -392,7 +399,7 @@ struct MeetingDetailView: View {
             Button("Save") {
               state.renameMeeting(title, participants: people, tags: tags)
               editMetadata = false
-            }.buttonStyle(.borderedProminent)
+            }.buttonStyle(.pillPrimary)
           }
         }.padding(28).frame(width: 460)
       }
@@ -444,7 +451,7 @@ struct MeetingDetailView: View {
             .disabled(state.enhancedNotes?.blocks.isEmpty ?? true)
         } label: {
           Label("Export", systemImage: "square.and.arrow.up")
-        }.fixedSize()
+        }.menuStyle(.button).buttonStyle(.pill).fixedSize()
         Menu {
           Button("Edit details…") {
             title = state.selectedMeeting?.title ?? ""
@@ -632,7 +639,9 @@ struct MeetingDetailView: View {
           VStack(alignment: .leading, spacing: 22) {
             if !state.summaryEdits.isEmpty {
               summarySection("Your edits") {
-                ForEach(state.summaryEdits) { item in bullet(item.text, sources: item.sources, edit: item) }
+                ForEach(state.summaryEdits) { item in
+                  bullet(item.text, sources: item.sources, edit: item, id: "edit-" + item.id)
+                }
               }
             }
             if !outline.tldr.isEmpty {
@@ -678,7 +687,7 @@ struct MeetingDetailView: View {
               }
             }
             if state.enhancedNotes?.blocks.isEmpty == false {
-              DisclosureGroup {
+              DisclosureGroup(isExpanded: $notesExpanded) {
                 EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true, highlight: summaryQuery).padding(.top, 8)
               } label: {
                 Text("Notes filled in from the transcript").font(.system(size: 15, weight: .semibold))
@@ -688,7 +697,10 @@ struct MeetingDetailView: View {
         }.workspaceSurface()
           .onChange(of: summaryFindIndex) { _, index in
             let ids = summaryMatches(outline)
-            if ids.indices.contains(index) { withAnimation { proxy.scrollTo(ids[index], anchor: .center) } }
+            guard ids.indices.contains(index) else { return }
+            // A match inside the folded notes opens them first, then scrolls once laid out.
+            if ids[index].hasPrefix("note-") && !notesExpanded { notesExpanded = true }
+            DispatchQueue.main.async { withAnimation { proxy.scrollTo(ids[index], anchor: .center) } }
           }
         }
       }
@@ -705,9 +717,10 @@ struct MeetingDetailView: View {
   @State private var summaryFinding = false
   @State private var summaryQuery = ""
   @State private var summaryFindIndex = -1
+  @State private var notesExpanded = false
   /// Row IDs of summary lines matching the find field, in the order they appear.
   private func summaryMatches(_ outline: SummaryOutline) -> [String] {
-    var ids: [(String, String)] = state.summaryEdits.map { ($0.id, $0.text) }
+    var ids: [(String, String)] = state.summaryEdits.map { ("edit-" + $0.id, $0.text) }
     ids += (outline.tldr + outline.points + outline.decisions).map { ($0.id, $0.text) }
     ids += outline.nextSteps.flatMap(\.steps).map { ($0.id, $0.text) }
     ids += outline.questions.map { ($0.id, $0.text) }
@@ -721,8 +734,9 @@ struct MeetingDetailView: View {
   @FocusState private var summaryFindFocused: Bool
   private func tabPage(_ name: String, @ViewBuilder _ content: () -> some View) -> some View {
     // Disabled as well as hidden, so inactive editors and buttons leave keyboard focus.
-    content().opacity(tab == name ? 1 : 0).allowsHitTesting(tab == name).disabled(tab != name)
-      .accessibilityHidden(tab != name)
+    let shown = tab == name && !askOpen
+    return content().opacity(shown ? 1 : 0).allowsHitTesting(shown).disabled(!shown)
+      .accessibilityHidden(!shown)
   }
   /// Summary lines matching the find field get a highlight.
   private func found(_ text: String) -> Bool {
@@ -741,7 +755,7 @@ struct MeetingDetailView: View {
       content()
     }
   }
-  private func bullet(_ text: String, sources: [Evidence], edit: SummaryItem?) -> some View {
+  private func bullet(_ text: String, sources: [Evidence], edit: SummaryItem?, id: String? = nil) -> some View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
       Text("•").foregroundStyle(Palette.secondary)
       Text(text).font(.system(size: 15)).textSelection(.enabled)
@@ -749,7 +763,7 @@ struct MeetingDetailView: View {
       sourceLinks(sources)
       Spacer(minLength: 0)
       if let edit { editButton(edit) }
-    }.id(edit?.id ?? text)
+    }.id(id ?? edit?.id ?? text)
   }
   private func editButton(_ item: SummaryItem) -> some View {
     Button { summaryEdit = item } label: { Image(systemName: "pencil") }
@@ -863,10 +877,7 @@ struct MeetingDetailView: View {
 
   /// Wispr's "Ask anything": a bar at the bottom that opens the conversation above it.
   @ViewBuilder private var askDock: some View {
-    if askOpen {
-      AssistantView { askOpen = false }.padding(16).frame(minHeight: 200, maxHeight: 420)
-        .workspaceSurface().padding(.top, 12).layoutPriority(-1)
-    } else {
+    if !askOpen {
       Button {
         askOpen = true
       } label: {
@@ -928,7 +939,7 @@ struct MeetingDetailView: View {
             state.activeMeetingID == state.selectedMeetingID)
         } label: {
           Label("Refine", systemImage: "wand.and.stars")
-        }.fixedSize()
+        }.menuStyle(.button).buttonStyle(.pill).controlSize(.small).fixedSize()
       }
       HStack(spacing: 6) {
         Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
@@ -1074,7 +1085,7 @@ struct CaptureSetupView: View {
           if permissionSetup { state.newMeeting() }
           state.startMeeting()
           dismiss()
-        }.buttonStyle(.borderedProminent)
+        }.buttonStyle(.pillPrimary)
           .disabled(
             state.activeMeetingID != nil || state.storageBusy
               || (permissionSetup && state.selectedPID == 0))
@@ -1145,7 +1156,7 @@ struct SegmentEditor: View {
             mergeID: merge.isEmpty ? nil : merge)
           if !name.isEmpty && merge.isEmpty { state.renameSpeaker(segment.speakerID, name: name) }
           dismiss()
-        }.buttonStyle(.borderedProminent)
+        }.buttonStyle(.pillPrimary)
       }
     }.padding(28).frame(width: 580, height: 650).background(Palette.workspace).textFieldStyle(
       .roundedBorder
@@ -1247,7 +1258,7 @@ struct VoiceSampleConfirmation: View {
         Button("Remember voice") {
           state.enrollVoice(sample.segment, name: sample.name, consent: confirmed, matching: true)
           dismiss()
-        }.buttonStyle(.borderedProminent).disabled(!confirmed)
+        }.buttonStyle(.pillPrimary).disabled(!confirmed)
       }
     }.padding(28).frame(width: 480).background(Palette.workspace)
   }

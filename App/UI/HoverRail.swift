@@ -407,7 +407,7 @@ struct RailContent: View {
               HStack {
                 Button(state.meetingStatus == .paused ? "Resume" : "Pause") { action("pause") }
                 Button("Stop and save") { action("stop") }
-              }.buttonStyle(.bordered)
+              }.buttonStyle(.pill)
             }
           } else {
             Label("Private text · this meeting", systemImage: "lock").font(.caption)
