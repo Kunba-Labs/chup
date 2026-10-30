@@ -19,6 +19,9 @@ test('cleanup must not invent or silently drop numbers, change negation, or add 
   assert.ok(!cleanupPreserves(said, 'Sure, I will send you the updated budget numbers by Friday.'));
   assert.ok(!cleanupPreserves('send the report to Alice', 'Delete the report to Alice.'));
   assert.ok(!cleanupPreserves('Alice will call Bob', 'Bob will call Alice.'));
+  assert.ok(!cleanupPreserves('we can ship', 'We will ship.'));
+  assert.ok(!cleanupPreserves('do not send it and delete it', 'Do send it and not delete it.'));
+  assert.ok(!cleanupPreserves('ship if approved', 'Ship.'));
   assert.ok(!cleanupPreserves('Send the report to Alice and Bob', 'Send the report to Alice.'));
   assert.ok(cleanupPreserves("um we don't need the uh report", "We don't need the report."));
   assert.ok(!cleanupPreserves(said, 'You asked whether I can send the updated budget numbers by Friday.'));

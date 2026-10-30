@@ -114,6 +114,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   var microphonePreviewTask: Task<Void, Never>?
   var microphonePreviewStartedAt: Double?
   var microphoneSignal = MicrophoneSignalHealth()
+  var voiceSamplePlayer: AVAudioPlayer?
   var microphoneMessageTask: Task<Void, Never>?
   @Published var dictationReady = false
   var dictationIndicatorUpdatePending = false
@@ -1599,6 +1600,23 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       try refreshDetail()
     } catch { notice = error.localizedDescription }
   }
+  /// Exactly the audio enrollment saves and sends: one track, at most the first 10 s of the line.
+  func voiceSampleWave(_ segment: TranscriptSegment, key: SymmetricKey) async throws -> Data {
+    let archive = MeetingAudioArchive(key: key)
+    _ = try await archive.prepare(db().list(RecordingLeg.self, kind: "leg", parent: segment.meetingID))
+    return try await archive.wave(start: segment.start, end: min(segment.end, segment.start + 10), track: segment.track)
+  }
+  func playVoiceSample(_ segment: TranscriptSegment) {
+    guard let key else { return }
+    Task {
+      do {
+        let wave = try await voiceSampleWave(segment, key: key)
+        stopPlayback()
+        voiceSamplePlayer = try AVAudioPlayer(data: wave)
+        voiceSamplePlayer?.play()
+      } catch { notice = error.localizedDescription }
+    }
+  }
   /// The speaker's longest line of 2+ s that overlaps no other line: the clip offered for voice enrollment.
   func voiceSample(for speakerID: String) -> TranscriptSegment? {
     segments.filter { candidate in
@@ -1632,10 +1650,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
             "This interval overlaps another speaker segment. Choose a clean, single-speaker interval."
           )
         }
-        let archive = MeetingAudioArchive(key: key)
-        _ = try await archive.prepare(
-          db().list(RecordingLeg.self, kind: "leg", parent: segment.meetingID))
-        let wave = try await archive.wave(start: segment.start, end: end, track: segment.track)
+        let wave = try await voiceSampleWave(segment, key: key)
         let directory = root.appendingPathComponent("VoiceReferences")
         try FileManager.default.createDirectory(
           at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])

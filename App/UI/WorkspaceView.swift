@@ -842,7 +842,9 @@ struct VoiceSampleConfirmation: View {
         .foregroundStyle(Palette.secondary)
       WorkspaceCard("Clip · \(WorkspaceState.time(sample.segment.start))", icon: "waveform") {
         Text(sample.segment.text).font(.system(size: 15)).textSelection(.enabled)
-        Button("Listen to clip") { state.play(at: sample.segment.start) }
+        Button("Listen to clip") { state.playVoiceSample(sample.segment) }
+        Text("\(sample.segment.track == .microphone ? "Microphone" : "Call audio") only · \(Int(min(sample.segment.end - sample.segment.start, 10).rounded())) s")
+          .font(.caption).foregroundStyle(Palette.secondary)
       }
       Toggle("This clip contains only \(sample.name)", isOn: $confirmed)
       HStack {

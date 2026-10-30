@@ -144,7 +144,10 @@ export function spokenNumbers(text) {
   flush();
   return found;
 }
-const connectives = new Set('a an the and or but so to of in on at for is are was were be it this that i we you he she they do does did will would can could not'.split(' '));
+// Only grammatical glue may be added; modals, negations and verbs must come from the speaker, in order.
+const connectives = new Set('a an the and or but so to of in on at for'.split(' '));
+// Words that limit a statement; dropping one ("ship if approved" -> "ship") changes its meaning.
+const qualifiers = new Set('if unless only except until before after about around approximately maybe perhaps probably possibly might may should could would can will not never no without'.split(' '));
 const negations = text => (text.toLowerCase().match(/\b(?:not|never|cannot|nothing|nobody|none)\b|n['’]t\b/g) ?? []).length;
 const names = text => text.split(/(?<=[.!?:]\s+|\n)/).flatMap(sentence => sentence.trim().split(/\s+/).slice(1)).map(word => word.replace(/[^\p{L}'’-]/gu,'')).filter(word => /^\p{Lu}/u.test(word));
 export function cleanupPreserves(source, candidate, preferences = []) {
@@ -168,6 +171,10 @@ export function cleanupPreserves(source, candidate, preferences = []) {
     else if (!preferred.has(word)) return false;  // Preferred spellings may replace a spoken word.
   }
   if (!names(candidate).every(name => known.includes(name.toLowerCase()))) return false;
+  const count = list => list.reduce((map, word) => map.set(word, (map.get(word) ?? 0) + 1), new Map());
+  const limits = count(said.filter(word => qualifiers.has(word))), spokenAfter = count(words(candidate));
+  // A self-correction may drop a repeated qualifier ("about ten, no, about fifteen") but not the last one.
+  for (const [word, n] of limits) if (!(corrected && word === 'no') && (spokenAfter.get(word) ?? 0) < (corrected ? 1 : n)) return false;
   // Named people and places stay unless the speaker explicitly corrected themselves.
   const kept = candidate.toLowerCase();
   return corrected || names(source).every(name => kept.includes(name.toLowerCase()));

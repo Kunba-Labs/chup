@@ -59,7 +59,7 @@ actor LiveTranscription {
       return
     }
     // A failed packet waits for the reconnect, and later packets queue behind it.
-    if !(await send(packet)) { pending.append(packet) }
+    if !(await send(packet)), !closed { pending.append(packet) }
   }
   private func send(_ packet: AudioPacket) async -> Bool {
     guard let socket else { return false }
@@ -145,10 +145,15 @@ actor LiveTranscription {
           reconnects = 0
           // Packets arriving during the flush queue behind it, keeping audio in order.
           // On a send failure, keep the rest for the next connection.
+          // Take each packet before awaiting: append may evict and close() may clear meanwhile.
           var flushed = true
-          while let packet = pending.first {
-            guard await send(packet) else { flushed = false; break }
-            pending.removeFirst()
+          while !pending.isEmpty {
+            let packet = pending.removeFirst()
+            guard await send(packet) else {
+              if !closed { pending.insert(packet, at: 0) }
+              flushed = false
+              break
+            }
           }
           ready = flushed
         }
