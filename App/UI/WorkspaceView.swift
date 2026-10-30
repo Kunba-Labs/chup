@@ -590,7 +590,7 @@ struct MeetingDetailView: View {
           .disabled(state.segments.isEmpty || state.processingMeeting)
       }
       if !state.liveOutlines.isEmpty, state.activeMeetingID == state.selectedMeetingID {
-        LiveOutlineView(outlines: state.liveOutlines)
+        ScrollView { LiveOutlineView(outlines: state.liveOutlines) }.frame(maxHeight: 200)
       }
       if summaryFinding {
         HStack(spacing: 6) {
@@ -618,6 +618,7 @@ struct MeetingDetailView: View {
       }
       if outline.isEmpty && state.summaryEdits.isEmpty, state.enhancedNotes?.blocks.isEmpty == false {
         // Notes written from the transcript when no summary was made still have a home.
+        addStepField
         ScrollViewReader { proxy in
           ScrollView { EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true, highlight: summaryQuery).padding(4) }
             .onChange(of: summaryFindIndex) { _, index in
@@ -735,7 +736,9 @@ struct MeetingDetailView: View {
   private func tabPage(_ name: String, @ViewBuilder _ content: () -> some View) -> some View {
     // Disabled as well as hidden, so inactive editors and buttons leave keyboard focus.
     let shown = tab == name && !askOpen
-    return content().opacity(shown ? 1 : 0).allowsHitTesting(shown).disabled(!shown)
+    // Each page is held to the available height so a long hidden one can't stretch the window.
+    return content().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).clipped()
+      .opacity(shown ? 1 : 0).allowsHitTesting(shown).disabled(!shown)
       .accessibilityHidden(!shown)
   }
   /// Summary lines matching the find field get a highlight.
