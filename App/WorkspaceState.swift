@@ -2028,7 +2028,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       if rail?.dismissKeyboard() == true { return }
       endVoice()
       if signal.began {
-        cancelDictation()
+        // Global Escape only stops a recording in progress. Saved audio already transcribing
+        // keeps going: Escape pressed in another app must not silently drop the transcript.
+        if dictationStatus == .listening { cancelDictation() }
         stopPlayback()
       }
     }

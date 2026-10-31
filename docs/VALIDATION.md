@@ -24,7 +24,7 @@ Paste recovery now distinguishes “Copied to clipboard” from an actual copy f
 
 The collapsed side rail now reaches the physical display edge (zero inset for the hover host) so moving the pointer all the way to the edge enters its tracking area. The visible glass remains inset through its own shape, while the transparent host does not add a separate click intercept region.
 
-Dictation processing is now an ordered background queue. Audio is durably saved when capture ends, then transcription, cleanup and safe insertion run independently of the next recording. A new hold-to-dictate can begin while an earlier clip is processing; each queued job retains its captured destination and generation checks prevent stale work from changing the live waveform. Queue count is shown beside Dictation, and Escape cancels the active processing job without deleting saved clips.
+Dictation processing is now an ordered background queue. Audio is durably saved when capture ends, then transcription, cleanup and safe insertion run independently of the next recording. A new hold-to-dictate can begin while an earlier clip is processing; each queued job retains its captured destination and generation checks prevent stale work from changing the live waveform. Queue count is shown beside Dictation. Escape cancels only a recording in progress; a clip already transcribing keeps going (the cancel button on the dictation indicator still stops it, and a cancelled clip says so on its row with Retry audio).
 
 - Native arm64 build passed: `.artifacts/queue-build.log`.
 - Offline native suite passed: `.artifacts/queue-native.log`, including panel placement and existing capture, insertion, timing and Live transport checks. No microphone opened.
