@@ -7,16 +7,14 @@ enum RailModule: String, CaseIterable, Identifiable {
   case today = "Today", meetings = "Meetings", dictation = "Dictation", notebook = "Notebook",
     personal = "Personal", settings = "Settings"
   var id: String { rawValue }
-  /// Voxel rail icon in Assets.xcassets (generated with Higgsfield/Recraft, 2026-10-31).
-  var asset: String { "Rail" + rawValue }
   var icon: String {
     switch self {
-    case .today: return "sun.max"
-    case .meetings: return "person.2"
+    case .today: return "sun.max.fill"
+    case .meetings: return "person.2.fill"
     case .dictation: return "waveform"
-    case .notebook: return "book.closed"
-    case .personal: return "character.book.closed"
-    case .settings: return "gearshape"
+    case .notebook: return "book.closed.fill"
+    case .personal: return "character.book.closed.fill"
+    case .settings: return "gearshape.fill"
     }
   }
   var page: WorkspacePage {
@@ -41,13 +39,11 @@ enum RailModule: String, CaseIterable, Identifiable {
   }
 }
 
-/// Voxel icon; inactive ones sit back a little so the selected page stands out.
+/// Chunky rail glyph: filled SF Symbols at a heavier weight than body icons.
 struct RailIcon: View {
-  let asset: String
-  let active: Bool
+  let symbol: String
   var body: some View {
-    Image(asset).resizable().interpolation(.high).scaledToFit().frame(width: 28, height: 28)
-      .saturation(active ? 1 : 0.75).opacity(active ? 1 : 0.85).accessibilityHidden(true)
+    Image(systemName: symbol).font(.system(size: 18, weight: .semibold)).accessibilityHidden(true)
   }
 }
 
@@ -62,7 +58,7 @@ struct GlassRail: View {
           Button {
             state.searchOpen = true
           } label: {
-            RailIcon(asset: "RailSearch", active: false)
+            RailIcon(symbol: "magnifyingglass")
               .frame(width: 40, height: 40).contentShape(RoundedRectangle(cornerRadius: 12))
           }.buttonStyle(.plain).foregroundStyle(Palette.secondary).help("Search  ⌘K")
             .accessibilityLabel("Search")
@@ -78,7 +74,7 @@ struct GlassRail: View {
             } else if module == .dictation && state.dictationStatus == .processing {
               ProcessingCircle().frame(width: 18)
             } else {
-              RailIcon(asset: module.asset, active: active)
+              RailIcon(symbol: module.icon)
             }
           }
           .frame(width: 40, height: 40)

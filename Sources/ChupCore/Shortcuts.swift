@@ -109,10 +109,14 @@ public struct ShortcutSignal: Equatable {
   public var action: ShortcutAction
   public var began: Bool
   public var cancelled: Bool
-  public init(action: ShortcutAction, began: Bool, cancelled: Bool = false) {
+  /// The key stream was reset (tap interrupted, rebinding, sleep): the key-up was lost, not
+  /// replaced by a longer shortcut. Promotion (Fn → Fn+Space) leaves this false.
+  public var streamReset: Bool
+  public init(action: ShortcutAction, began: Bool, cancelled: Bool = false, streamReset: Bool = false) {
     self.action = action
     self.began = began
     self.cancelled = cancelled
+    self.streamReset = streamReset
   }
 }
 /// Retain the complete gesture while its keys are released one at a time.
@@ -149,7 +153,7 @@ public struct ShortcutResolver {
       latched = []
       suppressed = []
     }
-    return active.map { [ShortcutSignal(action: $0.action, began: false, cancelled: true)] } ?? []
+    return active.map { [ShortcutSignal(action: $0.action, began: false, cancelled: true, streamReset: true)] } ?? []
   }
   public mutating func update(
     modifiers: KeyModifiers, keys: Set<UInt16>, buttons: Set<Int> = [], time: Double

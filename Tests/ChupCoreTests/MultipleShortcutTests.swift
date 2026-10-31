@@ -132,7 +132,7 @@ final class MultipleShortcutTests: XCTestCase {
     XCTAssertEqual(
       resolver.update(modifiers: [.control, .shift], keys: [], time: 1.4),
       [.init(action: .holdDictation, began: true)])
-    XCTAssertEqual(resolver.reset(), [.init(action: .holdDictation, began: false, cancelled: true)])
+    XCTAssertEqual(resolver.reset(), [.init(action: .holdDictation, began: false, cancelled: true, streamReset: true)])
   }
   func testDuplicateGesturesConflictButSameActionAlternatesAreAllowed() {
     let fn = ShortcutBinding(.holdDictation, .fn, hold: true)
@@ -164,6 +164,6 @@ final class MultipleShortcutTests: XCTestCase {
     resolver.suspended = true
     XCTAssertEqual(
       resolver.update(modifiers: [], keys: [], buttons: [4], time: 0.8),
-      [.init(action: .holdDictation, began: false, cancelled: true)])
+      [.init(action: .holdDictation, began: false, cancelled: true, streamReset: true)])
   }
 }

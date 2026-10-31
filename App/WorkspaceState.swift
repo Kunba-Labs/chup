@@ -1293,7 +1293,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         cloudClient = client
         entry.transcriptionProvider = "OpenAI cloud"
       } catch {
-        dictationLog.error("process \(entry.id, privacy: .public): cloud failed: \(error.localizedDescription, privacy: .public)")
+        dictationLog.error("process \(entry.id, privacy: .public): cloud failed: \(error.localizedDescription, privacy: .private)")
         try Task.checkCancellation()
         guard mode.allowsLocal else { throw error }
         // A single sequential fallback owns the result. Partial cloud text is discarded.
@@ -2035,7 +2035,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     if signal.cancelled {
       // A lost key-up (event tap interrupted, shortcuts reset) must not throw away speech:
       // a held dictation finishes and transcribes instead of being cancelled.
-      if dictationStatus == .listening, signal.action == .holdDictation || signal.action == .editSelection {
+      if signal.streamReset, dictationStatus == .listening,
+        signal.action == .holdDictation || signal.action == .editSelection {
         dictationLog.notice("shortcut stream reset during hold; finishing instead of cancelling")
         finishDictation()
       } else {

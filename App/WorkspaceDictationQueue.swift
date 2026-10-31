@@ -122,7 +122,7 @@ extension WorkspaceState {
         }
       } catch {
         finishTrace(traceID, Task.isCancelled ? .cancelled : .failed)
-        dictationLog.error("job \(entry.id, privacy: .public): failed cancelled=\(Task.isCancelled) signal=\(error is DictationSignalError) error=\(error.localizedDescription, privacy: .public)")
+        dictationLog.error("job \(entry.id, privacy: .public): failed cancelled=\(Task.isCancelled) signal=\(error is DictationSignalError) error=\(error.localizedDescription, privacy: .private)")
         // Keep the reason on the dictation so its row says why it wasn't transcribed.
         if !(error is DictationSignalError),
           var failed = try? db().list(DictationEntry.self, kind: "dictation").first(where: { $0.id == entry.id }),
