@@ -6,6 +6,11 @@ import ChupCore
   init(_ destination: TextInsertion.Destination?) { self.destination = destination }
 }
 
+extension DictationEntry {
+  /// Text from the relaxed quiet-clip pass: kept for review, never pasted automatically.
+  static let quietRetryNote = "Quiet clip, transcribed on a second pass. Check it before you use it."
+}
+
 extension WorkspaceState {
   /// Durable audio is committed before entering this queue. Each job owns its
   /// metadata and target; starting capture never invalidates older saved jobs.
@@ -71,9 +76,12 @@ extension WorkspaceState {
           try await Task.sleep(for: .milliseconds(40))
         }
         try Task.checkCancellation()
-        guard insertResult else {
+        guard insertResult, result.processingNote != DictationEntry.quietRetryNote else {
           finishTrace(traceID, .saved)
-          notice = "Saved to history. Copy it where you need it."
+          notice = insertResult
+            ? "Quiet clip: saved to history to check, not pasted. Copy it if it's right."
+            : "Saved to history. Copy it where you need it."
+          if insertResult, dictationStatus != .listening, pendingDictations == 1 { dictationStatus = .idle }
           return
         }
         markTrace(traceID, .insertionStarted)

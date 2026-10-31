@@ -134,11 +134,14 @@ actor LocalSpeechWorker {
       concurrentWorkerCount: 1, chunkingStrategy: .vad)
   }
 
-  func transcribe(files: [URL], key: SymmetricKey, language: String) async throws -> String {
+  /// `quietRetry`: some text came only from the relaxed second pass on a quiet clip. No check
+  /// here proves that was speech, so callers keep it for review and never paste it automatically.
+  func transcribe(files: [URL], key: SymmetricKey, language: String) async throws -> (text: String, quietRetry: Bool) {
     guard !busy, let pipe else { throw WorkspaceError.message("Local model is not ready. Open Settings → Dictation.") }
     busy = true
     defer { busy = false }
     var text = [String]()
+    var quietRetry = false
     for file in files {
       try Task.checkCancellation()
       // AudioOwner rotates each journal at 30 seconds. Reject oversized imported journals.
@@ -183,11 +186,12 @@ actor LocalSpeechWorker {
           .flatMap(\.segments).filter { $0.noSpeechProb < 0.9 && $0.avgLogprob > -1.0 }
           .map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
         try Task.checkCancellation()
+        quietRetry = quietRetry || !decoded.isEmpty
         dictationLog.notice("local retry (gain \(gain, format: .fixed(precision: 1))x, relaxed gate, confident segments) chars=\(decoded.count)")
       }
       text.append(decoded)
     }
-    return text.filter { !$0.isEmpty }.joined(separator: " ")
+    return (text.filter { !$0.isEmpty }.joined(separator: " "), quietRetry)
   }
 
   /// Independent of the decoder (whose no-speech probability is 0 in this WhisperKit build):
@@ -313,7 +317,7 @@ actor LocalSpeechWorker {
       throw error
     }
   }
-  func transcribe(files: [URL], key: SymmetricKey, language: String) async throws -> String {
+  func transcribe(files: [URL], key: SymmetricKey, language: String) async throws -> (text: String, quietRetry: Bool) {
     try await prepare()
     try Task.checkCancellation()
     guard !working else { throw WorkspaceError.message("Local speech is already working.") }

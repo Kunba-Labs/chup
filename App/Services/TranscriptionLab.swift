@@ -151,7 +151,7 @@ actor ParakeetWorker {
             prepared = ProcessInfo.processInfo.systemUptime
             status = "Transcribing with \(model)…"
             let text: String
-            if model.hasPrefix("Whisper") { text = try await whisper.transcribe(files: journals, key: key, language: entry.language ?? "en") }
+            if model.hasPrefix("Whisper") { text = try await whisper.transcribe(files: journals, key: key, language: entry.language ?? "en").text }
             else { text = try await parakeet.transcribe(journals: journals, key: key) }
             try Task.checkCancellation()
             guard generation == run else { throw CancellationError() }

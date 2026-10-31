@@ -395,15 +395,16 @@ struct TodayView: View {
   }
   /// Meetings and dictations together, newest first.
   private var recent: [RecentItem] {
-    let meetings = state.meetings.prefix(6).map {
+    // The three latest meetings always stay; dictations fill in beside them.
+    let meetings = state.meetings.prefix(3).map {
       RecentItem(id: $0.id, title: $0.title, created: $0.created, meeting: true, source: .meeting($0.id))
     }
-    let dictations = state.history.filter { $0.status != "ignored" && $0.status != "cancelled" }.prefix(6).map {
+    let dictations = state.history.filter { $0.status != "ignored" && $0.status != "cancelled" }.prefix(3).map {
       let line = $0.text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
       return RecentItem(id: $0.id, title: line.isEmpty ? "Dictation · not transcribed yet" : line,
         created: $0.created, meeting: false, source: .dictation(id: $0.id, directory: $0.audioDirectory))
     }
-    return Array((meetings + dictations).sorted { $0.created > $1.created }.prefix(6))
+    return (meetings + dictations).sorted { $0.created > $1.created }
   }
   private func meetingTitle(_ id: String) -> String {
     state.meetings.first { $0.id == id }?.title ?? "Meeting"

@@ -1276,6 +1276,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     dictationLog.notice("process \(entry.id, privacy: .public): mode=\(mode.rawValue, privacy: .public) files=\(files.count) localReady=\(self.localSpeech.ready) localWorking=\(self.localSpeech.working)")
     guard !files.isEmpty else { throw WorkspaceError.message("No saved audio was found for this dictation.") }
     var text = ""
+    var quietRetry = false
     var cloudClient: BackendClient?
     if mode.attemptsCloud(cloudEnabled: cloudEnabled, configured: !backendToken.isEmpty) {
       markTrace(traceID, .cloudStarted)
@@ -1311,7 +1312,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       markTrace(traceID, .localStarted)
       defer { markTrace(traceID, .localFinished) }
       let started = ProcessInfo.processInfo.systemUptime
-      do { text = try await localSpeech.transcribe(files: files, key: key, language: language) } catch {
+      do { (text, quietRetry) = try await localSpeech.transcribe(files: files, key: key, language: language) } catch {
         dictationLog.error("process \(entry.id, privacy: .public): local failed after \(ProcessInfo.processInfo.systemUptime - started, format: .fixed(precision: 2))s: \(error.localizedDescription, privacy: .private) cancelled=\(Task.isCancelled)")
         throw error
       }
@@ -1360,6 +1361,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       entry.text = DictationPersonalization.spellings(entry.text, entries: preferences, language: language)
     }
     try Task.checkCancellation()
+    if quietRetry { entry.processingNote = DictationEntry.quietRetryNote }
     entry.status = "ready"
     try db().put(entry, kind: "dictation", id: entry.id, searchable: entry.text)
     try refresh()
