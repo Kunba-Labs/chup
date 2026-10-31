@@ -162,10 +162,14 @@ actor LocalSpeechWorker {
         start += Double(frames) / 16000
       }
       guard !samples.isEmpty else { continue }
+      // Logged 13:49: a 0.8 s clip came back with zero segments in 0.02 s (both passes):
+      // sub-second audio is skipped without decoding. Trailing silence to 2 s fixes that.
+      let spoken = samples  // Unpadded: padding would zero the noise floor the energy check uses.
+      if samples.count < 32000 { samples += [Float](repeating: 0, count: 32000 - samples.count) }
       let first = try await pipe.transcribe(audioArray: samples, decodeOptions: options(language: language))
       var decoded = first.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
       try Task.checkCancellation()
-      if decoded.isEmpty, Self.hasSpeechEnergy(samples) {
+      if decoded.isEmpty, Self.hasSpeechEnergy(spoken) {
         let peak = samples.reduce(Float(0)) { max($0, abs($1)) }
         let rms = sqrt(samples.reduce(Float(0)) { $0 + $1 * $1 } / Float(samples.count))
         let segments = first.flatMap(\.segments)
