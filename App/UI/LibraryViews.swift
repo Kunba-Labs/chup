@@ -13,6 +13,7 @@ struct DictationView: View {
   @State private var search = ""
   @State private var showIgnored = false
   var body: some View {
+    ScrollViewReader { proxy in
     VStack(alignment: .leading, spacing: 28) {
       HStack(alignment: .top) {
         PageHeader(
@@ -153,10 +154,25 @@ struct DictationView: View {
                   }.font(.caption).foregroundStyle(Palette.secondary)
                 }
               }.padding(22).workspaceSurface()
+                .overlay {
+                  if state.dictationFocusID == entry.id {
+                    RoundedRectangle(cornerRadius: 16).strokeBorder(Palette.accent, lineWidth: 2)
+                  }
+                }
+                .id(entry.id)
             }
           }
       }
     }.padding(38).pageScroll()
+      // Opened from Today: scroll to that clip and outline it.
+      .onChange(of: state.dictationFocusID, initial: true) { _, id in
+        guard let id else { return }
+        search = ""
+        if state.history.first(where: { $0.id == id })?.status == "ignored" { showIgnored = true }
+        DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .center) } }
+      }
+      .onDisappear { state.dictationFocusID = nil }
+    }
   }
 }
 struct NotebookView: View {

@@ -171,6 +171,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var meetingApps: [String: String] = [:]
   /// A ⌘K result hands its text to the list it opens, which filters to it.
   @Published var listQuery: String?
+  /// A dictation to scroll to and outline when the Dictation page opens (from Today).
+  @Published var dictationFocusID: String?
   /// Meeting and time a search hit wants once that meeting's audio has loaded.
   var pendingSeek: (meetingID: String, time: Double)?
   @Published var undoToast: UndoToast?

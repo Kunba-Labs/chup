@@ -334,6 +334,7 @@ struct TodayView: View {
                   state.selectMeeting(item.id)
                   state.page = .meetings
                 } else {
+                  state.dictationFocusID = item.id
                   state.page = .dictation
                 }
               } label: {

@@ -10,7 +10,10 @@ actor WaveformThumbnailLoader {
   private var cache: [String: [Float]] = [:]
 
   func peaks(id: String, legs: [RecordingLeg], key: SymmetricKey, cacheable: Bool) -> [Float] {
-    if let hit = cache[id] { return hit }
+    // A recording in progress (or resumed with a new leg) always reads fresh and drops any
+    // stale entry; the view reloads once it stops, and that result is cached.
+    if cacheable, let hit = cache[id] { return hit }
+    if !cacheable { cache[id] = nil }
     var points: [(Double, Float)] = []
     for leg in legs.sorted(by: { $0.offset < $1.offset }) {
       let directory = URL(fileURLWithPath: leg.directory)
@@ -74,6 +77,14 @@ struct MiniWaveform: View {
   var height: CGFloat = 22
   @EnvironmentObject private var state: WorkspaceState
   @State private var peaks: [Float] = []
+  private struct LoadKey: Hashable { let source: Source; let live: Bool }
+  /// Recording right now; flipping to false reloads the finished waveform.
+  private var live: Bool {
+    switch source {
+    case .meeting(let id): return state.activeMeetingID == id
+    case .dictation(let id, _): return state.recordingEntry?.id == id
+    }
+  }
   var body: some View {
     Canvas { context, size in
       let count = WaveformThumbnailLoader.barCount
@@ -89,7 +100,7 @@ struct MiniWaveform: View {
       }
     }
     .frame(width: width, height: height)
-    .task(id: source) { peaks = await state.thumbnailPeaks(source) }
+    .task(id: LoadKey(source: source, live: live)) { peaks = await state.thumbnailPeaks(source) }
     .accessibilityHidden(true)
   }
 }
