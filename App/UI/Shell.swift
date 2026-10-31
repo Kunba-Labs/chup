@@ -436,8 +436,7 @@ struct ShellGlass: View {
         Color.white.opacity(0.2)
         // Aero-style: a cool sky-blue tint, deeper toward the bottom…
         LinearGradient(
-          colors: [Color(red: 0.62, green: 0.80, blue: 0.98).opacity(0.16),
-                   Color(red: 0.36, green: 0.58, blue: 0.90).opacity(0.24)],
+          colors: [Palette.glassTop.opacity(0.16), Palette.glassBottom.opacity(0.24)],
           startPoint: .top, endPoint: .bottom)
         // …a glossy top highlight…
         LinearGradient(

@@ -18,6 +18,8 @@ enum Palette {
     accent = color(0x5B3DE6, 0xB9A8FF), red = color(0xB03D30, 0xF29A8C)
   static let border = color(0xDCD9E6, 0x34323D)
   static let backdrop = color(0xF5ECE6, 0x121116)
+  /// Aero-style window glass tint (top → bottom), chosen 2026-10-31.
+  static let glassTop = color(0x9ECCFA, 0x2A3C55), glassBottom = color(0x5C94E6, 0x1E2E4A)
   static let violet = Color(red: 106 / 255, green: 76 / 255, blue: 245 / 255)
   static let coral = Color(red: 232 / 255, green: 115 / 255, blue: 90 / 255)
   static let gradient = LinearGradient(

@@ -18,7 +18,11 @@ import ChupCore
   }
   private(set) var lastDeliveryRoute = "None"
   private(set) var lastDiagnostic = "Idle"
-  private func delivery(_ message: String) { lastDiagnostic = message }
+  private func delivery(_ message: String) {
+    lastDiagnostic = message
+    // Fixed diagnostic strings and bundle IDs only; never the inserted text.
+    dictationLog.notice("insert: \(message, privacy: .public)")
+  }
   private func unavailable(_ reason: String) -> Destination? {
     lastDiagnostic = reason
     return nil
@@ -333,8 +337,17 @@ import ChupCore
         let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else { return false }
       down.flags = .maskCommand
       up.flags = .maskCommand
-      down.postToPid(destination.application.processIdentifier)
-      up.postToPid(destination.application.processIdentifier)
+      // Chromium/Electron apps (VS Code, Slack, browsers) ignore events posted to their pid.
+      // When the destination is frontmost (isValid just checked), post through the HID stream
+      // like a real keystroke; otherwise stay pid-targeted so nothing reaches another app.
+      if NSWorkspace.shared.frontmostApplication?.processIdentifier == destination.application.processIdentifier {
+        lastDeliveryRoute = "Command-V event (HID)"
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+      } else {
+        down.postToPid(destination.application.processIdentifier)
+        up.postToPid(destination.application.processIdentifier)
+      }
       return true
     }
     var dispatched = dispatch()

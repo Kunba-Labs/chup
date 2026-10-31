@@ -171,19 +171,19 @@ actor LocalSpeechWorker {
           rms=\(rms, format: .fixed(precision: 4)) language=\(language, privacy: .public) \
           segments=\(segments.count) noSpeech=\(segments.map(\.noSpeechProb).max() ?? -1, format: .fixed(precision: 2))
           """)
-        // Whisper's no-speech gate drops short or quiet clips that do contain speech (the
-        // signal filter already confirmed sound). Second pass: level the audio to a normal
-        // peak and turn the gate off. Still real model output, never invented text.
+        // Whisper's no-speech gate drops short or quiet clips that do contain speech. Second
+        // pass: level the audio to a normal peak and relax (not remove) the gate, then keep only
+        // segments the model is confident in, so background noise can't become inserted text.
         let gain = peak > 0 ? min(20, 0.8 / peak) : 1
         let leveled = gain > 1 ? samples.map { $0 * gain } : samples
         var plain = options(language: language)
         plain.chunkingStrategy = nil
-        plain.noSpeechThreshold = nil
-        plain.firstTokenLogProbThreshold = nil
+        plain.noSpeechThreshold = 0.9
         decoded = try await pipe.transcribe(audioArray: leveled, decodeOptions: plain)
+          .flatMap(\.segments).filter { $0.noSpeechProb < 0.9 && $0.avgLogprob > -1.0 }
           .map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
         try Task.checkCancellation()
-        dictationLog.notice("local retry (gain \(gain, format: .fixed(precision: 1))x, no-speech gate off) chars=\(decoded.count)")
+        dictationLog.notice("local retry (gain \(gain, format: .fixed(precision: 1))x, relaxed gate, confident segments) chars=\(decoded.count)")
       }
       text.append(decoded)
     }

@@ -12,6 +12,7 @@ struct DictationView: View {
   @State private var showTrash = false
   @State private var search = ""
   @State private var showIgnored = false
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var body: some View {
     ScrollViewReader { proxy in
     VStack(alignment: .leading, spacing: 28) {
@@ -169,7 +170,9 @@ struct DictationView: View {
         guard let id else { return }
         search = ""
         if state.history.first(where: { $0.id == id })?.status == "ignored" { showIgnored = true }
-        DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .center) } }
+        DispatchQueue.main.async {
+          withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo(id, anchor: .center) }
+        }
       }
       .onDisappear { state.dictationFocusID = nil }
     }
