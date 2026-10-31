@@ -22,10 +22,10 @@ import ChupCore
     panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     panel.isOpaque = false
     panel.backgroundColor = .clear
-    panel.appearance = NSAppearance(named: .darkAqua)
+    panel.appearance = NSAppearance(named: .aqua)
     panel.hasShadow = true
     panel.contentView = NSHostingView(
-      rootView: MeetingPrompt(detector: self).environment(\.colorScheme, .dark))
+      rootView: MeetingPrompt(detector: self).environment(\.colorScheme, .light))
     timer = MainActorTimer.repeating(every: 1) { [weak self] in self?.tick() }
   }
   private func tick() {

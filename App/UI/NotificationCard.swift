@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared native panel vocabulary. Preview actions are inert; production owners provide handlers.
+/// Shared native panel vocabulary, in the light notepad style of the recording panel. Preview actions are inert; production owners provide handlers.
 struct NotificationCard: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   enum Kind {
@@ -16,7 +16,7 @@ struct NotificationCard: View {
   var tertiary: () -> Void = {}
   private var recording: Bool { kind == .recording || kind == .dictating }
   private var accent: Color {
-    [.recording, .dictating, .paused, .routeBlocked].contains(kind) ? RailPalette.red : RailPalette.accent
+    [.recording, .dictating, .paused, .routeBlocked].contains(kind) ? Palette.red : Palette.accent
   }
   private var icon: String {
     switch kind {
@@ -76,54 +76,51 @@ struct NotificationCard: View {
         Text(
           kind == .callDetected || kind == .browserDetected
             ? appName.uppercased() : recording ? "CHUP! · LIVE" : "CHUP!"
-        ).font(.system(size: 9, weight: .semibold)).tracking(1.4).foregroundStyle(RailPalette.secondary)
+        ).font(.system(size: 9, weight: .semibold)).tracking(1.4).foregroundStyle(Palette.secondary)
         Spacer()
         if kind == .callDetected || kind == .browserDetected {
           ZStack {
-            Circle().stroke(.white.opacity(0.16), lineWidth: 1.5)
+            Circle().stroke(Palette.border, lineWidth: 1.5)
             Circle().trim(from: 0, to: Double(countdown) / 10).stroke(
-              RailPalette.accent, style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
+              Palette.accent, style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
             ).rotationEffect(.degrees(-90))
               .animation(reduceMotion ? nil : .linear(duration: 1), value: countdown)
             Text("\(countdown)").font(.system(size: 9, weight: .medium, design: .monospaced))
           }.frame(width: 23, height: 23).accessibilityLabel("Dismisses in \(countdown) seconds")
         } else if kind == .recording {
-          Text(elapsed).font(.system(size: 11, design: .monospaced)).foregroundStyle(RailPalette.red)
+          Text(elapsed).font(.system(size: 11, design: .monospaced)).foregroundStyle(Palette.red)
         }
       }
       VStack(alignment: .leading, spacing: 6) {
         Text(title).font(.system(size: 16, weight: .semibold))
-        Text(detail).font(.system(size: 12)).lineSpacing(2).foregroundStyle(RailPalette.secondary)
+        Text(detail).font(.system(size: 12)).lineSpacing(2).foregroundStyle(Palette.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
       if kind == .callDetected {
         Text("Tell everyone before you record.").font(.system(size: 10)).foregroundStyle(
-          RailPalette.secondary)
+          Palette.secondary)
       }
       HStack(spacing: 10) {
         if kind == .callDetected || kind == .browserDetected {
           Button("Not now", action: secondary).buttonStyle(.plain).foregroundStyle(
-            RailPalette.secondary)
+            Palette.secondary)
           Button("Snooze 2m", action: tertiary).buttonStyle(.plain).foregroundStyle(
-            RailPalette.secondary)
+            Palette.secondary)
         } else {
           Button(
             kind == .recording
               ? "Pause"
               : kind == .paused ? "Stop and save" : kind == .meetingEnded ? "Keep recording" : "Dismiss",
             action: secondary
-          ).buttonStyle(.plain).foregroundStyle(RailPalette.secondary)
+          ).buttonStyle(.plain).foregroundStyle(Palette.secondary)
         }
         Spacer()
-        Button(action: primary) {
-          Text(primaryTitle).font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(RailPalette.base).padding(.horizontal, 14).padding(.vertical, 7)
-            .background(RailPalette.ink, in: Capsule())
-        }.buttonStyle(.plain)
+        Button(primaryTitle, action: primary).buttonStyle(.pillPrimary).controlSize(.small)
 
       }.font(.system(size: 11))
     }.padding(16).frame(width: 336, alignment: .leading)
-      .background { RailSurface() }
-      .foregroundStyle(RailPalette.ink).environment(\.colorScheme, .dark)
+      .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 18))
+      .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.border) }
+      .foregroundStyle(Palette.ink).tint(Palette.accent).environment(\.colorScheme, .light)
   }
 }
