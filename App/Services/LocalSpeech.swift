@@ -159,18 +159,31 @@ actor LocalSpeechWorker {
         start += Double(frames) / 16000
       }
       guard !samples.isEmpty else { continue }
-      var decoded = try await pipe.transcribe(audioArray: samples, decodeOptions: options(language: language))
-        .map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+      let first = try await pipe.transcribe(audioArray: samples, decodeOptions: options(language: language))
+      var decoded = first.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
       try Task.checkCancellation()
       if decoded.isEmpty {
-        // Whisper sometimes returns nothing for audio with speech. One more pass without VAD
-        // chunking; still real model output, never invented text.
+        let peak = samples.reduce(Float(0)) { max($0, abs($1)) }
+        let rms = sqrt(samples.reduce(Float(0)) { $0 + $1 * $1 } / Float(samples.count))
+        let segments = first.flatMap(\.segments)
+        dictationLog.notice("""
+          local decode empty: samples=\(samples.count) peak=\(peak, format: .fixed(precision: 3)) \
+          rms=\(rms, format: .fixed(precision: 4)) language=\(language, privacy: .public) \
+          segments=\(segments.count) noSpeech=\(segments.map(\.noSpeechProb).max() ?? -1, format: .fixed(precision: 2))
+          """)
+        // Whisper's no-speech gate drops short or quiet clips that do contain speech (the
+        // signal filter already confirmed sound). Second pass: level the audio to a normal
+        // peak and turn the gate off. Still real model output, never invented text.
+        let gain = peak > 0 ? min(20, 0.8 / peak) : 1
+        let leveled = gain > 1 ? samples.map { $0 * gain } : samples
         var plain = options(language: language)
         plain.chunkingStrategy = nil
-        decoded = try await pipe.transcribe(audioArray: samples, decodeOptions: plain)
+        plain.noSpeechThreshold = nil
+        plain.firstTokenLogProbThreshold = nil
+        decoded = try await pipe.transcribe(audioArray: leveled, decodeOptions: plain)
           .map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
         try Task.checkCancellation()
-        dictationLog.notice("local decode empty for \(samples.count) samples; retry without VAD chars=\(decoded.count)")
+        dictationLog.notice("local retry (gain \(gain, format: .fixed(precision: 1))x, no-speech gate off) chars=\(decoded.count)")
       }
       text.append(decoded)
     }
