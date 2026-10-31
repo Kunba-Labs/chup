@@ -162,7 +162,7 @@ actor LocalSpeechWorker {
       let first = try await pipe.transcribe(audioArray: samples, decodeOptions: options(language: language))
       var decoded = first.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
       try Task.checkCancellation()
-      if decoded.isEmpty {
+      if decoded.isEmpty, Self.hasSpeechEnergy(samples) {
         let peak = samples.reduce(Float(0)) { max($0, abs($1)) }
         let rms = sqrt(samples.reduce(Float(0)) { $0 + $1 * $1 } / Float(samples.count))
         let segments = first.flatMap(\.segments)
@@ -188,6 +188,26 @@ actor LocalSpeechWorker {
       text.append(decoded)
     }
     return text.filter { !$0.isEmpty }.joined(separator: " ")
+  }
+
+  /// Independent of the decoder (whose no-speech probability is 0 in this WhisperKit build):
+  /// speech rises well above its own noise floor in bursts. Steady hum or room noise doesn't,
+  /// so it never reaches the relaxed retry. Ceiling: quiet speech over a loud steady background
+  /// fails this check and stays "not transcribed" for a manual retry.
+  static func hasSpeechEnergy(_ samples: [Float], rate: Int = 16000) -> Bool {
+    let frame = rate / 50  // 20 ms
+    guard samples.count >= frame * 10 else { return false }
+    var energies: [Float] = []
+    var index = 0
+    while index + frame <= samples.count {
+      var sum: Float = 0
+      for i in index..<index + frame { sum += samples[i] * samples[i] }
+      energies.append(sqrt(sum / Float(frame)))
+      index += frame
+    }
+    let floor = max(energies.sorted()[energies.count / 5], 1e-4)  // 20th percentile ≈ noise floor
+    let loud = energies.filter { $0 > floor * 4 }.count
+    return Float(loud) / Float(energies.count) >= 0.1
   }
 
   func transcribeLive(packets: [AudioPacket], language: String) async throws -> String {
@@ -327,5 +347,22 @@ actor LocalSpeechWorker {
         status = "Model not installed"
       } catch { status = error.localizedDescription }
     }
+  }
+}
+
+extension LocalSpeechWorker {
+  /// Offline check: quiet bursty speech passes; steady noise and silence never reach the retry.
+  static func validateSpeechEnergy() throws {
+    var noise = SystemRandomNumberGenerator()
+    let hum = (0..<32000).map { _ in Float.random(in: -0.01...0.01, using: &noise) }
+    var speech = hum
+    for burst in stride(from: 4000, to: 28000, by: 6000) {  // 0.25 s syllable bursts at ~5% peak
+      for i in burst..<burst + 4000 { speech[i] += 0.05 * sin(Float(i) * 0.12) }
+    }
+    guard hasSpeechEnergy(speech), !hasSpeechEnergy(hum), !hasSpeechEnergy([Float](repeating: 0, count: 32000)),
+      !hasSpeechEnergy([Float](repeating: 0.1, count: 100)) else {
+      throw WorkspaceError.message("Speech-energy gate misclassified a fixture.")
+    }
+    print("PASS: empty-decode retry gate accepts quiet bursty speech (5% peak) and rejects steady noise, silence and too-short audio.")
   }
 }

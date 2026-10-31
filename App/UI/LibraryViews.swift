@@ -357,7 +357,7 @@ struct AssistantView: View {
       Text(state.selectedMeeting?.title ?? "Open a meeting first.").font(
         .caption
       ).foregroundStyle(Palette.secondary)
-      PillSegmented(selection: $state.voiceMode, options: AssistantMode.allCases) { $0.rawValue }
+      PillSegmented(title: "Conversation mode", selection: $state.voiceMode, options: AssistantMode.allCases) { $0.rawValue }
         .onChange(of: mode) { _, _ in state.endVoice() }
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {

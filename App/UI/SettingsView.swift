@@ -82,7 +82,7 @@ struct SettingsView: View {
           }.padding(.bottom, 8)
           if home == "Advanced" {
             PillSegmented(
-              selection: Binding(get: { advancedPage }, set: { section = $0 }), options: Self.pages["Advanced"]!
+              title: "Advanced section", selection: Binding(get: { advancedPage }, set: { section = $0 }), options: Self.pages["Advanced"]!
             ) { $0 == "Advanced" ? "Connection" : $0 }
             page(advancedPage)
           } else {
@@ -263,7 +263,7 @@ struct SettingsView: View {
         HStack {
           Text("Dock at")
           Spacer()
-          PillSegmented(selection: $state.railDock, options: ["left", "right", "bottom"]) { $0.capitalized }
+          PillSegmented(title: "Dock at", selection: $state.railDock, options: ["left", "right", "bottom"]) { $0.capitalized }
         }
         Text("Drag the handle to move the rail.").font(.callout).foregroundStyle(
           Palette.secondary)

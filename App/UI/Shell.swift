@@ -110,7 +110,7 @@ struct PersonalModuleView: View {
   @EnvironmentObject var state: WorkspaceState
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      PillSegmented(selection: $state.page, options: [WorkspacePage.dictionary, .snippets, .styles]) { $0.rawValue }
+      PillSegmented(title: "Personal section", selection: $state.page, options: [WorkspacePage.dictionary, .snippets, .styles]) { $0.rawValue }
         .padding([.top, .horizontal], 38)
       PersonalizationView(page: state.page).id(state.page)
     }.pageScroll()
@@ -328,6 +328,9 @@ struct TodayView: View {
           }
         } else {
           section("Recent recordings") {
+            if recent.isEmpty {
+              Text("No recordings yet. Meetings and dictations show here.").foregroundStyle(Palette.secondary)
+            }
             ForEach(recent, id: \.id) { item in
               Button {
                 if item.meeting {

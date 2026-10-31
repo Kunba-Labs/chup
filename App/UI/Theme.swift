@@ -247,6 +247,8 @@ extension ButtonStyle where Self == PillButtonStyle {
 /// pill with a hairline. Replaces `.pickerStyle(.segmented)`, whose stock look and small hit
 /// targets didn't match the page pills.
 struct PillSegmented<Value: Hashable>: View {
+  /// VoiceOver name for the group, like a Picker's label.
+  let title: String
   @Binding var selection: Value
   let options: [Value]
   let label: (Value) -> String
@@ -270,6 +272,7 @@ struct PillSegmented<Value: Hashable>: View {
           .accessibilityAddTraits(selected ? .isSelected : [])
       }
     }.padding(3).background(Capsule().fill(Palette.border.opacity(0.55)))
+      .accessibilityElement(children: .contain).accessibilityLabel(title)
       .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: selection)
       .fixedSize()
   }

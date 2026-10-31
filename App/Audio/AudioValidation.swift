@@ -33,6 +33,7 @@ import CAudioSafety
     try ShortcutRegistry.validateBindings()
     try await ShortcutRegistry.validateCallbackDelivery()
     try await TextInsertion.validateFocusObservation()
+    try LocalSpeechWorker.validateSpeechEnergy()
     try await DictationTraceValidation.run()
     if let directory = ProcessInfo.processInfo.environment["CHUP_LAB_FIXTURES"] {
       try await TranscriptionLabValidation.run(directory: URL(fileURLWithPath: directory), install: ProcessInfo.processInfo.environment["CHUP_LAB_INSTALL"] == "1")
