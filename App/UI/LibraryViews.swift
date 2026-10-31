@@ -131,7 +131,7 @@ struct DictationView: View {
                   Button("Retry audio") { state.retryDictation(entry) }
                   Spacer()
                   Button("Delete", role: .destructive) { state.trashDictations([entry]) }
-                }.font(.caption)
+                }.buttonStyle(.pill).controlSize(.small)
                 if state.dictationPlaybackID == entry.id {
                   HStack(spacing: 12) {
                     if state.dictationPlaybackLoading && state.dictationPlaybackDuration == 0 {
@@ -305,7 +305,7 @@ struct PersonalizationView: View {
                   replacement = item.replacement
                   language = item.language
                   mode = CleanupMode(rawValue: item.mode ?? "") ?? .light
-                }.buttonStyle(.borderless)
+                }.buttonStyle(.pill).controlSize(.small)
                 Button {
                   state.deletePersonalization(item)
                 } label: {
@@ -341,9 +341,8 @@ struct AssistantView: View {
       Text(state.selectedMeeting?.title ?? "Open a meeting first.").font(
         .caption
       ).foregroundStyle(Palette.secondary)
-      Picker("Conversation mode", selection: $state.voiceMode) {
-        ForEach(AssistantMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-      }.pickerStyle(.segmented).onChange(of: mode) { _, _ in state.endVoice() }
+      PillSegmented(selection: $state.voiceMode, options: AssistantMode.allCases) { $0.rawValue }
+        .onChange(of: mode) { _, _ in state.endVoice() }
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
           if let notice = state.notice {

@@ -81,11 +81,9 @@ struct SettingsView: View {
               Palette.secondary)
           }.padding(.bottom, 8)
           if home == "Advanced" {
-            Picker("Advanced", selection: Binding(get: { advancedPage }, set: { section = $0 })) {
-              ForEach(Self.pages["Advanced"]!, id: \.self) { name in
-                Text(name == "Advanced" ? "Connection" : name).tag(name)
-              }
-            }.pickerStyle(.segmented).labelsHidden()
+            PillSegmented(
+              selection: Binding(get: { advancedPage }, set: { section = $0 }), options: Self.pages["Advanced"]!
+            ) { $0 == "Advanced" ? "Connection" : $0 }
             page(advancedPage)
           } else {
             ForEach(Self.pages[home] ?? [], id: \.self) { name in
@@ -262,11 +260,11 @@ struct SettingsView: View {
           detail:
             "On a Mac with a notch, show live text and controls under the notch. Other screens keep the rail.",
           isOn: $state.dynamicIslandEnabled)
-        Picker("Dock at", selection: $state.railDock) {
-          Text("Left").tag("left")
-          Text("Right").tag("right")
-          Text("Bottom").tag("bottom")
-        }.pickerStyle(.segmented)
+        HStack {
+          Text("Dock at")
+          Spacer()
+          PillSegmented(selection: $state.railDock, options: ["left", "right", "bottom"]) { $0.capitalized }
+        }
         Text("Drag the handle to move the rail.").font(.callout).foregroundStyle(
           Palette.secondary)
         DetailDisclosure(
@@ -363,7 +361,7 @@ struct ShortcutSettingsView: View {
               registry.beginRebind(action)
             } label: {
               Label("Add shortcut", systemImage: "plus")
-            }.buttonStyle(.borderless).disabled(registry.rebinding != nil)
+            }.buttonStyle(.pill).controlSize(.small).disabled(registry.rebinding != nil)
               .accessibilityLabel("Add shortcut for \(action.title)")
           }
           let assigned = registry.bindings.filter { $0.action == action }

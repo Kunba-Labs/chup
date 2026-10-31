@@ -240,3 +240,35 @@ extension ButtonStyle where Self == PillButtonStyle {
   static var pill: PillButtonStyle { PillButtonStyle() }
   static var pillPrimary: PillButtonStyle { PillButtonStyle(primary: true) }
 }
+
+/// Segmented choice in the pill vocabulary: a soft capsule track, the selected option a white
+/// pill with a hairline. Replaces `.pickerStyle(.segmented)`, whose stock look and small hit
+/// targets didn't match the page pills.
+struct PillSegmented<Value: Hashable>: View {
+  @Binding var selection: Value
+  let options: [Value]
+  let label: (Value) -> String
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  var body: some View {
+    HStack(spacing: 2) {
+      ForEach(options, id: \.self) { option in
+        let selected = option == selection
+        Button { selection = option } label: {
+          Text(label(option)).font(.system(size: 13, weight: selected ? .semibold : .medium))
+            .foregroundStyle(selected ? Palette.ink : Palette.secondary)
+            .padding(.horizontal, 16).frame(minHeight: 32)
+            .background {
+              if selected {
+                Capsule().fill(Palette.paper).overlay(Capsule().strokeBorder(Palette.border))
+                  .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
+              }
+            }
+            .contentShape(Capsule())
+        }.buttonStyle(.plain)
+          .accessibilityAddTraits(selected ? .isSelected : [])
+      }
+    }.padding(3).background(Capsule().fill(Palette.border.opacity(0.55)))
+      .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: selection)
+      .fixedSize()
+  }
+}

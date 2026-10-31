@@ -7,6 +7,8 @@ enum RailModule: String, CaseIterable, Identifiable {
   case today = "Today", meetings = "Meetings", dictation = "Dictation", notebook = "Notebook",
     personal = "Personal", settings = "Settings"
   var id: String { rawValue }
+  /// Voxel rail icon in Assets.xcassets (generated with Higgsfield/Recraft, 2026-10-31).
+  var asset: String { "Rail" + rawValue }
   var icon: String {
     switch self {
     case .today: return "sun.max"
@@ -39,6 +41,16 @@ enum RailModule: String, CaseIterable, Identifiable {
   }
 }
 
+/// Voxel icon; inactive ones sit back a little so the selected page stands out.
+struct RailIcon: View {
+  let asset: String
+  let active: Bool
+  var body: some View {
+    Image(asset).resizable().interpolation(.high).scaledToFit().frame(width: 28, height: 28)
+      .saturation(active ? 1 : 0.75).opacity(active ? 1 : 0.85).accessibilityHidden(true)
+  }
+}
+
 /// Translucent icon rail (the inbox2-style glass), solid under Reduce Transparency.
 struct GlassRail: View {
   @EnvironmentObject var state: WorkspaceState
@@ -50,7 +62,7 @@ struct GlassRail: View {
           Button {
             state.searchOpen = true
           } label: {
-            Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .medium))
+            RailIcon(asset: "RailSearch", active: false)
               .frame(width: 40, height: 40).contentShape(RoundedRectangle(cornerRadius: 12))
           }.buttonStyle(.plain).foregroundStyle(Palette.secondary).help("Search  ⌘K")
             .accessibilityLabel("Search")
@@ -66,7 +78,7 @@ struct GlassRail: View {
             } else if module == .dictation && state.dictationStatus == .processing {
               ProcessingCircle().frame(width: 18)
             } else {
-              Image(systemName: module.icon).font(.system(size: 15, weight: .medium))
+              RailIcon(asset: module.asset, active: active)
             }
           }
           .frame(width: 40, height: 40)
@@ -102,9 +114,8 @@ struct PersonalModuleView: View {
   @EnvironmentObject var state: WorkspaceState
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      Picker("Personal", selection: $state.page) {
-        ForEach([WorkspacePage.dictionary, .snippets, .styles]) { Text($0.rawValue).tag($0) }
-      }.pickerStyle(.segmented).labelsHidden().frame(width: 320).padding([.top, .horizontal], 38)
+      PillSegmented(selection: $state.page, options: [WorkspacePage.dictionary, .snippets, .styles]) { $0.rawValue }
+        .padding([.top, .horizontal], 38)
       PersonalizationView(page: state.page).id(state.page)
     }
   }
