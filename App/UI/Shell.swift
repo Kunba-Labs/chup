@@ -82,7 +82,7 @@ struct GlassRail: View {
           .shadow(color: .black.opacity(active ? 0.08 : 0), radius: 4, y: 1)
           .contentShape(RoundedRectangle(cornerRadius: 12))
         }
-        .buttonStyle(.plain).foregroundStyle(active ? Palette.ink : Palette.secondary)
+        .buttonStyle(.plain).foregroundStyle(active ? AnyShapeStyle(Palette.gradient) : AnyShapeStyle(Palette.secondary))
         .help("\(module.rawValue)  ⌘\(index + 1)")
         .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
         .accessibilityLabel(module.rawValue)
