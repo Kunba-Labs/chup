@@ -401,11 +401,14 @@ struct ShellGlass: View {
       Palette.sidebar
     } else {
       ZStack {
+        // ponytail: a fixed light wash fakes a light desktop behind the blur, so dark wallpapers or
+        // windows show as soft colour, not murk. Sensing what's behind needs screen recording; skipped.
+        Color.white.opacity(0.65)
         LinearGradient(
           stops: [.init(color: .white.opacity(0.22), location: 0), .init(color: .white.opacity(0.05), location: 0.35),
                   .init(color: .clear, location: 0.6)],
           startPoint: .top, endPoint: .bottom)
-        Palette.sidebar.opacity(0.12)
+        Palette.sidebar.opacity(0.3)
       }
     }
   }
