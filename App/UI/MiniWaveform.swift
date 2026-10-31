@@ -30,9 +30,15 @@ actor WaveformThumbnailLoader {
   static func downsample(_ points: [(Double, Float)], count: Int) -> [Float] {
     guard let end = points.map(\.0).max(), end > 0 else { return [] }
     var bars = [Float](repeating: 0, count: count)
-    for (time, peak) in points {
-      let index = min(count - 1, max(0, Int(time / end * Double(count))))
-      bars[index] = max(bars[index], peak)
+    if points.count < count {
+      // Short clip (bins are 0.25 s): stretch the samples across the bars instead of leaving gaps.
+      let sorted = points.sorted { $0.0 < $1.0 }
+      for index in bars.indices { bars[index] = sorted[index * sorted.count / count].1 }
+    } else {
+      for (time, peak) in points {
+        let index = min(count - 1, max(0, Int(time / end * Double(count))))
+        bars[index] = max(bars[index], peak)
+      }
     }
     let loudest = bars.max() ?? 0
     return loudest > 0 ? bars.map { sqrt($0 / loudest) } : bars
