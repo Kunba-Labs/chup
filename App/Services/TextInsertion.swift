@@ -339,17 +339,10 @@ import ChupCore
         let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else { return false }
       down.flags = .maskCommand
       up.flags = .maskCommand
-      // Chromium/Electron apps (VS Code, Slack, browsers) ignore events posted to their pid.
-      // When the destination is frontmost (isValid just checked), post through the HID stream
-      // like a real keystroke; otherwise stay pid-targeted so nothing reaches another app.
-      if NSWorkspace.shared.frontmostApplication?.processIdentifier == destination.application.processIdentifier {
-        lastDeliveryRoute = "Command-V event (HID)"
-        down.post(tap: .cghidEventTap)
-        up.post(tap: .cghidEventTap)
-      } else {
-        down.postToPid(destination.application.processIdentifier)
-        up.postToPid(destination.application.processIdentifier)
-      }
+      // Pid-targeted so the keystroke can only reach the captured destination, even if focus
+      // moves at dispatch. (Electron apps take the native Paste menu route above instead.)
+      down.postToPid(destination.application.processIdentifier)
+      up.postToPid(destination.application.processIdentifier)
       return true
     }
     var dispatched = dispatch()
@@ -386,15 +379,24 @@ import ChupCore
     delivery("Paste dispatched via \(lastDeliveryRoute)" + (retried ? " twice" : "") + ", but target did not confirm; recovery text retained")
     return TextDeliveryPolicy.afterDispatch(confirmed: false, dispatched: dispatched, recovery: .copied)
   }
-  /// Electron apps bundle "Electron Framework"; Chrome-family browsers a "… Framework.framework"
-  /// with Chrom/Chrome in its name. Read from the app bundle, so it holds for renamed apps too.
-  /// ponytail: name match misses Brave/Edge ("Brave Browser Framework"); add their names if
-  /// paste fails there.
+  /// Chromium-based (Electron apps, Chrome, Brave, Edge, Arc): every one ships a renderer helper,
+  /// "<Name> Helper (Renderer).app", either directly in Contents/Frameworks (Electron) or in
+  /// "<Name> Framework.framework/Versions/Current/Helpers" (browsers). Cached per bundle.
   static func isChromiumBased(_ app: NSRunningApplication) -> Bool {
-    guard let frameworks = app.bundleURL?.appendingPathComponent("Contents/Frameworks"),
-      let names = try? FileManager.default.contentsOfDirectory(atPath: frameworks.path) else { return false }
-    return names.contains { $0 == "Electron Framework.framework" || ($0.hasSuffix(" Framework.framework") && $0.contains("Chrom")) }
+    guard let bundle = app.bundleURL else { return false }
+    if let known = chromiumCache[bundle.path] { return known }
+    let fm = FileManager.default
+    let frameworks = bundle.appendingPathComponent("Contents/Frameworks")
+    let top = (try? fm.contentsOfDirectory(atPath: frameworks.path)) ?? []
+    func hasRenderer(_ names: [String]) -> Bool { names.contains { $0.hasSuffix(" Helper (Renderer).app") } }
+    let result = hasRenderer(top) || top.filter { $0.hasSuffix(".framework") }.contains {
+      hasRenderer((try? fm.contentsOfDirectory(atPath:
+        frameworks.appendingPathComponent($0 + "/Versions/Current/Helpers").path)) ?? [])
+    }
+    chromiumCache[bundle.path] = result
+    return result
   }
+  private static var chromiumCache: [String: Bool] = [:]
   static func copy(_ text: String) {
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(text, forType: .string)
