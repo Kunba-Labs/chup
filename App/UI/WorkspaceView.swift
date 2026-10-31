@@ -163,6 +163,8 @@ struct MeetingsView: View {
           Spacer()
           if meeting.status == "Recording" {
             Label("Recording", systemImage: "record.circle.fill").font(.caption).foregroundStyle(Palette.red)
+          } else {
+            MiniWaveform(source: .meeting(meeting.id), width: 60, height: 18)
           }
         }.contentShape(Rectangle())
       }.buttonStyle(.plain)

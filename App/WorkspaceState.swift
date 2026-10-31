@@ -1233,7 +1233,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       defer { liveDictationBusy = false }
       let text: String
       do { text = try await localSpeech.transcribeLive(packets: packets, language: language) } catch {
-        dictationLog.debug("live decode skipped: \(error.localizedDescription, privacy: .public)")
+        dictationLog.debug("live decode skipped: \(error.localizedDescription, privacy: .private)")
         return
       }
       guard !text.isEmpty else { return }
@@ -1309,7 +1309,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       defer { markTrace(traceID, .localFinished) }
       let started = ProcessInfo.processInfo.systemUptime
       do { text = try await localSpeech.transcribe(files: files, key: key, language: language) } catch {
-        dictationLog.error("process \(entry.id, privacy: .public): local failed after \(ProcessInfo.processInfo.systemUptime - started, format: .fixed(precision: 2))s: \(error.localizedDescription, privacy: .public) cancelled=\(Task.isCancelled)")
+        dictationLog.error("process \(entry.id, privacy: .public): local failed after \(ProcessInfo.processInfo.systemUptime - started, format: .fixed(precision: 2))s: \(error.localizedDescription, privacy: .private) cancelled=\(Task.isCancelled)")
         throw error
       }
       dictationLog.notice("process \(entry.id, privacy: .public): local done in \(ProcessInfo.processInfo.systemUptime - started, format: .fixed(precision: 2))s chars=\(text.count)")
@@ -1372,7 +1372,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     captureTask?.cancel()
     if let dictationConsumerID { audio?.setPacketHandler(nil, id: dictationConsumerID) }
     do { if let dictationConsumerID { try audio?.removeConsumer(id: dictationConsumerID) } } catch {
-      dictationLog.error("finish \(entry.id, privacy: .public): removeConsumer failed: \(error.localizedDescription, privacy: .public)")
+      dictationLog.error("finish \(entry.id, privacy: .public): removeConsumer failed: \(error.localizedDescription, privacy: .private)")
       notice = error.localizedDescription
       return
     }

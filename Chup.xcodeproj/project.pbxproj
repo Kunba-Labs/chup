@@ -89,6 +89,7 @@
 		D1089FFECCBBCDE4CE7FD3F9 /* VoicePCMConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 903CCCAB4CF435BC59A48D9A /* VoicePCMConverter.swift */; };
 		D111B61DE0A89C4C6F2F61FF /* WorkspaceState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7DAE6469E33635695B0344 /* WorkspaceState.swift */; };
 		D208144B7B7FC055A9CFBB3B /* WorkspaceDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F05457FD4D16B86955D3C590 /* WorkspaceDiagnostics.swift */; };
+		D35AAC226DCE8BDC28F109CA /* MiniWaveform.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78BD45427A2634E8BB10FF7 /* MiniWaveform.swift */; };
 		D3E39377FFB069C85F030055 /* AttentionDesignBoard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA5CE29FBD662DCD5A2193CC /* AttentionDesignBoard.swift */; };
 		D533A97196AC14655B3F6233 /* HoverRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D6D9542FAA1FD5814ECDD6 /* HoverRail.swift */; };
 		D57B2353A5F14F37B32A12EB /* DictationTraceValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42E0EE13EE7525DA1AF87A /* DictationTraceValidation.swift */; };
@@ -205,6 +206,7 @@
 		EFCD229CCD46BC603F0D6258 /* DictationReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationReview.swift; sourceTree = "<group>"; };
 		F05457FD4D16B86955D3C590 /* WorkspaceDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDiagnostics.swift; sourceTree = "<group>"; };
 		F0B4B63340D2DBAFC04D8730 /* Argmax-NOTICES.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Argmax-NOTICES.txt"; sourceTree = "<group>"; };
+		F78BD45427A2634E8BB10FF7 /* MiniWaveform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniWaveform.swift; sourceTree = "<group>"; };
 		F857B811F96B29D7B0FB9018 /* ChupApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChupApp.swift; sourceTree = "<group>"; };
 		FE4956A4A6ED8015EEE48364 /* WorkspaceTrash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTrash.swift; sourceTree = "<group>"; };
 		FE7DAE6469E33635695B0344 /* WorkspaceState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceState.swift; sourceTree = "<group>"; };
@@ -288,6 +290,7 @@
 				AFC0F9A366CB410ADC333269 /* LocalSpeechSettings.swift */,
 				7C35CA4A4CDD71EBBE32F6A4 /* MeetingIntelligenceViews.swift */,
 				2EEFFB6C01A9E919A79D567E /* MeetingSidebar.swift */,
+				F78BD45427A2634E8BB10FF7 /* MiniWaveform.swift */,
 				CA6515593DFB0FC88682A64D /* NotificationCard.swift */,
 				5B49CB687CA7A4F84742FBE9 /* OnboardingView.swift */,
 				A2B30195BB5F83690D5D5EEC /* ProcessingCircle.swift */,
@@ -530,6 +533,7 @@
 				AD5844E6F5E9AE7DB5124A67 /* MeetingSidebar.swift in Sources */,
 				952282A2D4F0AC5EFC67CBEC /* MeetingSimulation.swift in Sources */,
 				9B85FEEEE7908B3387287559 /* MicrophoneHealthValidation.swift in Sources */,
+				D35AAC226DCE8BDC28F109CA /* MiniWaveform.swift in Sources */,
 				CB113AB7771DFF574073DBAA /* NotificationCard.swift in Sources */,
 				5FE277921552C2E49CE87209 /* OnboardingView.swift in Sources */,
 				C72984886204AA0AD59E4D78 /* PasteIntegrationValidation.swift in Sources */,

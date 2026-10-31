@@ -90,6 +90,9 @@ struct DictationView: View {
                   Text(entry.created.formatted(date: .abbreviated, time: .shortened))
                   Text("· \(entry.mode)")
                   Spacer()
+                  if !(state.dictationStatus == .listening && state.recordingEntry?.id == entry.id) {
+                    MiniWaveform(source: .dictation(id: entry.id, directory: entry.audioDirectory), width: 60, height: 16)
+                  }
                   Text(entry.application)
                 }.font(.caption).foregroundStyle(Palette.secondary)
                 Text(

@@ -327,22 +327,28 @@ struct TodayView: View {
             }.font(.system(size: 14)).foregroundStyle(Palette.secondary)
           }
         } else {
-          section("Recent meetings") {
-            if state.meetings.isEmpty {
-              Text("No meetings yet.").foregroundStyle(Palette.secondary)
-            }
-            ForEach(state.meetings.prefix(3)) { meeting in
+          section("Recent recordings") {
+            ForEach(recent, id: \.id) { item in
               Button {
-                state.selectMeeting(meeting.id)
-                state.page = .meetings
+                if item.meeting {
+                  state.selectMeeting(item.id)
+                  state.page = .meetings
+                } else {
+                  state.page = .dictation
+                }
               } label: {
-                HStack {
+                HStack(spacing: 14) {
+                  Image(systemName: item.meeting ? "person.2.fill" : "waveform")
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.accent)
+                    .frame(width: 30, height: 30).background(Palette.sidebar, in: Circle())
+                    .accessibilityLabel(item.meeting ? "Meeting" : "Dictation")
                   VStack(alignment: .leading, spacing: 4) {
-                    Text(meeting.title).font(.system(size: 15, weight: .semibold))
-                    Text(meeting.created.formatted(date: .abbreviated, time: .shortened))
+                    Text(item.title).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                    Text(item.created.formatted(date: .abbreviated, time: .shortened))
                       .font(.caption).foregroundStyle(Palette.secondary)
                   }
                   Spacer()
+                  MiniWaveform(source: item.source)
                   Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.secondary)
                 }.padding(16).contentShape(Rectangle()).workspaceSurface()
               }.buttonStyle(.plain)
@@ -379,6 +385,21 @@ struct TodayView: View {
       content()
     }
   }
+  private struct RecentItem {
+    let id: String, title: String, created: Date, meeting: Bool, source: MiniWaveform.Source
+  }
+  /// Meetings and dictations together, newest first.
+  private var recent: [RecentItem] {
+    let meetings = state.meetings.prefix(6).map {
+      RecentItem(id: $0.id, title: $0.title, created: $0.created, meeting: true, source: .meeting($0.id))
+    }
+    let dictations = state.history.filter { $0.status != "ignored" && $0.status != "cancelled" }.prefix(6).map {
+      let line = $0.text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+      return RecentItem(id: $0.id, title: line.isEmpty ? "Dictation · not transcribed yet" : line,
+        created: $0.created, meeting: false, source: .dictation(id: $0.id, directory: $0.audioDirectory))
+    }
+    return Array((meetings + dictations).sorted { $0.created > $1.created }.prefix(6))
+  }
   private func meetingTitle(_ id: String) -> String {
     state.meetings.first { $0.id == id }?.title ?? "Meeting"
   }
@@ -400,7 +421,7 @@ struct TodayView: View {
 }
 
 /// The window's own material (set on the scene with containerBackground) shows through here;
-/// this adds inbox2's sheen and a light lavender tint. Reduce Transparency gets a solid fill.
+/// this adds an Aero-style blue tint, gloss and light streak. Reduce Transparency gets a solid fill.
 struct ShellGlass: View {
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   var body: some View {
@@ -411,11 +432,21 @@ struct ShellGlass: View {
         // ponytail: a fixed light wash fakes a light desktop behind the blur, so dark wallpapers or
         // windows show as soft colour, not murk. Sensing what's behind needs screen recording; skipped.
         Color.white.opacity(0.2)
+        // Aero-style: a cool sky-blue tint, deeper toward the bottom…
         LinearGradient(
-          stops: [.init(color: .white.opacity(0.22), location: 0), .init(color: .white.opacity(0.05), location: 0.35),
-                  .init(color: .clear, location: 0.6)],
+          colors: [Color(red: 0.62, green: 0.80, blue: 0.98).opacity(0.16),
+                   Color(red: 0.36, green: 0.58, blue: 0.90).opacity(0.24)],
           startPoint: .top, endPoint: .bottom)
-        Palette.sidebar.opacity(0.12)
+        // …a glossy top highlight…
+        LinearGradient(
+          stops: [.init(color: .white.opacity(0.32), location: 0), .init(color: .white.opacity(0.08), location: 0.3),
+                  .init(color: .clear, location: 0.55)],
+          startPoint: .top, endPoint: .bottom)
+        // …and a soft diagonal light streak across the pane.
+        LinearGradient(
+          stops: [.init(color: .clear, location: 0.18), .init(color: .white.opacity(0.14), location: 0.3),
+                  .init(color: .clear, location: 0.42)],
+          startPoint: .topLeading, endPoint: .bottomTrailing)
       }
     }
   }
