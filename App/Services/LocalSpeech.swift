@@ -159,9 +159,20 @@ actor LocalSpeechWorker {
         start += Double(frames) / 16000
       }
       guard !samples.isEmpty else { continue }
-      let results = try await pipe.transcribe(audioArray: samples, decodeOptions: options(language: language))
+      var decoded = try await pipe.transcribe(audioArray: samples, decodeOptions: options(language: language))
+        .map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
       try Task.checkCancellation()
-      text.append(results.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines))
+      if decoded.isEmpty {
+        // Whisper sometimes returns nothing for audio with speech. One more pass without VAD
+        // chunking; still real model output, never invented text.
+        var plain = options(language: language)
+        plain.chunkingStrategy = nil
+        decoded = try await pipe.transcribe(audioArray: samples, decodeOptions: plain)
+          .map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        try Task.checkCancellation()
+        dictationLog.notice("local decode empty for \(samples.count) samples; retry without VAD chars=\(decoded.count)")
+      }
+      text.append(decoded)
     }
     return text.filter { !$0.isEmpty }.joined(separator: " ")
   }

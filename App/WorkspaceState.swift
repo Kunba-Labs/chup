@@ -1251,8 +1251,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     // Serialize the final decode behind any provisional live decode. Whisper
     // uses one shared pipeline; starting both at once otherwise leaves a
     // valid recording saved with an empty “transcription needed” result.
+    // Let it finish rather than cancel it: a decode cancelled mid-way left the shared pipeline
+    // returning empty text for the final pass (logged 2026-10-31: live heard speech, final 0 chars).
     if let liveTask = liveDictationTask {
-      liveTask.cancel()
       await liveTask.value
       liveDictationTask = nil
       liveDictationBusy = false
@@ -1368,7 +1369,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       return
     }
     clearMicrophoneMessage()
-    liveDictationTask?.cancel()
+    // The live decode is awaited (not cancelled) by processDictation; it can't apply text once
+    // listening ends.
     captureTask?.cancel()
     if let dictationConsumerID { audio?.setPacketHandler(nil, id: dictationConsumerID) }
     do { if let dictationConsumerID { try audio?.removeConsumer(id: dictationConsumerID) } } catch {
