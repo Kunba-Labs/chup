@@ -272,3 +272,11 @@ struct PillSegmented<Value: Hashable>: View {
       .fixedSize()
   }
 }
+
+extension View {
+  /// Whole-page scrolling: one full-width scroll area, so the scrollbar sits at the window's
+  /// right edge and lists scroll with their page instead of inside a nested box.
+  func pageScroll() -> some View {
+    ScrollView { frame(maxWidth: .infinity, alignment: .topLeading) }
+  }
+}

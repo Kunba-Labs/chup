@@ -265,7 +265,6 @@ struct MeetingsView: View {
           )
         } else {
           // Wispr-style: past notes under Today, Yesterday and date headers, one compact row each.
-          ScrollView {
             LazyVStack(alignment: .leading, spacing: 4) {
               ForEach(MeetingDays.group(filtered), id: \.title) { day in
                 Text(day.title).font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.secondary)
@@ -274,10 +273,9 @@ struct MeetingsView: View {
                 ForEach(day.meetings) { meeting in row(meeting) }
               }
             }
-          }
         }
         PipelineStatus()
-      }.padding(38).confirmDeleteMeeting($deletion)
+      }.padding(38).pageScroll().confirmDeleteMeeting($deletion)
         .sheet(isPresented: $showTrash) { TrashView().environmentObject(state) }
         .sheet(isPresented: $showTags) { TagManagerView().environmentObject(state) }
     }
@@ -593,7 +591,7 @@ struct MeetingDetailView: View {
           .disabled(state.segments.isEmpty || state.processingMeeting)
       }
       if !state.liveOutlines.isEmpty, state.activeMeetingID == state.selectedMeetingID {
-        ScrollView { LiveOutlineView(outlines: state.liveOutlines) }.frame(maxHeight: 200)
+        LiveOutlineView(outlines: state.liveOutlines)
       }
       if summaryFinding {
         HStack(spacing: 6) {

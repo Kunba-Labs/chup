@@ -113,7 +113,7 @@ struct PersonalModuleView: View {
       PillSegmented(selection: $state.page, options: [WorkspacePage.dictionary, .snippets, .styles]) { $0.rawValue }
         .padding([.top, .horizontal], 38)
       PersonalizationView(page: state.page).id(state.page)
-    }
+    }.pageScroll()
   }
 }
 
@@ -374,6 +374,7 @@ struct TodayView: View {
           }
         }
       }.padding(38).frame(maxWidth: 760, alignment: .leading)
+        .frame(maxWidth: .infinity)  // Full-width scroll area: scrollbar at the window edge.
     }.onAppear(perform: load).onChange(of: state.meetings) { _, _ in load() }
       .onChange(of: state.actions) { _, _ in load() }
   }

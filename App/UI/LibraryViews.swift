@@ -77,7 +77,6 @@ struct DictationView: View {
             "Your dictations show here. Copy or retry any of them."
         )
       } else {
-        ScrollView {
           LazyVStack(alignment: .leading, spacing: 14) {
             ForEach(
               state.history.filter {
@@ -156,9 +155,8 @@ struct DictationView: View {
               }.padding(22).workspaceSurface()
             }
           }
-        }
       }
-    }.padding(38)
+    }.padding(38).pageScroll()
   }
 }
 struct NotebookView: View {
@@ -182,7 +180,6 @@ struct NotebookView: View {
           subtitle:
             "Press New note to start one.")
       } else {
-        ScrollView {
           LazyVStack(spacing: 14) {
             if !query.isEmpty && !state.meetings.contains(where: {
               "\($0.title) \($0.participants) \($0.tags)".localizedCaseInsensitiveContains(query)
@@ -208,9 +205,8 @@ struct NotebookView: View {
                 }
             }
           }
-        }
       }
-    }.padding(38).confirmDeleteMeeting($deletion)
+    }.padding(38).pageScroll().confirmDeleteMeeting($deletion)
   }
 }
 struct PersonalizationView: View {
@@ -285,7 +281,6 @@ struct PersonalizationView: View {
           icon: page.icon, title: "Nothing here yet",
           subtitle: "Add your first entry above.")
       } else {
-        ScrollView {
           LazyVStack(spacing: 12) {
             if !query.isEmpty && !state.personalization.contains(where: {
               $0.kind == kind && "\($0.trigger) \($0.replacement)".localizedCaseInsensitiveContains(query)
@@ -317,7 +312,6 @@ struct PersonalizationView: View {
               }.padding(18).workspaceSurface()
             }
           }
-        }
       }
     }.padding(38)
   }
