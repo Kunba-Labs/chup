@@ -19,11 +19,24 @@ struct DictationView: View {
           eyebrow: "Talk instead of typing", title: "Dictation",
           subtitle: "Hold your shortcut and talk. Your words go where you type.")
         Spacer()
-        Button {
-          showTrash = true
-        } label: {
-          Label(state.trash.isEmpty ? "Trash" : "Trash (\(state.trash.count))", systemImage: "trash")
-        }.buttonStyle(.pill)
+        VStack(alignment: .trailing, spacing: 8) {
+          HStack(spacing: 10) {
+            Picker("Writing mode", selection: $state.cleanupMode) {
+              ForEach(CleanupMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }.labelsHidden().fixedSize().help("Writing mode")
+            TextField("Search dictation history", text: $search).textFieldStyle(.roundedBorder)
+              .frame(width: 220)
+            Button {
+              showTrash = true
+            } label: {
+              Label(state.trash.isEmpty ? "Trash" : "Trash (\(state.trash.count))", systemImage: "trash")
+            }.buttonStyle(.pill)
+          }
+          if state.history.contains(where: { $0.status == "ignored" }) {
+            Toggle("Show ignored clips", isOn: $showIgnored).toggleStyle(.checkbox)
+              .font(.caption).foregroundStyle(Palette.secondary)
+          }
+        }
       }.sheet(isPresented: $showTrash) { TrashView().environmentObject(state) }
       .onAppear(perform: takeListQuery).onChange(of: state.listQuery) { _, _ in takeListQuery() }
       WorkspaceCard {
@@ -56,18 +69,6 @@ struct DictationView: View {
           Button("Change microphone") { state.openMicrophoneSettings() }.buttonStyle(.plain)
           Spacer()
         }
-      }
-      HStack {
-        Picker("Writing mode", selection: $state.cleanupMode) {
-          ForEach(CleanupMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-        }.frame(width: 250)
-        Spacer()
-        TextField("Search dictation history", text: $search).textFieldStyle(.roundedBorder).frame(
-          width: 240)
-      }
-      if state.history.contains(where: { $0.status == "ignored" }) {
-        Toggle("Show ignored clips", isOn: $showIgnored).toggleStyle(.checkbox)
-          .font(.caption).foregroundStyle(Palette.secondary)
       }
       if state.history.isEmpty {
         QuietEmpty(
