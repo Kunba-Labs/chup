@@ -74,7 +74,7 @@ import ChupCore
       }
       Button("Cancel Voice Action") {
         state.endVoice()
-        state.cancelDictation()
+        state.cancelDictation(reason: "menu Cancel Voice Action")
       }
       Divider()
       if let updater = state.updater {
@@ -83,7 +83,7 @@ import ChupCore
       SettingsLink()
       Button("Quit Chup!") {
         state.stopMeeting()
-        state.cancelDictation()
+        state.cancelDictation(reason: "quit")
         NSApp.terminate(nil)
       }.keyboardShortcut("q")
     } label: {

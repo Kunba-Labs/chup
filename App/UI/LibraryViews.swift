@@ -60,7 +60,7 @@ struct DictationView: View {
           Button(state.dictationStatus == .listening ? "Finish" : "test") {
             state.toggleDictation()
           }.buttonStyle(.pillPrimary)
-          if state.dictationStatus == .listening { Button("Cancel") { state.cancelDictation() } }
+          if state.dictationStatus == .listening { Button("Cancel") { state.cancelDictation(reason: "Dictation page Cancel") } }
         }
         Divider()
         HStack {

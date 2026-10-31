@@ -13,7 +13,11 @@ extension WorkspaceState {
     traceID: String?, insertResult: Bool = true, trigger: String = "Hold-to-dictate",
     process: ((DictationEntry, String?) async throws -> DictationEntry)? = nil,
     deliver: ((String, TextInsertion.Destination?) async -> TextDeliveryResult)? = nil) {
-    guard queuedDictationTargets[entry.id] == nil else { return }
+    guard queuedDictationTargets[entry.id] == nil else {
+      dictationLog.notice("enqueue \(entry.id, privacy: .public) skipped: already queued")
+      return
+    }
+    dictationLog.notice("enqueue \(entry.id, privacy: .public) trigger=\(trigger, privacy: .public) insert=\(insertResult) target=\(captured?.application.bundleIdentifier ?? "-", privacy: .public)")
     let target = QueuedDictationTarget(captured)
     queuedDictationTargets[entry.id] = target
     dictationQueue.enqueue(id: entry.id) { [self] in
@@ -24,6 +28,7 @@ extension WorkspaceState {
         if let process { result = try await process(entry, traceID) }
         else { result = try await processDictation(entry, traceID: traceID) }
         try Task.checkCancellation()
+        dictationLog.notice("job \(entry.id, privacy: .public): transcribed chars=\(result.text.count) provider=\(result.transcriptionProvider ?? "-", privacy: .public)")
         dictationLiveText = result.text
         if dictationReviewActive, dictationReviewText == dictationReviewSeed {
           dictationReviewText = result.text
@@ -92,6 +97,7 @@ extension WorkspaceState {
         case .cancelled: outcome = .cancelled
         }
         finishTrace(traceID, outcome)
+        dictationLog.notice("job \(entry.id, privacy: .public): delivery=\(String(describing: delivery), privacy: .public)")
         recordDelivery(delivery, trigger: trigger)
         try Task.checkCancellation()
         if delivery == .inserted, let original {
@@ -116,6 +122,7 @@ extension WorkspaceState {
         }
       } catch {
         finishTrace(traceID, Task.isCancelled ? .cancelled : .failed)
+        dictationLog.error("job \(entry.id, privacy: .public): failed cancelled=\(Task.isCancelled) signal=\(error is DictationSignalError) error=\(error.localizedDescription, privacy: .public)")
         // Keep the reason on the dictation so its row says why it wasn't transcribed.
         if !(error is DictationSignalError),
           var failed = try? db().list(DictationEntry.self, kind: "dictation").first(where: { $0.id == entry.id }),

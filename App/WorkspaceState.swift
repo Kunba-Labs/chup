@@ -3,6 +3,11 @@ import AppKit
 import Combine
 import CryptoKit
 import ChupCore
+import os
+
+/// Dictation lifecycle log. Lengths and outcomes only, never dictated text.
+/// `log stream --predicate 'subsystem == "com.chup.mac" && category == "dictation"' --info`
+let dictationLog = Logger(subsystem: "com.chup.mac", category: "dictation")
 
 enum WorkspacePage: String, CaseIterable, Identifiable {
   case today = "Today"
@@ -561,7 +566,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           self?.stopMicrophonePreview()
           self?.endVoice()
           self?.stopAssistantRoute()
-          self?.cancelDictation()
+          self?.cancelDictation(reason: "system sleep")
           self?.stopPlayback()
           self?.stopDictationPlayback()
           self?.shortcuts.reset()
@@ -1117,12 +1122,16 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     stopAssistantRoute()
     if meetingStatus == .processing { stopMeeting() }
     pauseMeeting(reason: message)
-    if dictationStatus == .listening { cancelDictation() }
+    if dictationStatus == .listening { cancelDictation(reason: "microphone issue: " + message) }
     notice = message
   }
   func beginDictation(editSelection: Bool = false, captured: TextInsertion.Destination? = nil, useCaptured: Bool = false) {
     guard dictationStatus != .listening,
-      dictationStatus != .processing || pendingDictations > 0 else { return }
+      dictationStatus != .processing || pendingDictations > 0 else {
+      dictationLog.notice("begin ignored: status=\(String(describing: self.dictationStatus), privacy: .public) pending=\(self.pendingDictations)")
+      return
+    }
+    dictationLog.notice("begin editSelection=\(editSelection) pending=\(self.pendingDictations)")
     transcriptionLab.cancel()
     let traceID = startDictationTrace()
     if dictationReviewActive {
@@ -1222,7 +1231,12 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     let language = self.language
     liveDictationTask = Task { @MainActor in
       defer { liveDictationBusy = false }
-      guard let text = try? await localSpeech.transcribeLive(packets: packets, language: language), !text.isEmpty else { return }
+      let text: String
+      do { text = try await localSpeech.transcribeLive(packets: packets, language: language) } catch {
+        dictationLog.debug("live decode skipped: \(error.localizedDescription, privacy: .public)")
+        return
+      }
+      guard !text.isEmpty else { return }
       guard dictationStatus == .listening else { return }
       dictationLiveText = text
       if dictationReviewActive, dictationReviewText == dictationReviewSeed {
@@ -1249,12 +1263,14 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       try db().put(entry, kind: "dictation", id: entry.id)
       try refresh()
       finishTrace(traceID, .noSignal)
+      dictationLog.notice("process \(entry.id, privacy: .public): ignored by signal filter: \(reason, privacy: .public)")
       throw DictationSignalError.unusable(reason + ". Audio kept in Show ignored clips; choose or check the microphone.")
     }
     let preferences = entry.preferences ?? personalization
     let language = entry.language ?? self.language
     let mode = transcriptionMode
     let files = try journalFiles(URL(fileURLWithPath: entry.audioDirectory))
+    dictationLog.notice("process \(entry.id, privacy: .public): mode=\(mode.rawValue, privacy: .public) files=\(files.count) localReady=\(self.localSpeech.ready) localWorking=\(self.localSpeech.working)")
     guard !files.isEmpty else { throw WorkspaceError.message("No saved audio was found for this dictation.") }
     var text = ""
     var cloudClient: BackendClient?
@@ -1277,6 +1293,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         cloudClient = client
         entry.transcriptionProvider = "OpenAI cloud"
       } catch {
+        dictationLog.error("process \(entry.id, privacy: .public): cloud failed: \(error.localizedDescription, privacy: .public)")
         try Task.checkCancellation()
         guard mode.allowsLocal else { throw error }
         // A single sequential fallback owns the result. Partial cloud text is discarded.
@@ -1290,7 +1307,12 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       guard let key else { throw WorkspaceError.message("Recording key unavailable.") }
       markTrace(traceID, .localStarted)
       defer { markTrace(traceID, .localFinished) }
-      text = try await localSpeech.transcribe(files: files, key: key, language: language)
+      let started = ProcessInfo.processInfo.systemUptime
+      do { text = try await localSpeech.transcribe(files: files, key: key, language: language) } catch {
+        dictationLog.error("process \(entry.id, privacy: .public): local failed after \(ProcessInfo.processInfo.systemUptime - started, format: .fixed(precision: 2))s: \(error.localizedDescription, privacy: .public) cancelled=\(Task.isCancelled)")
+        throw error
+      }
+      dictationLog.notice("process \(entry.id, privacy: .public): local done in \(ProcessInfo.processInfo.systemUptime - started, format: .fixed(precision: 2))s chars=\(text.count)")
       entry.transcriptionProvider = "Local · Whisper large-v3-turbo"
     }
     try Task.checkCancellation()
@@ -1341,15 +1363,22 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     return entry
   }
   func finishDictation() {
-    guard dictationStatus == .listening, var entry = recordingEntry else { return }
+    guard dictationStatus == .listening, var entry = recordingEntry else {
+      dictationLog.notice("finish ignored: status=\(String(describing: self.dictationStatus), privacy: .public) hasEntry=\(self.recordingEntry != nil)")
+      return
+    }
     clearMicrophoneMessage()
     liveDictationTask?.cancel()
     captureTask?.cancel()
     if let dictationConsumerID { audio?.setPacketHandler(nil, id: dictationConsumerID) }
     do { if let dictationConsumerID { try audio?.removeConsumer(id: dictationConsumerID) } } catch {
+      dictationLog.error("finish \(entry.id, privacy: .public): removeConsumer failed: \(error.localizedDescription, privacy: .public)")
       notice = error.localizedDescription
       return
     }
+    let audioFiles = (try? journalFiles(URL(fileURLWithPath: entry.audioDirectory))) ?? []
+    let audioBytes = audioFiles.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+    dictationLog.notice("finish \(entry.id, privacy: .public): files=\(audioFiles.count) bytes=\(audioBytes) liveChars=\(self.dictationLiveText.count)")
     markTrace(dictationTraceID, .captureStopped)
     let traceID = dictationTraceID
     dictationGeneration = UUID()
@@ -1365,7 +1394,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     dictationStatus = .processing
   }
 
-  func cancelDictation() {
+  func cancelDictation(reason: String = "unspecified") {
+    dictationLog.notice("cancel reason=\(reason, privacy: .public) status=\(String(describing: self.dictationStatus), privacy: .public) recording=\(self.recordingEntry?.id ?? "-", privacy: .public) pending=\(self.pendingDictations)")
     finishTrace(dictationTraceID, .cancelled)
     clearMicrophoneMessage()
     clearDictationFeedback()
@@ -1415,7 +1445,11 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     }
   }
   func retryDictation(_ entry: DictationEntry) {
-    guard dictationStatus != .processing && dictationStatus != .listening else { return }
+    guard dictationStatus != .processing && dictationStatus != .listening else {
+      dictationLog.notice("retry \(entry.id, privacy: .public) ignored: status=\(String(describing: self.dictationStatus), privacy: .public)")
+      return
+    }
+    dictationLog.notice("retry \(entry.id, privacy: .public) previousStatus=\(entry.status ?? "-", privacy: .public)")
     let traceID = startDictationTrace()
     clearDictationFeedback()
     enqueueDictation(entry, captured: nil, traceID: traceID, insertResult: false, trigger: "Retry audio")
@@ -1999,7 +2033,14 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   }
   func handle(_ signal: ShortcutSignal) {
     if signal.cancelled {
-      cancelDictation()
+      // A lost key-up (event tap interrupted, shortcuts reset) must not throw away speech:
+      // a held dictation finishes and transcribes instead of being cancelled.
+      if dictationStatus == .listening, signal.action == .holdDictation || signal.action == .editSelection {
+        dictationLog.notice("shortcut stream reset during hold; finishing instead of cancelling")
+        finishDictation()
+      } else {
+        cancelDictation(reason: "shortcut reset (\(signal.action.rawValue))")
+      }
       return
     }
     switch signal.action {
@@ -2030,7 +2071,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       if signal.began {
         // Global Escape only stops a recording in progress. Saved audio already transcribing
         // keeps going: Escape pressed in another app must not silently drop the transcript.
-        if dictationStatus == .listening { cancelDictation() }
+        if dictationStatus == .listening { cancelDictation(reason: "Escape shortcut") }
         stopPlayback()
       }
     }

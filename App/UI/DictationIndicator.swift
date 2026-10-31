@@ -231,7 +231,7 @@ struct DictationIndicatorView: View {
         Image(systemName: feedback.icon).foregroundStyle(RailPalette.accent)
         if !vertical { Text(feedback.title).font(.system(size: 12, weight: .medium)) }
       } else {
-        control("xmark", label: "Cancel dictation") { state.cancelDictation() }
+        control("xmark", label: "Cancel dictation") { state.cancelDictation(reason: "indicator cancel button") }
         ZStack {
           if processing {
             ProcessingCircle(size: 18)
