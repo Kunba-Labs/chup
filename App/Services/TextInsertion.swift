@@ -284,7 +284,9 @@ import ChupCore
       expected = replacement
     }
     var settable: DarwinBoolean = false
-    if !destination.focusedPaste,
+    // Chromium/Electron editors (VS Code, Slack, Chrome) report AXSelectedText as settable but
+    // ignore the write, so the paste route below is the only one that works there.
+    if !destination.focusedPaste, !Self.isChromiumBased(destination.application),
       AXUIElementIsAttributeSettable(destination.element, kAXSelectedTextAttribute as CFString, &settable) == .success,
       settable.boolValue {
       lastDeliveryRoute = "Accessibility selection"
@@ -361,6 +363,9 @@ import ChupCore
       if confirms(expected, in: destination, pasteBefore: pasteBefore) {
         confirmed = true
       } else if clipboard.board.changeCount == pasteChange, isValid(destination),
+        // Chromium editors don't reflect pastes in their AX value, so "unchanged" proves
+        // nothing there and a retry could paste twice.
+        !Self.isChromiumBased(destination.application),
         attribute(destination.element, kAXValueAttribute) as? String == (pasteBefore ?? destination.value) {
         retried = true
         dispatched = dispatch() || dispatched
@@ -380,6 +385,15 @@ import ChupCore
     guard clipboard.board.changeCount == pasteChange else { delivery("User clipboard action replaced recovery text"); return .clipboardChanged }
     delivery("Paste dispatched via \(lastDeliveryRoute)" + (retried ? " twice" : "") + ", but target did not confirm; recovery text retained")
     return TextDeliveryPolicy.afterDispatch(confirmed: false, dispatched: dispatched, recovery: .copied)
+  }
+  /// Electron apps bundle "Electron Framework"; Chrome-family browsers a "… Framework.framework"
+  /// with Chrom/Chrome in its name. Read from the app bundle, so it holds for renamed apps too.
+  /// ponytail: name match misses Brave/Edge ("Brave Browser Framework"); add their names if
+  /// paste fails there.
+  static func isChromiumBased(_ app: NSRunningApplication) -> Bool {
+    guard let frameworks = app.bundleURL?.appendingPathComponent("Contents/Frameworks"),
+      let names = try? FileManager.default.contentsOfDirectory(atPath: frameworks.path) else { return false }
+    return names.contains { $0 == "Electron Framework.framework" || ($0.hasSuffix(" Framework.framework") && $0.contains("Chrom")) }
   }
   static func copy(_ text: String) {
     NSPasteboard.general.clearContents()
