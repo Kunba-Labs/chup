@@ -67,6 +67,8 @@ import SwiftUI
     closedFor = state?.activeMeetingID
     panel.orderOut(nil)
   }
+  /// Right is the default edge; when the hover rail also sits there, the column stops short of it.
+  private var railGap: CGFloat { state?.railDock == "right" ? 56 : 8 }
   /// Keyboard and VoiceOver route for moving the column: dock it to either screen edge.
   func dock(left: Bool) {
     placed = nil
@@ -81,7 +83,7 @@ import SwiftUI
     let left = dockLeft ?? false  // Right edge by default; the move menu can dock it left.
     // Docked: a column the full height of the screen. Placed: the user's spot, same top edge.
     let top = min(max(placed?.y ?? frame.maxY - 8, frame.minY + 120), frame.maxY)
-    let x = min(max(placed?.x ?? (left ? frame.minX + 8 : frame.maxX - Self.width - 8), frame.minX), frame.maxX - Self.width)
+    let x = min(max(placed?.x ?? (left ? frame.minX + 8 : frame.maxX - Self.width - railGap), frame.minX), frame.maxX - Self.width)
     let height = collapsed ? 56 : max(112, top - frame.minY - 8)
     placing = true
     panel.setFrame(NSRect(x: x, y: top - height, width: Self.width, height: height), display: true)

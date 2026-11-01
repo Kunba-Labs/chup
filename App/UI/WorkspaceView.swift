@@ -1070,6 +1070,7 @@ struct MeetingDetailView: View {
                   ForEach(group) { line in
                     TranscriptLine(
                       text: line.text, time: WorkspaceState.time(line.start),
+                      play: { state.play(at: line.start) },
                       highlight: state.selectedTranscriptSource == line.id
                         ? Palette.sidebar
                         : findMatches.contains(line.id) ? Palette.accent.opacity(0.10) : .clear
@@ -1088,17 +1089,24 @@ struct MeetingDetailView: View {
 private struct TranscriptLine: View {
   let text: String
   let time: String
+  let play: () -> Void
   let highlight: Color
   let edit: () -> Void
   @State private var hovering = false
+  @FocusState private var focused: Int?
   var body: some View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
       Text(text).font(.system(size: 16)).lineSpacing(5).textSelection(.enabled)
         .padding(.horizontal, 4).padding(.vertical, 1)
-        .background(highlight, in: RoundedRectangle(cornerRadius: 5)).help(time)
+        .background(highlight, in: RoundedRectangle(cornerRadius: 5))
       Spacer(minLength: 0)
-      Button(action: edit) { Image(systemName: "pencil") }.buttonStyle(.plain)
-        .foregroundStyle(Palette.secondary).opacity(hovering ? 1 : 0).accessibilityLabel("Fix this line")
+      // Shown on hover or keyboard focus; always reachable by keyboard and VoiceOver.
+      HStack(spacing: 10) {
+        Button(time, action: play).font(.caption.monospacedDigit()).foregroundStyle(Palette.accent)
+          .accessibilityLabel("Play from \(time)").focused($focused, equals: 0)
+        Button(action: edit) { Image(systemName: "pencil") }.foregroundStyle(Palette.secondary)
+          .accessibilityLabel("Fix this line").focused($focused, equals: 1)
+      }.buttonStyle(.plain).opacity(hovering || focused != nil ? 1 : 0)
     }.contentShape(Rectangle()).onHover { hovering = $0 }
   }
 }

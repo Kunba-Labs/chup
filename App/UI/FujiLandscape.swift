@@ -19,42 +19,47 @@ struct FujiLandscape: View {
     let snow = Color.white.opacity(dark ? 0.35 : 0.9)
     func p(_ x: Double, _ y: Double) -> CGPoint { CGPoint(x: x * w, y: y * h) }
 
-    // Sun, low and warm behind the mountain.
+    // The mountain is sized from the height, so wide windows keep Fuji's shape instead of
+    // stretching the summit into a flat shelf. dx is in heights from the centre.
+    func m(_ dx: Double, _ y: Double) -> CGPoint { CGPoint(x: w / 2 + dx * h, y: y * h) }
+
+    // Sun, low and warm beside the summit.
     g.fill(
-      Path(ellipseIn: CGRect(x: 0.62 * w, y: 0.10 * h, width: 0.11 * h * 1.2, height: 0.11 * h * 1.2)),
+      Path(ellipseIn: CGRect(origin: m(0.42, 0.08), size: CGSize(width: 0.14 * h, height: 0.14 * h))),
       with: .color(Palette.red.opacity(dark ? 0.10 : 0.13)))
 
-    // Fuji: concave slopes up to a flat summit.
+    // Fuji: concave slopes up to a narrow flat summit.
     var fuji = Path()
-    fuji.move(to: p(0.12, 0.86))
-    fuji.addQuadCurve(to: p(0.455, 0.20), control: p(0.36, 0.62))
-    fuji.addLine(to: p(0.545, 0.20))
-    fuji.addQuadCurve(to: p(0.88, 0.86), control: p(0.64, 0.62))
+    fuji.move(to: m(-1.15, 0.86))
+    fuji.addQuadCurve(to: m(-0.09, 0.20), control: m(-0.42, 0.62))
+    fuji.addLine(to: m(0.09, 0.20))
+    fuji.addQuadCurve(to: m(1.15, 0.86), control: m(0.42, 0.62))
     fuji.closeSubpath()
     g.fill(fuji, with: .linearGradient(
       Gradient(colors: [Palette.accent.opacity(dark ? 0.22 : 0.16), Palette.accent.opacity(0.04)]),
-      startPoint: p(0.5, 0.2), endPoint: p(0.5, 0.86)))
+      startPoint: m(0, 0.2), endPoint: m(0, 0.86)))
 
-    // Snow cap with a ragged lower edge following the slopes.
+    // Snow cap inside the slopes, with a ragged lower edge.
     var cap = Path()
-    cap.move(to: p(0.455, 0.20))
-    cap.addLine(to: p(0.545, 0.20))
-    cap.addQuadCurve(to: p(0.592, 0.36), control: p(0.565, 0.29))
-    for (x, y) in [(0.575, 0.33), (0.562, 0.39), (0.546, 0.335), (0.530, 0.40), (0.512, 0.34),
-                   (0.494, 0.395), (0.478, 0.335), (0.462, 0.38), (0.446, 0.33), (0.425, 0.365)] {
-      cap.addLine(to: p(x, y))
+    cap.move(to: m(-0.09, 0.20))
+    cap.addLine(to: m(0.09, 0.20))
+    cap.addQuadCurve(to: m(0.22, 0.36), control: m(0.15, 0.27))
+    for (x, y) in [(0.18, 0.33), (0.14, 0.39), (0.10, 0.335), (0.05, 0.40), (0.0, 0.34),
+                   (-0.05, 0.395), (-0.10, 0.335), (-0.14, 0.38), (-0.18, 0.33)] {
+      cap.addLine(to: m(x, y))
     }
-    cap.addQuadCurve(to: p(0.455, 0.20), control: p(0.435, 0.29))
+    cap.addLine(to: m(-0.22, 0.36))
+    cap.addQuadCurve(to: m(-0.09, 0.20), control: m(-0.15, 0.27))
     cap.closeSubpath()
     g.fill(cap, with: .color(snow))
 
-    // Mist band drifting slowly across the mountain's waist.
-    let drift = sin(t / 9) * 0.04
+    // Mist drifting slowly across the mountain's waist.
+    let drift = sin(t / 9) * 0.12
     g.drawLayer { mist in
       mist.addFilter(.blur(radius: 14))
       for (i, y) in [0.58, 0.67].enumerated() {
-        let rect = CGRect(
-          x: (0.2 + drift * Double(i == 0 ? 1 : -1)) * w, y: y * h, width: 0.6 * w, height: 0.05 * h)
+        let left = m(-0.7 + drift * Double(i == 0 ? 1 : -1), y)
+        let rect = CGRect(x: left.x, y: left.y, width: 1.4 * h, height: 0.05 * h)
         mist.fill(Path(ellipseIn: rect), with: .color(Palette.workspace.opacity(0.8)))
       }
     }
