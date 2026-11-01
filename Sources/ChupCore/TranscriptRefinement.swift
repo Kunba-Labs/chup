@@ -73,6 +73,60 @@ public struct TranscriptReview: Codable, Equatable, Identifiable {
     self.current = current
   }
 }
+/// The diarizing model labels speakers well but hears words worse than `gpt-transcribe`, which
+/// has no speakers. This keeps the diarized turns and swaps in the accurate pass's words, aligned
+/// by longest common word subsequence; words in an unmatched run are spread over the diarized
+/// words in the same run. Too little agreement keeps the diarized text untouched.
+public enum AccuracyPass {
+  public static func merge(_ segments: [String], accurate: String) -> [String] {
+    func norm(_ word: Substring) -> String {
+      String(word.lowercased().filter { $0.isLetter || $0.isNumber })
+    }
+    var owner: [Int] = []
+    var diar: [String] = []
+    for (index, text) in segments.enumerated() {
+      for word in text.split(whereSeparator: \.isWhitespace) {
+        owner.append(index)
+        diar.append(norm(word))
+      }
+    }
+    let words = accurate.split(whereSeparator: \.isWhitespace)
+    let acc = words.map(norm)
+    let n = diar.count, m = acc.count
+    guard n > 0, m > 0, n * m <= 4_000_000 else { return segments }
+    // ponytail: O(n·m) LCS table; a 96 s window is a few hundred words a side.
+    var table = [[Int]](repeating: [Int](repeating: 0, count: m + 1), count: n + 1)
+    for i in stride(from: n - 1, through: 0, by: -1) {
+      for j in stride(from: m - 1, through: 0, by: -1) {
+        table[i][j] = diar[i] == acc[j] && !acc[j].isEmpty
+          ? table[i + 1][j + 1] + 1 : max(table[i + 1][j], table[i][j + 1])
+      }
+    }
+    guard Double(table[0][0]) >= 0.6 * Double(min(n, m)) else { return segments }
+    var pairs: [(Int, Int)] = []
+    var i = 0, j = 0
+    while i < n && j < m {
+      if diar[i] == acc[j] && !acc[j].isEmpty && table[i][j] == table[i + 1][j + 1] + 1 {
+        pairs.append((i, j)); i += 1; j += 1
+      } else if table[i + 1][j] >= table[i][j + 1] { i += 1 } else { j += 1 }
+    }
+    var assigned = [Int](repeating: 0, count: m)
+    var previous = (-1, -1)
+    for pair in pairs + [(n, m)] {
+      let gapDiar = (previous.0 + 1)..<pair.0, gapAcc = (previous.1 + 1)..<pair.1
+      for (r, k) in gapAcc.enumerated() {
+        assigned[k] = gapDiar.isEmpty
+          ? owner[previous.0 >= 0 ? previous.0 : min(pair.0, n - 1)]
+          : owner[gapDiar.lowerBound + r * gapDiar.count / gapAcc.count]
+      }
+      if pair.0 < n { assigned[pair.1] = owner[pair.0] }
+      previous = pair
+    }
+    var merged = [[Substring]](repeating: [], count: segments.count)
+    for (k, word) in words.enumerated() { merged[assigned[k]].append(word) }
+    return segments.indices.map { merged[$0].isEmpty ? segments[$0] : merged[$0].joined(separator: " ") }
+  }
+}
 public enum SpeakerContinuity {
   /// Each window is diarized on its own, so the provider's labels restart every 90 s. One clip
   /// per earlier acoustic group (its longest line, clipped to 2–10 s), most talk time first, is

@@ -70,6 +70,33 @@ final class IterationTests: XCTestCase {
     next.end = 204
     XCTAssertEqual(SpeakerContinuity.reconcile([next], previous: [old]).first!.speakerID, "b")
   }
+  func testRenamedSpeakerNameSurvivesAcceptedNewVersion() throws {
+    let store = try WorkspaceStore(url: try directory().appendingPathComponent("store.sqlite"))
+    let window = TranscriptionWindow(meetingID: "m", track: .remote, start: 0, end: 90, duration: 180)
+    var old = segment(id: "old", start: 10, end: 14, text: "Salaam", speaker: "a")
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [old])))
+    old.speakerName = "Waseem"
+    try store.correct(old)
+    let new = segment(id: "new", start: 10, end: 15, text: "Salaam Alaikum", speaker: "a")
+    XCTAssertFalse(try store.commitWindow(TranscriptionJob(window: window, context: [new])))
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [new]), acceptReview: true))
+    XCTAssertEqual(try store.list(TranscriptSegment.self, kind: "segment").map(\.speakerName), ["Waseem"])
+  }
+  func testAccuracyPassSwapsWordsIntoDiarizedTurns() {
+    XCTAssertEqual(
+      AccuracyPass.merge(
+        ["So, how do you", "want to start? I'm good", "how are you"],
+        accurate: "So, how do you want to start? I'm good. How are you?"),
+      ["So, how do you", "want to start? I'm good.", "How are you?"])
+    // A misheard run between agreeing words is replaced and spread over the same turns.
+    XCTAssertEqual(
+      AccuracyPass.merge(["Thank you for asking me. Yes,", "we see me okay then"],
+        accurate: "Thank you for asking. Yes, we can see it. Okay then"),
+      ["Thank you for asking. Yes,", "we can see it. Okay then"])
+    // Unrelated text keeps the diarized words.
+    XCTAssertEqual(AccuracyPass.merge(["hello there friend"], accurate: "completely different"), ["hello there friend"])
+    XCTAssertEqual(AccuracyPass.merge(["kept"], accurate: ""), ["kept"])
+  }
   func testCarryReferencesPickLongestLinePerSpeakerByTalkTime() {
     var enrolled = segment(id: "e", start: 0, end: 30, text: "", speaker: "enrolled:x")
     enrolled.track = .remote

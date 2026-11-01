@@ -267,10 +267,14 @@ public final class WorkspaceStore {
       else {
         throw WorkspaceError.invalidEvidence
       }
-      let corrections = try list(
-        TranscriptSegment.self, kind: "correction", parent: window.meetingID
-      )
-      .filter { $0.track == window.track && $0.start < window.end && $0.end > window.start }
+      let allCorrections = try list(
+        TranscriptSegment.self, kind: "correction", parent: window.meetingID)
+      // A rename belongs to the speaker, not the line: new lines from that group keep the name.
+      let names = Dictionary(
+        allCorrections.compactMap { c in c.speakerName.map { (c.speakerID, $0) } },
+        uniquingKeysWith: { _, b in b })
+      let corrections = allCorrections
+        .filter { $0.track == window.track && $0.start < window.end && $0.end > window.start }
       let conflict = corrections.contains { correction in
         !incoming.contains {
           $0.id == correction.id && abs($0.start - correction.start) < 0.02
@@ -294,7 +298,8 @@ public final class WorkspaceStore {
           try execute("DELETE FROM search WHERE kind='segment' AND id=?", [old.id])
         }
         for value in incoming {
-          let item = acceptReview ? value : overlay[value.id] ?? value
+          var item = acceptReview ? value : overlay[value.id] ?? value
+          if item.speakerName == nil { item.speakerName = names[item.speakerID] }
           try execute(
             "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES('segment',?,?,?)",
             [item.id, window.meetingID, try json(item)])

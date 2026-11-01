@@ -1625,12 +1625,19 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
               carried[name] = seen[window.track]?.last { $0.speakerID == ref.speakerID }
             }
           }
-          let result = try await client.transcribe(
-            wave, diarize: true, language: language,
-            keywords: DictationPersonalization.vocabulary(personalization, language: language),
+          let vocabulary = DictationPersonalization.vocabulary(personalization, language: language)
+          async let diarized = client.transcribe(
+            wave, diarize: true, language: language, keywords: vocabulary,
             references: window.track == .assistant ? [] : windowReferences)
+          // Accuracy pass: better words, no speakers. Optional: a failure keeps the diarized text.
+          async let accurate = window.track == .assistant
+            ? nil : try? client.transcribe(wave, diarize: false, language: language, keywords: vocabulary)
+          let result = try await diarized
+          let providerItems = result.segments ?? []
+          let texts = await accurate.map { AccuracyPass.merge(providerItems.map(\.text), accurate: $0.text) }
+            ?? providerItems.map(\.text)
           var mapped: [TranscriptSegment] = []
-          for (segmentIndex, item) in (result.segments ?? []).enumerated() {
+          for (segmentIndex, item) in providerItems.enumerated() {
             guard let interval = window.fit(start: item.start, end: item.end) else {
               throw WorkspaceError.message(
                 "Provider returned an invalid segment interval; this window was not committed.")
@@ -1640,7 +1647,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
               id: window.id + "/\(segmentIndex)", meetingID: id,
               start: window.audioStart + interval.start, end: window.audioStart + interval.end,
               text: DictationPersonalization.spellings(
-                item.text, entries: personalization, language: language),
+                texts[segmentIndex], entries: personalization, language: language),
               speakerID: profile.map { "enrolled:" + $0.id } ?? window.id + "/" + item.speaker,
               speakerName: profile.map { $0.name + " · voice match" }, track: window.track)
             segment.attribution =
