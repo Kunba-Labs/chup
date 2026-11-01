@@ -516,6 +516,7 @@ struct MeetingDetailView: View {
           .font(.system(size: 26, weight: .semibold)).focused($titleFocused).onSubmit(saveTitle)
           .accessibilityLabel("Meeting title")
         Spacer(minLength: 12)
+        tabActions
         Menu {
           Button("Copy as Markdown") { state.copyNotesMarkdown() }
           Button("Draft follow-up email") { state.draftFollowup() }
@@ -600,10 +601,9 @@ struct MeetingDetailView: View {
         }.buttonStyle(.plain).accessibilityAddTraits(tab == name ? .isSelected : [])
       }
       Spacer()
-      tabActions.controlSize(.small).padding(.bottom, 6)
     }.overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 1) }
   }
-  /// The open tab's own actions live in the pinned tab bar, not floating above its content.
+  /// The open tab's own actions sit in the top bar beside Export, not floating above its content.
   @ViewBuilder private var tabActions: some View {
     if tab == "Summary" {
       HStack(spacing: 8) {
