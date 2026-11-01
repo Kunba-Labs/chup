@@ -269,16 +269,16 @@ public final class WorkspaceStore {
       }
       let allCorrections = try list(
         TranscriptSegment.self, kind: "correction", parent: window.meetingID)
-      // A rename follows its group to new lines only with evidence: a new line of the same
-      // group, on the same track, covers audio the user already named. Provider labels alone are
-      // request-local and could now be a different voice.
+      // A rename carries only to a new line that mostly re-covers audio the user named, with the
+      // same group label on the same track. It never spreads to the group's other lines:
+      // provider labels are request-local and boundaries drift.
       var names: [String: String] = [:]
       for line in job.context {
-        guard let named = allCorrections.first(where: {
+        let named = allCorrections.first {
           $0.speakerName != nil && $0.speakerID == line.speakerID && $0.track == line.track
-            && min($0.end, line.end) - max($0.start, line.start) > 0.3
-        }) else { continue }
-        names[line.speakerID] = named.speakerName
+            && min($0.end, line.end) - max($0.start, line.start) >= 0.5 * (line.end - line.start)
+        }
+        if let name = named?.speakerName { names[line.id] = name }
       }
       let corrections = allCorrections
         .filter { $0.track == window.track && $0.start < window.end && $0.end > window.start }
@@ -306,7 +306,7 @@ public final class WorkspaceStore {
         }
         for value in incoming {
           var item = acceptReview ? value : overlay[value.id] ?? value
-          if item.speakerName == nil { item.speakerName = names[item.speakerID] }
+          if item.speakerName == nil { item.speakerName = names[item.id] }
           try execute(
             "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES('segment',?,?,?)",
             [item.id, window.meetingID, try json(item)])

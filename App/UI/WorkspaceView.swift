@@ -319,17 +319,19 @@ struct MeetingDetailView: View {
             .workspaceSurface().padding(.top, 14)
         }.padding([.horizontal, .top], 30).padding(.bottom, 12)
       } else {
-        // One scroll area for the whole page: no boxes scrolling inside it. The recording bar and
-        // tabs pin to the top, so Pause and Stop stay in reach on a long transcript.
+        // One scroll area for the whole page: no boxes scrolling inside it. The title row, recording
+        // bar and tabs pin to the top, so Pause, Stop, Find and Refine stay in reach.
         ScrollViewReader { proxy in
           ScrollView {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-              header
               Section {
                 jobCard
                 activeTab.padding(.top, 14)
               } header: {
-                stickyBar
+                VStack(alignment: .leading, spacing: 0) {
+                  header
+                  stickyBar
+                }.background(Palette.workspace)
               }
             }.padding([.horizontal, .top], 30).padding(.bottom, 12)
               .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -514,6 +516,7 @@ struct MeetingDetailView: View {
           get: { titleEdit ?? state.selectedMeeting?.title ?? "" }, set: { titleEdit = $0 }))
           .textFieldStyle(.plain)
           .font(.system(size: 26, weight: .semibold)).focused($titleFocused).onSubmit(saveTitle)
+          .frame(minWidth: 140)
           .accessibilityLabel("Meeting title")
         Spacer(minLength: 12)
         tabActions
@@ -618,33 +621,44 @@ struct MeetingDetailView: View {
           .buttonStyle(.pill).disabled(state.segments.isEmpty || state.processingMeeting)
       }
     } else if tab == "Transcript" {
-      HStack(spacing: 8) {
-        HStack(spacing: 6) {
-          Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
-          TextField("Find in transcript", text: $findQuery).textFieldStyle(.plain)
-            .focused($findFocused).onSubmit(nextMatch)
-            .onChange(of: findQuery) { _, _ in
-              findIndex = -1
-              nextMatch()
-            }
-          if !findQuery.isEmpty {
-            Text(findMatches.isEmpty ? "No matches" : "\(max(0, findIndex) + 1) of \(findMatches.count)")
-              .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary).fixedSize()
-            Button { nextMatch() } label: { Image(systemName: "chevron.down") }
-              .buttonStyle(.plain).disabled(findMatches.isEmpty).accessibilityLabel("Next match")
-          }
-        }.font(.system(size: 12)).padding(.horizontal, 10).padding(.vertical, 5).frame(width: 240)
-          .background(Palette.paper, in: Capsule())
-        Menu {
-          // Always a full pass: lines you edited come back for review instead of being skipped.
-          Button("Transcribe again") { state.transcribeMeeting(reprocess: true) }.disabled(refineLocked)
-          Divider()
-          Button("Check the recording") { state.inspectRecording() }.disabled(
-            state.activeMeetingID == state.selectedMeetingID)
-        } label: {
-          Label("Refine", systemImage: "wand.and.stars")
-        }.menuStyle(.button).buttonStyle(.pill).fixedSize()
+      // Narrow windows keep the title readable: a shorter find field and an icon-only Refine.
+      ViewThatFits(in: .horizontal) {
+        transcriptActions(findWidth: 240, labelled: true)
+        transcriptActions(findWidth: 130, labelled: false)
       }
+    }
+  }
+  private func transcriptActions(findWidth: CGFloat, labelled: Bool) -> some View {
+    HStack(spacing: 8) {
+      HStack(spacing: 6) {
+        Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
+        TextField("Find in transcript", text: $findQuery).textFieldStyle(.plain)
+          .focused($findFocused).onSubmit(nextMatch)
+          .onChange(of: findQuery) { _, _ in
+            findIndex = -1
+            nextMatch()
+          }
+        if !findQuery.isEmpty {
+          Text(findMatches.isEmpty ? "No matches" : "\(max(0, findIndex) + 1) of \(findMatches.count)")
+            .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary).fixedSize()
+          Button { nextMatch() } label: { Image(systemName: "chevron.down") }
+            .buttonStyle(.plain).disabled(findMatches.isEmpty).accessibilityLabel("Next match")
+        }
+      }.font(.system(size: 12)).padding(.horizontal, 10).padding(.vertical, 5).frame(width: findWidth)
+        .background(Palette.paper, in: Capsule())
+      Menu {
+        // Always a full pass: lines you edited come back for review instead of being skipped.
+        Button("Transcribe again") { state.transcribeMeeting(reprocess: true) }.disabled(refineLocked)
+        Divider()
+        Button("Check the recording") { state.inspectRecording() }.disabled(
+          state.activeMeetingID == state.selectedMeetingID)
+      } label: {
+        if labelled {
+          Label("Refine", systemImage: "wand.and.stars")
+        } else {
+          Image(systemName: "wand.and.stars")
+        }
+      }.menuStyle(.button).buttonStyle(.pill).fixedSize().help("Refine").accessibilityLabel("Refine")
     }
   }
 

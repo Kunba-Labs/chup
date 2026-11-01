@@ -78,9 +78,14 @@ final class IterationTests: XCTestCase {
     old.speakerName = "Waseem"
     try store.correct(old)
     let new = segment(id: "new", start: 10, end: 15, text: "Salaam Alaikum", speaker: "a")
-    XCTAssertFalse(try store.commitWindow(TranscriptionJob(window: window, context: [new])))
-    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [new]), acceptReview: true))
-    XCTAssertEqual(try store.list(TranscriptSegment.self, kind: "segment").map(\.speakerName), ["Waseem"])
+    // Same label, but a turn that only grazes the named audio after boundary drift.
+    let drift = segment(id: "drift", start: 13.6, end: 20, text: "Hi there", speaker: "a")
+    XCTAssertFalse(try store.commitWindow(TranscriptionJob(window: window, context: [new, drift])))
+    XCTAssertTrue(try store.commitWindow(
+      TranscriptionJob(window: window, context: [new, drift]), acceptReview: true))
+    let names = try store.list(TranscriptSegment.self, kind: "segment")
+    XCTAssertEqual(names.first { $0.id == "new" }?.speakerName, "Waseem")
+    XCTAssertNil(names.first { $0.id == "drift" }?.speakerName)
     // The same request-local label on audio nobody named stays unnamed.
     let later = TranscriptionWindow(meetingID: "m", track: .remote, start: 90, end: 180, duration: 180)
     XCTAssertTrue(try store.commitWindow(TranscriptionJob(
