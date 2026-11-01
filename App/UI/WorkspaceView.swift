@@ -627,13 +627,17 @@ struct MeetingDetailView: View {
       // Narrow windows keep the title readable: a shorter find field and an icon-only Refine.
       ViewThatFits(in: .horizontal) {
         transcriptActions(findWidth: 240, labelled: true)
-        transcriptActions(findWidth: 130, labelled: false)
+        transcriptActions(findWidth: 150, labelled: false)
       }
     }
   }
   private var replacePopover: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Replace “\(findQuery)” in \(findMatches.count) \(findMatches.count == 1 ? "line" : "lines")")
+    // Counted with Replace's own whole-word rule, so the number is what will change.
+    let count = state.replacementLines(findQuery, with: replaceWith.isEmpty ? "\u{1}" : replaceWith).count
+    return VStack(alignment: .leading, spacing: 12) {
+      Text(count == 0
+        ? "“\(findQuery)” isn’t a whole word in any line"
+        : "Replace “\(findQuery)” in \(count) \(count == 1 ? "line" : "lines")")
         .font(.headline)
       TextField("Replace with", text: $replaceWith).textFieldStyle(.roundedBorder)
         .onSubmit(applyReplace)
@@ -643,14 +647,20 @@ struct MeetingDetailView: View {
         Spacer()
         Button("Cancel") { replacing = false }
         Button("Replace all", action: applyReplace).buttonStyle(.pillPrimary)
-          .disabled(replaceWith.trimmingCharacters(in: .whitespaces).isEmpty)
+          .disabled(replaceWith.trimmingCharacters(in: .whitespaces).isEmpty || count == 0)
       }
     }.padding(16).frame(width: 340)
   }
   private func applyReplace() {
-    let count = state.replaceInTranscript(findQuery, with: replaceWith, remember: rememberSpelling)
-    state.notice = "Replaced in \(count) \(count == 1 ? "line" : "lines")."
-      + (rememberSpelling ? " Saved to your dictionary." : "")
+    do {
+      let count = try state.replaceInTranscript(findQuery, with: replaceWith, remember: rememberSpelling)
+      guard count > 0 else { return }
+      state.notice = "Replaced in \(count) \(count == 1 ? "line" : "lines")."
+        + (rememberSpelling ? " Saved to your dictionary." : "")
+    } catch {
+      state.notice = "Nothing was replaced. " + error.localizedDescription
+      return
+    }
     replacing = false
     findQuery = replaceWith
     replaceWith = ""
@@ -660,6 +670,7 @@ struct MeetingDetailView: View {
       HStack(spacing: 6) {
         Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
         TextField(labelled ? "Find in transcript" : "Find", text: $findQuery).textFieldStyle(.plain)
+          .frame(minWidth: 70)
           .accessibilityLabel("Find in transcript")
           .focused($findFocused).onSubmit(nextMatch)
           .onChange(of: findQuery) { _, _ in
@@ -667,8 +678,10 @@ struct MeetingDetailView: View {
             nextMatch()
           }
         if !findQuery.isEmpty {
-          Text(findMatches.isEmpty ? "No matches" : "\(max(0, findIndex) + 1) of \(findMatches.count)")
-            .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary).fixedSize()
+          if labelled {  // The narrow field keeps its width for the query.
+            Text(findMatches.isEmpty ? "No matches" : "\(max(0, findIndex) + 1) of \(findMatches.count)")
+              .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary).fixedSize()
+          }
           Button { nextMatch() } label: { Image(systemName: "chevron.down") }
             .buttonStyle(.plain).disabled(findMatches.isEmpty).accessibilityLabel("Next match")
           Button { replacing = true } label: { Image(systemName: "arrow.2.squarepath") }

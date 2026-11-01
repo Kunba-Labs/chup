@@ -1874,9 +1874,10 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       corrected.text = text
       corrected.speakerName = name.isEmpty ? nil : name
       if let mergeID { corrected.speakerID = mergeID }
-      corrected.textCorrected = (original.textCorrected ?? false) || text != original.text
+      let flags = try db().correctionFlags(meetingID: original.meetingID)
+      corrected.textCorrected = flags.text.contains(original.id) || text != original.text
         || corrected.speakerID != original.speakerID
-      corrected.nameCorrected = (original.nameCorrected ?? false)
+      corrected.nameCorrected = flags.name.contains(original.id)
         || corrected.speakerName != original.speakerName
       try db().correct(corrected)
       try refreshDetail()
@@ -1885,37 +1886,54 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   /// Replaces a word or phrase on every line (whole words, any case). Remembered replacements
   /// become a dictionary spelling that later refines and dictation apply themselves, so those
   /// lines don't count as text edits that send a refined window to review.
-  func replaceInTranscript(_ find: String, with replacement: String, remember: Bool) -> Int {
+  /// The lines Replace would change: whole words, any case, the same rule the dictionary uses.
+  func replacementLines(_ find: String, with replacement: String) -> [TranscriptSegment] {
+    let find = find.trimmingCharacters(in: .whitespaces)
+    let rule = [Personalization(kind: "dictionary", trigger: find, replacement: replacement, language: language)]
+    guard !find.isEmpty else { return [] }
+    return segments.filter { !$0.provisional }.compactMap { segment in
+      var copy = segment
+      copy.text = DictationPersonalization.spellings(segment.text, entries: rule, language: language)
+      return copy.text == segment.text ? nil : copy
+    }
+  }
+  func replaceInTranscript(_ find: String, with replacement: String, remember: Bool) throws -> Int {
     let find = find.trimmingCharacters(in: .whitespaces)
     let replacement = replacement.trimmingCharacters(in: .whitespaces)
-    guard !find.isEmpty, !replacement.isEmpty, selectedMeetingID != nil else { return 0 }
-    let rule = [Personalization(kind: "dictionary", trigger: find, replacement: replacement, language: language)]
-    var changed = 0
-    do {
-      for var segment in segments where !segment.provisional {
-        let text = DictationPersonalization.spellings(segment.text, entries: rule, language: language)
-        guard text != segment.text else { continue }
-        segment.text = text
-        segment.textCorrected = (segment.textCorrected ?? false) || !remember
-        segment.nameCorrected = segment.nameCorrected ?? false
-        try db().correct(segment)
-        changed += 1
-      }
-      if remember {
-        savePersonalization(kind: "dictionary", trigger: find, replacement: replacement, language: language)
-      }
-      try refreshDetail()
-    } catch { notice = error.localizedDescription }
-    return changed
+    guard !replacement.isEmpty, let meetingID = selectedMeetingID else { return 0 }
+    let flags = try db().correctionFlags(meetingID: meetingID)
+    let changed = replacementLines(find, with: replacement).map { line in
+      var line = line
+      line.textCorrected = flags.text.contains(line.id) || !remember
+      line.nameCorrected = flags.name.contains(line.id)
+      return line
+    }
+    var spelling: Personalization?
+    if remember {
+      var item = Personalization(kind: "dictionary", trigger: find, replacement: replacement, language: language)
+      item.id = personalization.first {
+        $0.kind == "dictionary" && $0.trigger.caseInsensitiveCompare(find) == .orderedSame
+          && $0.language == language
+      }?.id ?? item.id
+      spelling = item
+    }
+    // Lines and spelling commit together: no half-replaced transcript, no success on failure.
+    try db().correct(changed, remembering: spelling)
+    try refresh()
+    try refreshDetail()
+    return changed.count
   }
   func renameSpeaker(_ id: String, name: String) {
     do {
-      for var segment in segments where segment.speakerID == id {
+      guard let meetingID = selectedMeetingID else { return }
+      let flags = try db().correctionFlags(meetingID: meetingID)
+      try db().correct(segments.filter { $0.speakerID == id }.map { segment in
+        var segment = segment
         segment.speakerName = name.isEmpty ? nil : name
         segment.nameCorrected = true
-        segment.textCorrected = segment.textCorrected ?? false
-        try db().correct(segment)
-      }
+        segment.textCorrected = flags.text.contains(segment.id)  // A prior text edit stays one.
+        return segment
+      })
       try refreshDetail()
     } catch { notice = error.localizedDescription }
   }

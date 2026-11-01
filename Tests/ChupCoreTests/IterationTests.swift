@@ -157,6 +157,23 @@ final class IterationTests: XCTestCase {
     XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [next])))
     XCTAssertTrue(try store.list(TranscriptReview.self, kind: "transcriptReview").isEmpty)
   }
+  func testCorrectionFlagsJudgeLegacyEditsAndSpellingCommitsWithLines() throws {
+    let store = try WorkspaceStore(url: try directory().appendingPathComponent("store.sqlite"))
+    let window = TranscriptionWindow(meetingID: "m", track: .remote, start: 0, end: 90, duration: 180)
+    var renamed = segment(id: "f1", start: 1, end: 3, text: "Hello", speaker: "a")
+    var edited = segment(id: "f2", start: 4, end: 6, text: "We agreed", speaker: "a")
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [renamed, edited])))
+    renamed.speakerName = "Rizwan"  // Legacy rename: words match the revision.
+    edited.text = "We did not agree"  // Legacy text edit.
+    try store.correct(renamed)
+    try store.correct(edited)
+    let flags = try store.correctionFlags(meetingID: "m")
+    XCTAssertEqual(flags.text, ["f2"])
+    XCTAssertEqual(flags.name, ["f1"])
+    let spelling = Personalization(kind: "dictionary", trigger: "prasimba", replacement: "Waseem bhai")
+    try store.correct([edited], remembering: spelling)
+    XCTAssertEqual(try store.list(Personalization.self, kind: "personalization").map(\.replacement), ["Waseem bhai"])
+  }
   func testAccuracyPassSwapsWordsIntoDiarizedTurns() {
     XCTAssertEqual(
       AccuracyPass.merge(

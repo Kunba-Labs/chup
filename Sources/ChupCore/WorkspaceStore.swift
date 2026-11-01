@@ -391,18 +391,56 @@ public final class WorkspaceStore {
     }
   }
   public func correct(_ segment: TranscriptSegment) throws {
+    try correct([segment])
+  }
+  /// Several corrections, plus an optional dictionary spelling, commit together or not at all.
+  public func correct(_ segments: [TranscriptSegment], remembering spelling: Personalization? = nil)
+    throws
+  {
     try transaction {
-      for kind in ["correction", "segment"] {
+      for segment in segments {
+        for kind in ["correction", "segment"] {
+          try execute(
+            "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES(?,?,?,?)",
+            [kind, segment.id, segment.meetingID, try json(segment)])
+        }
+        try execute("DELETE FROM search WHERE kind='segment' AND id=?", [segment.id])
         try execute(
-          "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES(?,?,?,?)",
-          [kind, segment.id, segment.meetingID, try json(segment)])
+          "INSERT INTO search(kind,id,parent,body) VALUES('segment',?,?,?)",
+          [segment.id, segment.meetingID, segment.text])
       }
-      try execute("DELETE FROM search WHERE kind='segment' AND id=?", [segment.id])
-      try execute(
-        "INSERT INTO search(kind,id,parent,body) VALUES('segment',?,?,?)",
-        [segment.id, segment.meetingID, segment.text])
+      if let spelling {
+        try execute(
+          "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES('personalization',?,'',?)",
+          [spelling.id, try json(spelling)])
+        try execute("DELETE FROM search WHERE kind='personalization' AND id=?", [spelling.id])
+        try execute(
+          "INSERT INTO search(kind,id,parent,body) VALUES('personalization',?,'',?)",
+          [spelling.id, spelling.trigger + " " + spelling.replacement])
+      }
     }
   }
+  /// Lines whose saved correction already holds a manual text edit or an explicit rename.
+  /// Corrections from before the flags existed are judged against the provider revisions.
+  public func correctionFlags(meetingID: String) throws -> (text: Set<String>, name: Set<String>) {
+    let corrections = try list(TranscriptSegment.self, kind: "correction", parent: meetingID)
+    var revision: [String: [(String, String)]] = [:]
+    if corrections.contains(where: { $0.textCorrected == nil && $0.nameCorrected == nil }) {
+      for lines in try list([TranscriptSegment].self, kind: "transcriptRevision", parent: meetingID) {
+        for line in lines { revision[line.id, default: []].append((line.text, line.speakerID)) }
+      }
+    }
+    var text = Set<String>(), name = Set<String>()
+    for c in corrections {
+      let legacy = c.textCorrected == nil && c.nameCorrected == nil
+      if c.textCorrected ?? (legacy && !(revision[c.id]?.contains { $0 == (c.text, c.speakerID) } ?? false)) {
+        text.insert(c.id)
+      }
+      if c.nameCorrected ?? (legacy && c.speakerName != nil) { name.insert(c.id) }
+    }
+    return (text, name)
+  }
+
   public func writeAction(_ requested: ActionRecord, expectedVersion: Int, requestID: String) throws
     -> ActionReceipt
   {
