@@ -600,7 +600,52 @@ struct MeetingDetailView: View {
         }.buttonStyle(.plain).accessibilityAddTraits(tab == name ? .isSelected : [])
       }
       Spacer()
+      tabActions.controlSize(.small).padding(.bottom, 6)
     }.overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 1) }
+  }
+  /// The open tab's own actions live in the pinned tab bar, not floating above its content.
+  @ViewBuilder private var tabActions: some View {
+    if tab == "Summary" {
+      HStack(spacing: 8) {
+        if !state.summaryVersions.isEmpty {
+          Menu("Earlier versions") {
+            ForEach(state.summaryVersions) { revision in
+              Button(revision.created.formatted()) { state.summary = revision.summary }
+            }
+          }.menuStyle(.button).buttonStyle(.pill).fixedSize()
+        }
+        Button(state.summary == nil ? "Write summary" : "Update summary") { state.generateSummary() }
+          .buttonStyle(.pill).disabled(state.segments.isEmpty || state.processingMeeting)
+      }
+    } else if tab == "Transcript" {
+      HStack(spacing: 8) {
+        HStack(spacing: 6) {
+          Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
+          TextField("Find in transcript", text: $findQuery).textFieldStyle(.plain)
+            .focused($findFocused).onSubmit(nextMatch)
+            .onChange(of: findQuery) { _, _ in
+              findIndex = -1
+              nextMatch()
+            }
+          if !findQuery.isEmpty {
+            Text(findMatches.isEmpty ? "No matches" : "\(max(0, findIndex) + 1) of \(findMatches.count)")
+              .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary).fixedSize()
+            Button { nextMatch() } label: { Image(systemName: "chevron.down") }
+              .buttonStyle(.plain).disabled(findMatches.isEmpty).accessibilityLabel("Next match")
+          }
+        }.font(.system(size: 12)).padding(.horizontal, 10).padding(.vertical, 5).frame(width: 240)
+          .background(Palette.paper, in: Capsule())
+        Menu {
+          // Always a full pass: lines you edited come back for review instead of being skipped.
+          Button("Transcribe again") { state.transcribeMeeting(reprocess: true) }.disabled(refineLocked)
+          Divider()
+          Button("Check the recording") { state.inspectRecording() }.disabled(
+            state.activeMeetingID == state.selectedMeetingID)
+        } label: {
+          Label("Refine", systemImage: "wand.and.stars")
+        }.menuStyle(.button).buttonStyle(.pill).fixedSize()
+      }
+    }
   }
 
   // MARK: My thoughts
@@ -641,18 +686,6 @@ struct MeetingDetailView: View {
   private var summaryTab: some View {
     let outline = SummaryOutline(summary: state.summary, actions: state.actions)
     return VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        if !state.summaryVersions.isEmpty {
-          Menu("Earlier versions") {
-            ForEach(state.summaryVersions) { revision in
-              Button(revision.created.formatted()) { state.summary = revision.summary }
-            }
-          }.fixedSize()
-        }
-        Spacer()
-        Button(state.summary == nil ? "Write summary" : "Update summary") { state.generateSummary() }
-          .disabled(state.segments.isEmpty || state.processingMeeting)
-      }
       if !state.liveOutlines.isEmpty, state.activeMeetingID == state.selectedMeetingID {
         LiveOutlineView(outlines: state.liveOutlines)
       }
@@ -984,35 +1017,6 @@ struct MeetingDetailView: View {
   }
   private var transcriptBody: some View {
     VStack(alignment: .leading) {
-      HStack(spacing: 8) {
-        Spacer()
-        Menu {
-          Button("Transcribe again") { state.transcribeMeeting() }.disabled(refineLocked)
-          Button("Transcribe again and review changes") { state.transcribeMeeting(reprocess: true) }
-            .disabled(refineLocked)
-          Divider()
-          Button("Check the recording") { state.inspectRecording() }.disabled(
-            state.activeMeetingID == state.selectedMeetingID)
-        } label: {
-          Label("Refine", systemImage: "wand.and.stars")
-        }.menuStyle(.button).buttonStyle(.pill).controlSize(.small).fixedSize()
-      }
-      HStack(spacing: 6) {
-        Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
-        TextField("Find in transcript", text: $findQuery).textFieldStyle(.plain)
-          .focused($findFocused).onSubmit(nextMatch)
-          .onChange(of: findQuery) { _, _ in
-            findIndex = -1
-            nextMatch()
-          }
-        if !findQuery.isEmpty {
-          Text(findMatches.isEmpty ? "No matches" : "\(max(0, findIndex) + 1) of \(findMatches.count)")
-            .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary)
-          Button { nextMatch() } label: { Image(systemName: "chevron.down") }
-            .buttonStyle(.plain).disabled(findMatches.isEmpty).accessibilityLabel("Next match")
-        }
-      }.font(.system(size: 13)).padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
-        .padding(.bottom, 6)
       TranscriptReviewGroup(reviews: state.transcriptReviews)
       if state.meetingStatus == .recording {
         Button("Reconnect call audio") { state.reconnectCallAudio() }
