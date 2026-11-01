@@ -148,11 +148,27 @@ final class ChupCoreTests: XCTestCase {
     XCTAssertNotNil(policy.observe([c], now: 126, recording: false))
     XCTAssertEqual(policy.accept(now: 130), c)
   }
+  func testWindowFitsProviderIntervals() {
+    let window = TranscriptionWindow(meetingID: "m", track: .microphone, start: 90, end: 180, duration: 400)
+    let length = window.audioEnd - window.audioStart
+    XCTAssertEqual(window.fit(start: 5, end: 5)?.end, 5.05)  // zero-length word kept, 50 ms span
+    XCTAssertEqual(window.fit(start: 10, end: length + 0.4)?.end, length)
+    XCTAssertEqual(window.fit(start: -0.1, end: 2)?.start, 0)
+    XCTAssertNil(window.fit(start: 8, end: 7))  // reversed
+    XCTAssertNil(window.fit(start: length + 5, end: length + 6))  // outside the clip
+    XCTAssertEqual(window.fit(start: length, end: length)?.end, length)
+    XCTAssertNil(window.fit(start: .nan, end: 1))
+  }
   func testBrowserMeetingEvidenceNeedsSiteAndCallControl() {
     XCTAssertTrue(BrowserMeetingEvidence.isMeetTitle("Meet - abc-defg-hij - Google Chrome"))
     XCTAssertFalse(BrowserMeetingEvidence.isMeetTitle("Meet - landing page"))
     XCTAssertTrue(BrowserMeetingEvidence.isMeetingURL("https://acme.zoom.us/wc/123"))
     XCTAssertFalse(BrowserMeetingEvidence.isMeetingURL("https://notzoom.us/"))
+    XCTAssertEqual(BrowserMeetingEvidence.service(urls: [], titles: ["Meet - abc-defg-hij"]), "Google Meet")
+    XCTAssertEqual(
+      BrowserMeetingEvidence.service(urls: ["https://example.com", "https://teams.microsoft.com/x"], titles: []),
+      "Microsoft Teams")
+    XCTAssertNil(BrowserMeetingEvidence.service(urls: ["https://notzoom.us/"], titles: ["Meet - landing page"]))
     XCTAssertTrue(
       BrowserMeetingEvidence.inCall(
         urls: ["https://teams.microsoft.com/v2/"], titles: ["Teams"], controls: ["Hang up "]))

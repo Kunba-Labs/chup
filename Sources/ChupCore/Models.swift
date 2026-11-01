@@ -33,9 +33,11 @@ public struct Meeting: Identifiable, Codable, Equatable {
   public var status: String
   public var participants: String
   public var tags: String
+  /// The call service seen in a recorded browser tab ("Google Meet"); nil for apps and in person.
+  public var callService: String?
   public init(
     id: String = UUID().uuidString, title: String, created: Date = Date(), status: String = "Ready",
-    participants: String = "", tags: String = ""
+    participants: String = "", tags: String = "", callService: String? = nil
   ) {
     self.id = id
     self.title = title
@@ -43,6 +45,7 @@ public struct Meeting: Identifiable, Codable, Equatable {
     self.status = status
     self.participants = participants
     self.tags = tags
+    self.callService = callService
   }
 }
 extension Meeting {

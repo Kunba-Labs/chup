@@ -140,17 +140,12 @@ struct MeetingsView: View {
         }
       } label: {
         HStack(spacing: 12) {
-          if let app = state.meetingApps[meeting.id] {
-            InstalledAppIcon(bundleID: app, size: 22)
-          } else {
-            // In person, or no call app recorded.
-            Image(systemName: "person.2.fill").font(.system(size: 11)).foregroundStyle(Palette.secondary)
-              .frame(width: 22, height: 22).background(Palette.sidebar, in: Circle()).accessibilityHidden(true)
-          }
+          MeetingSourceIcon(meeting: meeting)
           VStack(alignment: .leading, spacing: 3) {
             Text(meeting.title).font(.system(size: 15, weight: .semibold)).lineLimit(1)
             HStack(spacing: 6) {
               Text(meeting.created.formatted(date: .omitted, time: .shortened))
+              if let service = meeting.callService { Text("· " + service) }
               if !meeting.participants.isEmpty { Text("· " + meeting.participants).lineLimit(1) }
               ForEach(Meeting.tagList(meeting.tags).prefix(3), id: \.self) { tag in
                 Text(tag).foregroundStyle(Palette.accent)
@@ -163,6 +158,8 @@ struct MeetingsView: View {
           Spacer()
           if meeting.status == "Recording" {
             Label("Recording", systemImage: "record.circle.fill").font(.caption).foregroundStyle(Palette.red)
+          } else if let job = state.job(for: meeting.id) {
+            MeetingJobBadge(job: job)
           } else {
             MiniWaveform(source: .meeting(meeting.id), width: 60, height: 18)
           }
@@ -312,62 +309,39 @@ struct MeetingDetailView: View {
   @State private var resumeAfterScrub = false
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      header
-      HStack(spacing: 14) {
-        if state.activeMeetingID == state.selectedMeetingID {
-          Label(
-            state.meetingStatus == .recording
-              ? "Recording" : state.meetingStatus == .processing ? "Starting…" : "Paused",
-            systemImage: state.meetingStatus == .recording
-              ? "record.circle.fill" : state.meetingStatus == .processing ? "hourglass" : "pause.circle"
-          ).foregroundStyle(Palette.red)
-          Text(WorkspaceState.time(state.elapsed)).monospacedDigit()
-          SourceMeter(
-            name: state.voiceRouter.privateInput ? "Mic omitted" : "Mic",
-            level: state.voiceRouter.privateInput ? 0 : state.micLevel,
-            receiving: state.micLastPacket.map { Date().timeIntervalSince($0) < 3 } ?? false)
-          SourceMeter(
-            name: "Call", level: state.remoteLevel,
-            receiving: state.remoteLastPacket.map {
-              Date().timeIntervalSince($0) < 3
-            } ?? false)
-          Spacer()
-          Button {
-            state.meetingStatus == .paused ? state.resumeMeeting() : state.pauseMeeting()
-          } label: {
-            Image(systemName: state.meetingStatus == .paused ? "play.fill" : "pause.fill")
-          }.accessibilityLabel("Pause or resume recording")
-          Button("Stop and save") { state.stopMeeting() }
-        } else {
-          Label("Notes save as you type", systemImage: "checkmark.circle").font(.caption)
-            .foregroundStyle(Palette.secondary)
-          Spacer()
-          Button {
-            captureSheet = true
-            state.refreshApps()
-          } label: {
-            Label("Record", systemImage: "record.circle")
-          }.buttonStyle(.pillPrimary).disabled(state.activeMeetingID != nil)
+      if askOpen {
+        VStack(alignment: .leading, spacing: 0) {
+          pageTop
+          AssistantView { askOpen = false }.padding(16).frame(maxWidth: .infinity, maxHeight: .infinity)
+            .workspaceSurface().padding(.top, 14)
+        }.padding([.horizontal, .top], 30).padding(.bottom, 12)
+      } else {
+        // One scroll area for the whole page (header, tabs, content): no boxes scrolling inside it.
+        ScrollViewReader { proxy in
+          VStack(alignment: .leading, spacing: 0) {
+            pageTop
+            activeTab.padding(.top, 14)
+          }.padding([.horizontal, .top], 30).padding(.bottom, 12).pageScroll()
+            .onAppear {
+              pendingSource = state.selectedTranscriptSource
+              scrollToSource(proxy)
+            }
+            .onChange(of: state.selectedTranscriptSource) { _, id in
+              pendingSource = id
+              scrollToSource(proxy)
+            }
+            .onChange(of: tab) { _, _ in scrollToSource(proxy) }
+            .onChange(of: summaryFindIndex) { _, index in
+              let ids = summaryMatches(SummaryOutline(summary: state.summary, actions: state.actions))
+              guard ids.indices.contains(index) else { return }
+              // A match inside the folded notes opens them first, then scrolls once laid out.
+              if ids[index].hasPrefix("note-") && !notesExpanded { notesExpanded = true }
+              DispatchQueue.main.async { withAnimation { proxy.scrollTo(ids[index], anchor: .center) } }
+            }
         }
-      }.font(.system(size: 12)).padding(.vertical, 8).padding(.horizontal, 14).background(
-        Palette.paper, in: Capsule()
-      ).padding(.top, 14).padding(.bottom, 16)
-      tabBar
-      Group {
-        // All three stay alive so each keeps its own scroll position. An open Ask takes their
-        // place, so the page always fits the window.
-        ZStack {
-          tabPage("My thoughts") { thoughtsTab }
-          tabPage("Summary") { summaryTab }
-          tabPage("Transcript") { transcriptTab }
-          if askOpen {
-            AssistantView { askOpen = false }.padding(16).frame(maxWidth: .infinity, maxHeight: .infinity)
-              .workspaceSurface()
-          }
-        }
-      }.frame(maxWidth: .infinity, minHeight: 120, maxHeight: .infinity).padding(.top, 14)
-      askDock
-    }.padding(30)
+      }
+      askDock.padding(.horizontal, 30).padding(.bottom, 30)
+    }
       .background {
         Button("Find") {
           if tab == "Summary" {
@@ -429,6 +403,67 @@ struct MeetingDetailView: View {
         Text("Changes every line from \(renaming.map { state.speakerLabel($0.speakerID) } ?? "this speaker") in this meeting. Remembering saves an encrypted voice clip on this Mac and sends it with future transcriptions so Chup! can name them.")
       }
       .confirmDeleteMeeting($deletion)
+  }
+  /// A transcript line asked for (source link, find, search) scrolls into view once the
+  /// Transcript tab is showing.
+  @State private var pendingSource: String?
+  private func scrollToSource(_ proxy: ScrollViewProxy) {
+    guard tab == "Transcript", let id = pendingSource else { return }
+    pendingSource = nil
+    DispatchQueue.main.async { withAnimation { proxy.scrollTo(id, anchor: .center) } }
+  }
+  @ViewBuilder private var activeTab: some View {
+    switch tab {
+    case "Summary": summaryTab
+    case "Transcript": transcriptTab
+    default: thoughtsTab
+    }
+  }
+  private var pageTop: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      header
+      HStack(spacing: 14) {
+        if state.activeMeetingID == state.selectedMeetingID {
+          Label(
+            state.meetingStatus == .recording
+              ? "Recording" : state.meetingStatus == .processing ? "Starting…" : "Paused",
+            systemImage: state.meetingStatus == .recording
+              ? "record.circle.fill" : state.meetingStatus == .processing ? "hourglass" : "pause.circle"
+          ).foregroundStyle(Palette.red)
+          Text(WorkspaceState.time(state.elapsed)).monospacedDigit()
+          SourceMeter(
+            name: state.voiceRouter.privateInput ? "Mic omitted" : "Mic",
+            level: state.voiceRouter.privateInput ? 0 : state.micLevel,
+            receiving: state.micLastPacket.map { Date().timeIntervalSince($0) < 3 } ?? false)
+          SourceMeter(
+            name: "Call", level: state.remoteLevel,
+            receiving: state.remoteLastPacket.map {
+              Date().timeIntervalSince($0) < 3
+            } ?? false)
+          Spacer()
+          Button {
+            state.meetingStatus == .paused ? state.resumeMeeting() : state.pauseMeeting()
+          } label: {
+            Image(systemName: state.meetingStatus == .paused ? "play.fill" : "pause.fill")
+          }.accessibilityLabel("Pause or resume recording")
+          Button("Stop and save") { state.stopMeeting() }
+        } else {
+          Label("Notes save as you type", systemImage: "checkmark.circle").font(.caption)
+            .foregroundStyle(Palette.secondary)
+          Spacer()
+          Button {
+            captureSheet = true
+            state.refreshApps()
+          } label: {
+            Label("Record", systemImage: "record.circle")
+          }.buttonStyle(.pillPrimary).disabled(state.activeMeetingID != nil)
+        }
+      }.font(.system(size: 12)).padding(.vertical, 8).padding(.horizontal, 14).background(
+        Palette.paper, in: Capsule()
+      ).padding(.top, 14).padding(.bottom, 16)
+      tabBar
+      if let job = state.job(for: state.selectedMeetingID) { MeetingJobCard(job: job).padding(.top, 14) }
+    }
   }
   private var header: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -513,10 +548,6 @@ struct MeetingDetailView: View {
     tab = "Transcript"
     askOpen = false
   }
-  private var busy: Bool {
-    state.processingMeetingID == state.selectedMeetingID
-      || (state.notesMeetingID != nil && state.notesMeetingID == state.selectedMeetingID)
-  }
   private var tabBar: some View {
     HStack(spacing: 22) {
       ForEach(["My thoughts", "Summary", "Transcript"], id: \.self) { name in
@@ -532,11 +563,6 @@ struct MeetingDetailView: View {
         }.buttonStyle(.plain).accessibilityAddTraits(tab == name ? .isSelected : [])
       }
       Spacer()
-      if busy {
-        ProgressView().controlSize(.small)
-        Button("Cancel") { state.cancelMeetingJobs() }.controlSize(.small)
-          .help("Stop this job. Nothing half-done is saved.")
-      }
     }.overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 1) }
   }
 
@@ -553,7 +579,7 @@ struct MeetingDetailView: View {
           .scrollContentBackground(.hidden)
           .onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
           .accessibilityLabel("My thoughts")
-      }.padding(16).frame(maxHeight: .infinity).workspaceSurface()
+      }.padding(16).frame(minHeight: 420).workspaceSurface()
       HStack {
         if state.noteSaveFailed {
           Label("Not saved. Keep typing to try again.", systemImage: "exclamationmark.triangle")
@@ -620,13 +646,7 @@ struct MeetingDetailView: View {
       if outline.isEmpty && state.summaryEdits.isEmpty, state.enhancedNotes?.blocks.isEmpty == false {
         // Notes written from the transcript when no summary was made still have a home.
         addStepField
-        ScrollViewReader { proxy in
-          ScrollView { EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true, highlight: summaryQuery).padding(4) }
-            .onChange(of: summaryFindIndex) { _, index in
-              let ids = summaryMatches(outline)
-              if ids.indices.contains(index) { withAnimation { proxy.scrollTo(ids[index], anchor: .center) } }
-            }
-        }
+        EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true, highlight: summaryQuery).padding(4)
       } else if outline.isEmpty && state.summaryEdits.isEmpty {
         QuietEmpty(
           icon: "text.alignleft", title: "No summary yet",
@@ -636,8 +656,6 @@ struct MeetingDetailView: View {
               ? "It’s written when the meeting ends." : "After the meeting, press Write summary.")
         addStepField
       } else {
-        ScrollViewReader { proxy in
-        ScrollView {
           VStack(alignment: .leading, spacing: 22) {
             if !state.summaryEdits.isEmpty {
               summarySection("Your edits") {
@@ -695,16 +713,7 @@ struct MeetingDetailView: View {
                 Text("Notes filled in from the transcript").font(.system(size: 15, weight: .semibold))
               }
             }
-          }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
-        }.workspaceSurface()
-          .onChange(of: summaryFindIndex) { _, index in
-            let ids = summaryMatches(outline)
-            guard ids.indices.contains(index) else { return }
-            // A match inside the folded notes opens them first, then scrolls once laid out.
-            if ids[index].hasPrefix("note-") && !notesExpanded { notesExpanded = true }
-            DispatchQueue.main.async { withAnimation { proxy.scrollTo(ids[index], anchor: .center) } }
-          }
-        }
+          }.frame(maxWidth: .infinity, alignment: .leading).padding(22).workspaceSurface()
       }
     }
   }
@@ -734,14 +743,6 @@ struct MeetingDetailView: View {
     summaryFindIndex = count == 0 ? -1 : (summaryFindIndex + 1) % count
   }
   @FocusState private var summaryFindFocused: Bool
-  private func tabPage(_ name: String, @ViewBuilder _ content: () -> some View) -> some View {
-    // Disabled as well as hidden, so inactive editors and buttons leave keyboard focus.
-    let shown = tab == name && !askOpen
-    // Each page is held to the available height so a long hidden one can't stretch the window.
-    return content().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).clipped()
-      .opacity(shown ? 1 : 0).allowsHitTesting(shown).disabled(!shown)
-      .accessibilityHidden(!shown)
-  }
   /// Summary lines matching the find field get a highlight.
   private func found(_ text: String) -> Bool {
     let query = summaryQuery.trimmingCharacters(in: .whitespaces)
@@ -961,13 +962,6 @@ struct MeetingDetailView: View {
         }
       }.font(.system(size: 13)).padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
         .padding(.bottom, 6)
-      if state.processingMeetingID == state.selectedMeetingID {
-        HStack {
-          ProgressView().controlSize(.small)
-          Text(state.transcriptionProgress)
-          Button("Cancel") { state.cancelTranscription() }
-        }
-      }
       ForEach(state.transcriptReviews) { TranscriptReviewView(review: $0) }
       if state.meetingStatus == .recording {
         Button("Reconnect call audio") { state.reconnectCallAudio() }
@@ -988,7 +982,6 @@ struct MeetingDetailView: View {
             "Record the meeting. The transcript shows here when you stop."
         )
       } else {
-        ScrollView {
           LazyVStack(alignment: .leading, spacing: 25) {
             ForEach(state.segments) { segment in
               HStack(alignment: .top, spacing: 18) {
@@ -1033,10 +1026,9 @@ struct MeetingDetailView: View {
                     in: RoundedRectangle(cornerRadius: 5)
                   ).font(.system(size: 16)).lineSpacing(5).textSelection(.enabled)
                 }
-              }.padding(18).workspaceSurface()
+              }.padding(18).workspaceSurface().id(segment.id)
             }
-          }.scrollTargetLayout()
-        }.scrollPosition(id: $state.selectedTranscriptSource, anchor: .center)
+          }
       }
     }
   }
@@ -1288,5 +1280,116 @@ struct CommitField: View {
     guard let draft else { return }
     let trimmed = draft.trimmingCharacters(in: .whitespaces)
     if trimmed == value || commit(trimmed) { self.draft = nil }
+  }
+}
+
+/// What is running on one meeting: the refine pipeline (transcript, summary, notes) or a single
+/// summary or notes pass. One source for the detail page's progress card and the list rows.
+struct MeetingJob {
+  enum Step: String { case transcript = "Transcript", summary = "Summary", notes = "Notes" }
+  var step: Step
+  var steps: [Step]
+  /// Transcription only: share of audio parts done.
+  var fraction: Double?
+  var parts: (done: Int, total: Int)?
+  var title: String {
+    switch step {
+    case .transcript: "Transcribing the recording"
+    case .summary: "Writing the summary"
+    case .notes: "Writing notes"
+    }
+  }
+  var short: String {
+    switch step {
+    case .transcript: "Transcribing " + (fraction ?? 0).formatted(.percent.precision(.fractionLength(0)))
+    case .summary: "Summarizing"
+    case .notes: "Writing notes"
+    }
+  }
+}
+extension WorkspaceState {
+  func job(for id: String?) -> MeetingJob? {
+    guard let id else { return nil }
+    let progress = transcriptionProgress
+    let pipeline = processingMeetingID == id && progress.total > 0
+    let steps: [MeetingJob.Step] = autoSummaryEnabled ? [.transcript, .summary, .notes] : [.transcript, .notes]
+    if notesMeetingID == id { return MeetingJob(step: .notes, steps: pipeline ? steps : [.notes]) }
+    guard processingMeetingID == id else { return nil }
+    guard pipeline else { return MeetingJob(step: .summary, steps: [.summary]) }
+    if progress.done < progress.total {
+      return MeetingJob(
+        step: .transcript, steps: steps, fraction: Double(progress.done) / Double(progress.total),
+        parts: (progress.done + 1, progress.total))
+    }
+    return MeetingJob(step: autoSummaryEnabled ? .summary : .notes, steps: steps)
+  }
+}
+/// The one progress display on a meeting page: what is happening, how far, which step is next.
+struct MeetingJobCard: View {
+  @EnvironmentObject var state: WorkspaceState
+  let job: MeetingJob
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Text(job.title).font(.system(size: 14, weight: .semibold))
+        if let fraction = job.fraction {
+          Text(fraction.formatted(.percent.precision(.fractionLength(0)))).monospacedDigit()
+            .foregroundStyle(Palette.secondary)
+        }
+        Spacer()
+        Button("Cancel") { state.cancelMeetingJobs() }.controlSize(.small)
+          .help("Stop now. Finished parts are kept, and Refine picks up where it stopped.")
+      }
+      Group {
+        if let fraction = job.fraction { ProgressView(value: fraction) } else { ProgressView().progressViewStyle(.linear) }
+      }.tint(Palette.accent).accessibilityLabel(job.title)
+      HStack(spacing: 10) {
+        if job.steps.count > 1 {
+          let current = job.steps.firstIndex(of: job.step) ?? 0
+          ForEach(Array(job.steps.enumerated()), id: \.offset) { index, step in
+            Label(
+              step.rawValue,
+              systemImage: index < current ? "checkmark.circle.fill" : index == current ? "circle.inset.filled" : "circle"
+            ).foregroundStyle(index <= current ? Palette.accent : Palette.secondary)
+              .fontWeight(index == current ? .semibold : .regular)
+          }
+        }
+        Spacer()
+        if let parts = job.parts {
+          Text("Part \(parts.done) of \(parts.total)").monospacedDigit()
+        }
+      }.font(.caption).foregroundStyle(Palette.secondary)
+    }.padding(14).workspaceSurface()
+  }
+}
+/// A list row's status: busy meetings say so instead of showing their waveform.
+struct MeetingJobBadge: View {
+  let job: MeetingJob
+  var body: some View {
+    HStack(spacing: 6) {
+      ProgressView().controlSize(.mini)
+      Text(job.short).monospacedDigit()
+    }.font(.caption.weight(.medium)).foregroundStyle(Palette.accent)
+      .padding(.horizontal, 9).padding(.vertical, 4).background(Palette.accent.opacity(0.10), in: Capsule())
+      .accessibilityElement(children: .combine)
+  }
+}
+/// The call app's icon, or a call glyph for a browser tab service (Google Meet in Safari).
+struct MeetingSourceIcon: View {
+  @EnvironmentObject var state: WorkspaceState
+  let meeting: Meeting
+  var size: CGFloat = 22
+  var body: some View {
+    if let service = meeting.callService {
+      Image(systemName: "video.fill").font(.system(size: size * 0.45)).foregroundStyle(Palette.accent)
+        .frame(width: size, height: size).background(Palette.accent.opacity(0.12), in: Circle())
+        .help(service).accessibilityLabel(service)
+    } else if let app = state.meetingApps[meeting.id] {
+      InstalledAppIcon(bundleID: app, size: size)
+    } else if size >= 20 {
+      // In person, or no call app recorded.
+      Image(systemName: "person.2.fill").font(.system(size: size / 2)).foregroundStyle(Palette.secondary)
+        .frame(width: size, height: size).background(Palette.sidebar, in: Circle()).accessibilityHidden(true)
+    }
   }
 }

@@ -8,6 +8,19 @@ public struct TranscriptionWindow: Codable, Equatable, Identifiable {
   public var end: Double
   public var audioStart: Double { max(0, start - 3) }
   public var audioEnd: Double
+  /// A provider interval (seconds into this window's audio) fitted inside the audio: zero-length
+  /// words and ends a little past the clip are normal provider output, not a reason to drop the
+  /// window. Only non-finite times are rejected. Text is never touched.
+  public func fit(start: Double, end: Double) -> (start: Double, end: Double)? {
+    let length = audioEnd - audioStart
+    // Tolerate boundary drift and zero-length words only; reversed or out-of-clip times are
+    // provider errors, not evidence to place text against.
+    guard start.isFinite, end.isFinite, length > 0.05, end >= start, start < length + 0.5, end > -0.5
+    else { return nil }
+    // Stored segments need end > start, so a zero-length word gets a 50 ms span.
+    let start = min(max(0, start), length - 0.05)
+    return (start, min(max(start + 0.05, end), length))
+  }
   public init(meetingID: String, track: TrackKind, start: Double, end: Double, duration: Double) {
     self.meetingID = meetingID
     self.track = track

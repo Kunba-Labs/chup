@@ -67,17 +67,24 @@ public struct MeetingDetectionPolicy {
 /// site plus an in-call control, or a Meet code title, so a browser merely holding the mic
 /// doesn't count.
 public enum BrowserMeetingEvidence {
-  static let hosts = [
-    "meet.google.com", "teams.microsoft.com", "teams.live.com", "zoom.us", "webex.com",
-    "app.slack.com", "discord.com", "whereby.com", "meet.jit.si",
+  static let services: [(host: String, name: String)] = [
+    ("meet.google.com", "Google Meet"), ("teams.microsoft.com", "Microsoft Teams"),
+    ("teams.live.com", "Microsoft Teams"), ("zoom.us", "Zoom"), ("webex.com", "Webex"),
+    ("app.slack.com", "Slack"), ("discord.com", "Discord"), ("whereby.com", "Whereby"),
+    ("meet.jit.si", "Jitsi Meet"),
   ]
   static let leaveControls: Set<String> = [
     "leave call", "hang up", "leave", "leave meeting", "end meeting", "end call",
     "leave huddle", "end huddle", "disconnect",
   ]
-  public static func isMeetingURL(_ url: String) -> Bool {
-    guard let host = URL(string: url)?.host?.lowercased() else { return false }
-    return hosts.contains { host == $0 || host.hasSuffix("." + $0) }
+  public static func isMeetingURL(_ url: String) -> Bool { service(url) != nil }
+  static func service(_ url: String) -> String? {
+    guard let host = URL(string: url)?.host?.lowercased() else { return nil }
+    return services.first { host == $0.host || host.hasSuffix("." + $0.host) }?.name
+  }
+  /// The call service a window shows, by Meet code title or call-site URL.
+  public static func service(urls: [String], titles: [String]) -> String? {
+    titles.contains(where: isMeetTitle) ? "Google Meet" : urls.lazy.compactMap(service).first
   }
   /// "Meet - abc-defg-hij" (optionally followed by " - Google Chrome" etc).
   public static func isMeetTitle(_ title: String) -> Bool {

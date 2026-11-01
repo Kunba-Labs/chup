@@ -153,7 +153,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var processingMeeting = false
   /// The meeting `processingMeeting` refers to, so other meetings don't show its progress.
   @Published var processingMeetingID: String?
-  @Published var transcriptionProgress = ""
+  /// Audio windows transcribed so far in the running refine, of `total`; 0 of 0 when none runs.
+  @Published var transcriptionProgress = (done: 0, total: 0)
   @Published var transcriptReviews: [TranscriptReview] = []
   @Published var enrollments: [VoiceEnrollment] = []
   var transcriptionTask: Task<Void, Never>?
@@ -876,6 +877,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     playback.reset()
     meetingPID = selectedPID
     meetingBundleID = NSRunningApplication(processIdentifier: selectedPID)?.bundleIdentifier
+    if selectedPID != 0 { Task { await recordCallService(id: id, pid: selectedPID) } }
     meetingMicrophone = nil
     remoteGapID = nil
     remoteGapStart = nil
@@ -914,6 +916,15 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       hostOrigin = ProcessInfo.processInfo.systemUptime
       await beginLeg(id: id)
     }
+  }
+  /// Names the call in a recorded browser tab, so the meeting shows as Google Meet, not Safari.
+  private func recordCallService(id: String, pid: pid_t) async {
+    let call = await Task.detached(priority: .utility) { BrowserMeetingAX.call(pid: pid) }.value
+    guard let service = call.service, var meeting = meetings.first(where: { $0.id == id }),
+      meeting.callService == nil
+    else { return }
+    meeting.callService = service
+    do { try saveMeeting(meeting) } catch { NSLog("Chup call service not saved: %@", "\(error)") }
   }
   func beginLeg(id: String) async {
     guard let audio else {
@@ -1532,7 +1543,6 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     for stream in liveStreams.values { Task { await stream.close() } }
     liveStreams = [:]
   }
-  func cancelTranscription() { transcriptionTask?.cancel() }
   func transcribeMeeting(reprocess: Bool = false, meetingID: String? = nil) {
     guard let id = meetingID ?? selectedMeetingID, id != activeMeetingID, !processingMeeting,
       let key
@@ -1546,7 +1556,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       defer {
         processingMeeting = false
         processingMeetingID = nil
-        transcriptionProgress = ""
+        transcriptionProgress = (0, 0)
         // Finished: dequeue. Failed or cancelled: stays queued for the next launch, skipped for
         // the rest of this session so it can't retry in a loop.
         if !notesDone { notesSkipped.insert(id) }  // writeNotes dequeues on success.
@@ -1578,7 +1588,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         var previous: [TrackKind: [TranscriptSegment]] = [:]
         for (index, window) in windows.enumerated() {
           try Task.checkCancellation()
-          transcriptionProgress = "Refining audio window \(index + 1) of \(windows.count)"
+          transcriptionProgress = (index, windows.count)
           let saved = try db().list(TranscriptionJob.self, kind: "transcriptionJob", parent: id)
             .first { $0.id == window.id }
           if !reprocess, let saved, saved.window == window,
@@ -1598,16 +1608,14 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
             references: window.track == .assistant ? [] : references)
           var mapped: [TranscriptSegment] = []
           for (segmentIndex, item) in (result.segments ?? []).enumerated() {
-            guard item.start.isFinite, item.end.isFinite, item.start >= 0, item.end > item.start,
-              item.end <= window.audioEnd - window.audioStart + 0.2
-            else {
+            guard let interval = window.fit(start: item.start, end: item.end) else {
               throw WorkspaceError.message(
                 "Provider returned an invalid segment interval; this window was not committed.")
             }
             let profile = profiles.first { "voice_" + $0.id == item.speaker }
             var segment = TranscriptSegment(
               id: window.id + "/\(segmentIndex)", meetingID: id,
-              start: window.audioStart + item.start, end: window.audioStart + item.end,
+              start: window.audioStart + interval.start, end: window.audioStart + interval.end,
               text: DictationPersonalization.spellings(
                 item.text, entries: personalization, language: language),
               speakerID: profile.map { "enrolled:" + $0.id } ?? window.id + "/" + item.speaker,
@@ -1632,6 +1640,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           activeJob = nil
           if selectedMeetingID == id { try refreshDetail() }
         }
+        transcriptionProgress.done = windows.count
         for provisional in try db().list(TranscriptSegment.self, kind: "segment", parent: id)
         where provisional.provisional { try db().remove(kind: "segment", id: provisional.id) }
         if selectedMeetingID == id { try refreshDetail() }

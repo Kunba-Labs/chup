@@ -2,13 +2,19 @@ import AppKit
 import ChupCore
 import SwiftUI
 
-/// Floating notes panel while recording: the user's notepad above the live AI notes. Hidden from
-/// screen sharing, takes keyboard focus without activating Chup!, and sits opposite the rail.
+/// Notes column while recording (Wispr's Notepad): full height against the screen edge opposite
+/// the rail, dragged anywhere by its header and kept there. Hidden from screen sharing, takes
+/// keyboard focus without activating Chup!.
 @MainActor final class MeetingSidebar: ObservableObject {
   @Published var collapsed = false
   private var closedFor: String?
   private var shownFor: String?
   private var timer: Timer?
+  /// Where the user dragged the column (its top-left); nil keeps it docked at the edge.
+  private var placed: NSPoint?
+  private var placing = false
+  /// Edge chosen from the move menu; nil follows the rail (opposite side).
+  private var dockLeft: Bool?
   private weak var state: WorkspaceState?
   private let panel = NonactivatingPanel(
     contentRect: NSRect(x: 0, y: 0, width: 360, height: 600),
@@ -28,6 +34,14 @@ import SwiftUI
       rootView: MeetingSidebarView(sidebar: self).environmentObject(state)
         .environment(\.colorScheme, .light))
     timer = MainActorTimer.repeating(every: 1) { [weak self] in self?.tick() }
+    NotificationCenter.default.addObserver(
+      forName: NSWindow.didMoveNotification, object: panel, queue: .main
+    ) { [weak self] _ in
+      MainActor.assumeIsolated {
+        guard let self, !self.placing else { return }
+        self.placed = NSPoint(x: self.panel.frame.minX, y: self.panel.frame.maxY)
+      }
+    }
   }
   private func tick() {
     guard let state, let id = state.activeMeetingID, closedFor != id else {
@@ -52,14 +66,25 @@ import SwiftUI
     closedFor = state?.activeMeetingID
     panel.orderOut(nil)
   }
+  /// Keyboard and VoiceOver route for moving the column: dock it to either screen edge.
+  func dock(left: Bool) {
+    placed = nil
+    dockLeft = left
+    layout()
+  }
   private func layout() {
-    let frame = (NSScreen.main ?? NSScreen.screens[0]).visibleFrame
-    let height = collapsed ? 56 : min(640, frame.height * 0.75)
-    let left = state?.railDock == "right"
-    panel.setFrame(
-      NSRect(
-        x: left ? frame.minX + 16 : frame.maxX - 376, y: frame.maxY - height - 16, width: 360,
-        height: height), display: true)
+    // A saved spot on a display that is gone falls back to the main screen, clamped on screen.
+    let screen = placed.flatMap { point in NSScreen.screens.first { $0.visibleFrame.insetBy(dx: -1, dy: -1).contains(point) } }
+      ?? panel.screen ?? NSScreen.main ?? NSScreen.screens[0]
+    let frame = screen.visibleFrame
+    let left = dockLeft ?? (state?.railDock == "right")
+    // Docked: a column the full height of the screen. Placed: the user's spot, same top edge.
+    let top = min(max(placed?.y ?? frame.maxY - 8, frame.minY + 120), frame.maxY)
+    let x = min(max(placed?.x ?? (left ? frame.minX + 8 : frame.maxX - 368), frame.minX), frame.maxX - 360)
+    let height = collapsed ? 56 : max(112, top - frame.minY - 8)
+    placing = true
+    panel.setFrame(NSRect(x: x, y: top - height, width: 360, height: height), display: true)
+    placing = false
   }
 }
 
@@ -100,6 +125,13 @@ struct MeetingSidebarView: View {
 
   private var header: some View {
     HStack(spacing: 8) {
+      Menu {
+        Button("Dock to left edge") { sidebar.dock(left: true) }
+        Button("Dock to right edge") { sidebar.dock(left: false) }
+      } label: {
+        Image(systemName: "line.3.horizontal").font(.system(size: 10))
+      }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+        .help("Drag the header to move, or dock to an edge").accessibilityLabel("Move notepad")
       Circle().fill(state.meetingStatus == .recording || failed ? Palette.red : Palette.secondary)
         .frame(width: 8, height: 8).accessibilityHidden(true)
       Text(failed ? "ERROR" : paused ? "PAUSED" : state.meetingStatus == .recording ? "REC" : "STARTING")
@@ -113,6 +145,8 @@ struct MeetingSidebarView: View {
       Button(action: sidebar.close) { Image(systemName: "xmark") }.buttonStyle(.plain)
         .accessibilityLabel("Hide notepad for this meeting").help("Recording keeps going")
     }.foregroundStyle(Palette.secondary)
+      // Drag the header to move the column; its buttons still take their clicks.
+      .background { Color.clear.contentShape(Rectangle()).gesture(WindowDragGesture()) }
   }
 
   private var tabBar: some View {

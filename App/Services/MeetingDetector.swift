@@ -177,6 +177,8 @@ enum BrowserMeetingAX {
     var inspected = true
     var meeting = false
     var live = false
+    /// "Google Meet", "Zoom"…: the first window that names a call service.
+    var service: String?
   }
   static func call(pid: pid_t) -> Call {
     guard AXIsProcessTrusted() else { return Call(inspected: false) }
@@ -227,8 +229,11 @@ enum BrowserMeetingAX {
       budget = 4000  // Per window, so one large window can't hide the call window.
       walk(window, depth: 0)
       truncated = truncated || budget <= 0
-      call.meeting = call.meeting
-        || BrowserMeetingEvidence.inCall(urls: urls, titles: titles, controls: controls)
+      // Only a window that shows the call names the service; other open tabs don't count.
+      if BrowserMeetingEvidence.inCall(urls: urls, titles: titles, controls: controls) {
+        call.meeting = true
+        call.service = call.service ?? BrowserMeetingEvidence.service(urls: urls, titles: titles)
+      }
       call.live = call.live
         || BrowserMeetingEvidence.inCall(
           urls: urls, titles: titles, controls: controls, requireControl: true)

@@ -191,7 +191,7 @@ struct MeetingListColumn: View {
         }
         VStack(alignment: .leading, spacing: 3) {
           HStack(spacing: 6) {
-            if let app = state.meetingApps[meeting.id] { InstalledAppIcon(bundleID: app, size: 14) }
+            MeetingSourceIcon(meeting: meeting, size: 14)
             Text(meeting.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
           }
           Text(meeting.created.formatted(date: .abbreviated, time: .shortened))
@@ -352,7 +352,11 @@ struct TodayView: View {
                       .font(.caption).foregroundStyle(Palette.secondary)
                   }
                   Spacer()
-                  MiniWaveform(source: item.source)
+                  if item.meeting, let job = state.job(for: item.id) {
+                    MeetingJobBadge(job: job)
+                  } else {
+                    MiniWaveform(source: item.source)
+                  }
                   Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.secondary)
                 }.padding(16).contentShape(Rectangle()).workspaceSurface()
               }.buttonStyle(.plain)
