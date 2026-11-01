@@ -962,7 +962,7 @@ struct MeetingDetailView: View {
         }
       }.font(.system(size: 13)).padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
         .padding(.bottom, 6)
-      ForEach(state.transcriptReviews) { TranscriptReviewView(review: $0) }
+      TranscriptReviewGroup(reviews: state.transcriptReviews)
       if state.meetingStatus == .recording {
         Button("Reconnect call audio") { state.reconnectCallAudio() }
       }

@@ -143,6 +143,36 @@ struct VoiceEnrollmentSettings: View {
     }.disabled(state.processingMeeting)
   }
 }
+/// Windows where a refine met your edits, folded into one card: decide for all, or open the list
+/// and compare each window.
+struct TranscriptReviewGroup: View {
+  @EnvironmentObject var state: WorkspaceState
+  let reviews: [TranscriptReview]
+  @State private var expanded = false
+  var body: some View {
+    if reviews.count == 1, let review = reviews.first {
+      TranscriptReviewView(review: review)
+    } else if !reviews.isEmpty {
+      VStack(alignment: .leading, spacing: 10) {
+        HStack(spacing: 10) {
+          Label(
+            "\(reviews.count) parts have your edits and a new version", systemImage: "pencil.and.list.clipboard"
+          ).font(.system(size: 13, weight: .semibold))
+          Spacer()
+          Button("Keep all my edits") { for review in reviews { state.resolveTranscriptReview(review, accept: false) } }
+          Button("Use all new versions", role: .destructive) {
+            for review in reviews { state.resolveTranscriptReview(review, accept: true) }
+          }
+        }.controlSize(.small)
+        Text("A refine never overwrites lines you fixed or speakers you renamed without asking.")
+          .font(.caption).foregroundStyle(Palette.secondary)
+        DisclosureGroup("Compare each part", isExpanded: $expanded) {
+          VStack(spacing: 8) { ForEach(reviews) { TranscriptReviewView(review: $0) } }.padding(.top, 8)
+        }.font(.caption)
+      }.padding(16).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
+    }
+  }
+}
 struct TranscriptReviewView: View {
   @EnvironmentObject var state: WorkspaceState
   let review: TranscriptReview
@@ -167,7 +197,7 @@ struct TranscriptReviewView: View {
       }
     } label: {
       Label(
-        "Correction review · \(WorkspaceState.time(review.window.start))–\(WorkspaceState.time(review.window.end)) · \(review.window.track.rawValue)",
+        "Your edits vs new version · \(WorkspaceState.time(review.window.start))–\(WorkspaceState.time(review.window.end)) · \(review.window.track == .microphone ? "Mic" : review.window.track == .assistant ? "Assistant" : "Call")",
         systemImage: "pencil.and.list.clipboard")
     }.padding(16).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
   }
