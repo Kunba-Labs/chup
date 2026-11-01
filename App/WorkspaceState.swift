@@ -921,9 +921,17 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     }
   }
   /// Names the call in a recorded browser tab, so the meeting shows as Google Meet, not Safari.
+  /// Recording often starts before joining, so it looks again every 20 s for the first 10 minutes.
   private func recordCallService(id: String, pid: pid_t) async {
-    let call = await Task.detached(priority: .utility) { BrowserMeetingAX.call(pid: pid) }.value
-    guard let service = call.service, var meeting = meetings.first(where: { $0.id == id }),
+    var service: String?
+    for attempt in 0..<30 {
+      if attempt > 0 { try? await Task.sleep(for: .seconds(20)) }
+      guard activeMeetingID == id, meetings.first(where: { $0.id == id })?.callService == nil
+      else { return }
+      service = await Task.detached(priority: .utility) { BrowserMeetingAX.call(pid: pid) }.value.service
+      if service != nil { break }
+    }
+    guard let service, var meeting = meetings.first(where: { $0.id == id }),
       meeting.callService == nil
     else { return }
     meeting.callService = service

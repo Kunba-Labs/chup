@@ -1472,16 +1472,28 @@ struct MeetingJobBadge: View {
       .accessibilityElement(children: .combine)
   }
 }
-/// The call app's icon, or a call glyph for a browser tab service (Google Meet in Safari).
+/// The call app's icon, or the call service's logo for a browser tab (Google Meet in Safari).
 struct MeetingSourceIcon: View {
   @EnvironmentObject var state: WorkspaceState
+  /// Services with a Mac app show its icon when it is installed; Meet ships its own logo.
+  static let desktopApps = [
+    "Zoom": "us.zoom.xos", "Microsoft Teams": "com.microsoft.teams2",
+    "Slack": "com.tinyspeck.slackmacgap", "Discord": "com.hnc.Discord", "Webex": "Cisco-Systems.Spark",
+  ]
   let meeting: Meeting
   var size: CGFloat = 22
   var body: some View {
     if let service = meeting.callService {
-      Image(systemName: "video.fill").font(.system(size: size * 0.45)).foregroundStyle(Palette.accent)
-        .frame(width: size, height: size).background(Palette.accent.opacity(0.12), in: Circle())
-        .help(service).accessibilityLabel(service)
+      Group {
+        if service == "Google Meet" {
+          Image("GoogleMeet").resizable().scaledToFit().padding(size * 0.08)
+        } else if let app = Self.desktopApps[service], let icon = InstalledAppIcon.icon(app) {
+          Image(nsImage: icon).resizable()
+        } else {
+          Image(systemName: "video.fill").font(.system(size: size * 0.45)).foregroundStyle(Palette.accent)
+            .background(Palette.accent.opacity(0.12), in: Circle().size(width: size, height: size))
+        }
+      }.frame(width: size, height: size).help(service).accessibilityLabel(service)
     } else if let app = state.meetingApps[meeting.id] {
       InstalledAppIcon(bundleID: app, size: size)
     } else if size >= 20 {

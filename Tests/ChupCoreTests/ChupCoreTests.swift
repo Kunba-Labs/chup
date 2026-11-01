@@ -163,6 +163,10 @@ final class ChupCoreTests: XCTestCase {
   func testBrowserMeetingEvidenceNeedsSiteAndCallControl() {
     XCTAssertTrue(BrowserMeetingEvidence.isMeetTitle("Meet - abc-defg-hij - Google Chrome"))
     XCTAssertFalse(BrowserMeetingEvidence.isMeetTitle("Meet - landing page"))
+    XCTAssertTrue(BrowserMeetingEvidence.isMeetTitle("Personal — Meet - abc-defg-hij"))
+    XCTAssertTrue(BrowserMeetingEvidence.isMeetTitle("Meet - abc-defg-hij"))
+    XCTAssertFalse(BrowserMeetingEvidence.isMeetTitle("Meet - abc-defg-hijk"))
+    XCTAssertFalse(BrowserMeetingEvidence.isMeetTitle("Personal — Meetings - abc-defg-hij"))
     XCTAssertTrue(BrowserMeetingEvidence.isMeetingURL("https://acme.zoom.us/wc/123"))
     XCTAssertFalse(BrowserMeetingEvidence.isMeetingURL("https://notzoom.us/"))
     XCTAssertEqual(BrowserMeetingEvidence.service(urls: [], titles: ["Meet - abc-defg-hij"]), "Google Meet")

@@ -94,12 +94,11 @@ public enum BrowserMeetingEvidence {
     let named = Set(urls.compactMap(service))
     return named.count == 1 ? named.first : nil
   }
-  /// "Meet - abc-defg-hij" (optionally followed by " - Google Chrome" etc).
+  /// "Meet - abc-defg-hij", anywhere in the title: browsers add a suffix (" - Google Chrome") and
+  /// Safari profiles a prefix ("Personal — Meet - abc-defg-hij").
   public static func isMeetTitle(_ title: String) -> Bool {
-    let lower = title.lowercased()
-    guard lower.hasPrefix("meet - ") else { return false }
-    let code = lower.dropFirst(7).prefix { !$0.isWhitespace }.split(separator: "-")
-    return code.map(\.count) == [3, 4, 3] && code.joined().allSatisfy { $0.isLetter }
+    title.range(of: #"(^|\s)meet - [a-z]{3}-[a-z]{4}-[a-z]{3}(\s|$)"#,
+      options: [.regularExpression, .caseInsensitive]) != nil
   }
   /// Evaluate one window at a time. `requireControl` is for "still in the call?": a Meet title
   /// can outlive the call, a visible Leave control can't.
