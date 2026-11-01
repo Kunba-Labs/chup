@@ -144,6 +144,19 @@ final class IterationTests: XCTestCase {
     XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [matched]), acceptReview: true))
     XCTAssertEqual(try store.list(TranscriptSegment.self, kind: "segment").first?.speakerName, "Sam · voice match")
   }
+  func testRememberedSpellingReplacementDoesNotStageReview() throws {
+    let store = try WorkspaceStore(url: try directory().appendingPathComponent("store.sqlite"))
+    let window = TranscriptionWindow(meetingID: "m", track: .remote, start: 0, end: 90, duration: 180)
+    var line = segment(id: "r1", start: 10, end: 14, text: "Doing good, Prasimba", speaker: "a")
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [line])))
+    line.text = "Doing good, Waseem bhai"
+    line.textCorrected = false  // A dictionary spelling: the refine applies it itself.
+    line.nameCorrected = false
+    try store.correct(line)
+    let next = segment(id: "r2", start: 10, end: 14.3, text: "Doing good, Waseem bhai.", speaker: "a")
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [next])))
+    XCTAssertTrue(try store.list(TranscriptReview.self, kind: "transcriptReview").isEmpty)
+  }
   func testAccuracyPassSwapsWordsIntoDiarizedTurns() {
     XCTAssertEqual(
       AccuracyPass.merge(

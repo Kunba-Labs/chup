@@ -1882,6 +1882,32 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       try refreshDetail()
     } catch { notice = error.localizedDescription }
   }
+  /// Replaces a word or phrase on every line (whole words, any case). Remembered replacements
+  /// become a dictionary spelling that later refines and dictation apply themselves, so those
+  /// lines don't count as text edits that send a refined window to review.
+  func replaceInTranscript(_ find: String, with replacement: String, remember: Bool) -> Int {
+    let find = find.trimmingCharacters(in: .whitespaces)
+    let replacement = replacement.trimmingCharacters(in: .whitespaces)
+    guard !find.isEmpty, !replacement.isEmpty, selectedMeetingID != nil else { return 0 }
+    let rule = [Personalization(kind: "dictionary", trigger: find, replacement: replacement, language: language)]
+    var changed = 0
+    do {
+      for var segment in segments where !segment.provisional {
+        let text = DictationPersonalization.spellings(segment.text, entries: rule, language: language)
+        guard text != segment.text else { continue }
+        segment.text = text
+        segment.textCorrected = (segment.textCorrected ?? false) || !remember
+        segment.nameCorrected = segment.nameCorrected ?? false
+        try db().correct(segment)
+        changed += 1
+      }
+      if remember {
+        savePersonalization(kind: "dictionary", trigger: find, replacement: replacement, language: language)
+      }
+      try refreshDetail()
+    } catch { notice = error.localizedDescription }
+    return changed
+  }
   func renameSpeaker(_ id: String, name: String) {
     do {
       for var segment in segments where segment.speakerID == id {

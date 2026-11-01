@@ -292,6 +292,9 @@ struct MeetingDetailView: View {
   @State private var titleEdit: String?
   @FocusState private var titleFocused: Bool
   @State private var findQuery = ""
+  @State private var replacing = false
+  @State private var replaceWith = ""
+  @State private var rememberSpelling = true
   @State private var findIndex = 0
   @FocusState private var findFocused: Bool
   @State private var editMetadata = false
@@ -628,6 +631,30 @@ struct MeetingDetailView: View {
       }
     }
   }
+  private var replacePopover: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Replace “\(findQuery)” in \(findMatches.count) \(findMatches.count == 1 ? "line" : "lines")")
+        .font(.headline)
+      TextField("Replace with", text: $replaceWith).textFieldStyle(.roundedBorder)
+        .onSubmit(applyReplace)
+      Toggle("Use this spelling in future transcripts and dictation", isOn: $rememberSpelling)
+        .font(.caption)
+      HStack {
+        Spacer()
+        Button("Cancel") { replacing = false }
+        Button("Replace all", action: applyReplace).buttonStyle(.pillPrimary)
+          .disabled(replaceWith.trimmingCharacters(in: .whitespaces).isEmpty)
+      }
+    }.padding(16).frame(width: 340)
+  }
+  private func applyReplace() {
+    let count = state.replaceInTranscript(findQuery, with: replaceWith, remember: rememberSpelling)
+    state.notice = "Replaced in \(count) \(count == 1 ? "line" : "lines")."
+      + (rememberSpelling ? " Saved to your dictionary." : "")
+    replacing = false
+    findQuery = replaceWith
+    replaceWith = ""
+  }
   private func transcriptActions(findWidth: CGFloat, labelled: Bool) -> some View {
     HStack(spacing: 8) {
       HStack(spacing: 6) {
@@ -644,6 +671,10 @@ struct MeetingDetailView: View {
             .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary).fixedSize()
           Button { nextMatch() } label: { Image(systemName: "chevron.down") }
             .buttonStyle(.plain).disabled(findMatches.isEmpty).accessibilityLabel("Next match")
+          Button { replacing = true } label: { Image(systemName: "arrow.2.squarepath") }
+            .buttonStyle(.plain).disabled(findMatches.isEmpty || refineLocked)
+            .help("Replace in the whole transcript").accessibilityLabel("Replace")
+            .popover(isPresented: $replacing, arrowEdge: .bottom) { replacePopover }
         }
       }.font(.system(size: 12)).padding(.horizontal, 10).padding(.vertical, 5).frame(width: findWidth)
         .background(Palette.paper, in: Capsule())
