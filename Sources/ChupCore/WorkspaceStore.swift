@@ -292,8 +292,17 @@ public final class WorkspaceStore {
           try execute("DELETE FROM objects WHERE kind='segment' AND id=?", [old.id])
           try execute("DELETE FROM search WHERE kind='segment' AND id=?", [old.id])
         }
+        let flags = overlay.isEmpty ? (text: Set<String>(), name: Set<String>()) : try correctionFlags(meetingID: window.meetingID)
         for value in incoming {
-          var item = overlay[value.id] ?? value
+          var item = value
+          if let saved = overlay[value.id] {
+            // A text or speaker edit keeps the user's line; a rename alone keeps the refined words.
+            if flags.text.contains(saved.id) {
+              item = saved
+            } else {
+              item.speakerName = saved.speakerName
+            }
+          }
           if overlay[value.id] == nil, let corrected = names[item.id] {
             // The rename moves onto the new line and stays a rename for the next refine.
             item.speakerName = corrected.isEmpty ? nil : corrected

@@ -174,6 +174,21 @@ final class IterationTests: XCTestCase {
     try store.correct([edited], remembering: spelling)
     XCTAssertEqual(try store.list(Personalization.self, kind: "personalization").map(\.replacement), ["Waseem bhai"])
   }
+  func testRenameOnSameLineKeepsRefinedWords() throws {
+    let store = try WorkspaceStore(url: try directory().appendingPathComponent("store.sqlite"))
+    let window = TranscriptionWindow(meetingID: "m", track: .remote, start: 0, end: 90, duration: 180)
+    var line = segment(id: "s1", start: 10, end: 14, text: "So Harik I will sing", speaker: "a")
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [line])))
+    line.speakerName = "Rizwan"
+    line.nameCorrected = true
+    line.textCorrected = false
+    try store.correct(line)
+    let refined = segment(id: "s1", start: 10, end: 14, text: "So, hello, how are you?", speaker: "a")
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [refined])))
+    let shown = try XCTUnwrap(store.list(TranscriptSegment.self, kind: "segment").first)
+    XCTAssertEqual(shown.text, "So, hello, how are you?")
+    XCTAssertEqual(shown.speakerName, "Rizwan")
+  }
   func testAccuracyPassSwapsWordsIntoDiarizedTurns() {
     XCTAssertEqual(
       AccuracyPass.merge(

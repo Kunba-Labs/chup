@@ -627,7 +627,7 @@ struct MeetingDetailView: View {
       // Narrow windows keep the title readable: a shorter find field and an icon-only Refine.
       ViewThatFits(in: .horizontal) {
         transcriptActions(findWidth: 240, labelled: true)
-        transcriptActions(findWidth: 150, labelled: false)
+        transcriptActions(findWidth: 180, labelled: false)
       }
     }
   }
@@ -678,10 +678,13 @@ struct MeetingDetailView: View {
             nextMatch()
           }
         if !findQuery.isEmpty {
-          if labelled {  // The narrow field keeps its width for the query.
-            Text(findMatches.isEmpty ? "No matches" : "\(max(0, findIndex) + 1) of \(findMatches.count)")
-              .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary).fixedSize()
-          }
+          // The narrow field keeps its width for the query with a short status.
+          Text(findMatches.isEmpty
+            ? (labelled ? "No matches" : "None")
+            : labelled ? "\(max(0, findIndex) + 1) of \(findMatches.count)" : "\(findMatches.count)")
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(findMatches.isEmpty ? Palette.red : Palette.secondary).fixedSize()
+            .accessibilityLabel(findMatches.isEmpty ? "No matches" : "\(findMatches.count) matches")
           Button { nextMatch() } label: { Image(systemName: "chevron.down") }
             .buttonStyle(.plain).disabled(findMatches.isEmpty).accessibilityLabel("Next match")
           Button { replacing = true } label: { Image(systemName: "arrow.2.squarepath") }

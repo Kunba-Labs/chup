@@ -160,7 +160,8 @@ struct MeetingListColumn: View {
           }
         }
       }
-      // Keyboard focus for Delete, without a ring: the selected row already shows what it acts on.
+      // Keyboard focus for Delete, without a ring around the list: the selected row takes an
+      // accent edge while the list has focus, so it's clear what Delete acts on.
       .focusable().focused($listFocused).focusEffectDisabled()
       .onKeyPress(keys: [.delete, .deleteForward]) { _ in
         deleteSelection()
@@ -198,6 +199,10 @@ struct MeetingListColumn: View {
         .background(
           isPicked ? Palette.accent.opacity(0.14) : selected && !selecting ? Palette.paper : .clear,
           in: RoundedRectangle(cornerRadius: 9))
+        .overlay {
+          RoundedRectangle(cornerRadius: 9)
+            .strokeBorder(Palette.accent.opacity(listFocused && (selected || isPicked) ? 0.45 : 0), lineWidth: 1)
+        }
     }.buttonStyle(.plain)
       .accessibilityAddTraits((selecting ? isPicked : selected || isPicked) ? .isSelected : [])
       .accessibilityHint(selecting ? "Selects this meeting" : "Opens this meeting")
