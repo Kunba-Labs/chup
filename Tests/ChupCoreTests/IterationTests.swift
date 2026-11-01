@@ -81,6 +81,11 @@ final class IterationTests: XCTestCase {
     XCTAssertFalse(try store.commitWindow(TranscriptionJob(window: window, context: [new])))
     XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [new]), acceptReview: true))
     XCTAssertEqual(try store.list(TranscriptSegment.self, kind: "segment").map(\.speakerName), ["Waseem"])
+    // The same request-local label on audio nobody named stays unnamed.
+    let later = TranscriptionWindow(meetingID: "m", track: .remote, start: 90, end: 180, duration: 180)
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(
+      window: later, context: [segment(id: "far", start: 100, end: 104, text: "Hi", speaker: "a")])))
+    XCTAssertNil(try store.list(TranscriptSegment.self, kind: "segment").first { $0.id == "far" }?.speakerName)
   }
   func testAccuracyPassSwapsWordsIntoDiarizedTurns() {
     XCTAssertEqual(
@@ -88,11 +93,19 @@ final class IterationTests: XCTestCase {
         ["So, how do you", "want to start? I'm good", "how are you"],
         accurate: "So, how do you want to start? I'm good. How are you?"),
       ["So, how do you", "want to start? I'm good.", "How are you?"])
-    // A misheard run between agreeing words is replaced and spread over the same turns.
+    // A misheard run inside one turn is replaced.
     XCTAssertEqual(
-      AccuracyPass.merge(["Thank you for asking me. Yes,", "we see me okay then"],
-        accurate: "Thank you for asking. Yes, we can see it. Okay then"),
-      ["Thank you for asking. Yes,", "we can see it. Okay then"])
+      AccuracyPass.merge(["Thank you for asking me now. Yes,", "we see it okay then"],
+        accurate: "Thank you for asking now. Yes, we can see it. Okay then"),
+      ["Thank you for asking now. Yes,", "we can see it. Okay then"])
+    // A disagreement across a speaker change keeps both turns' diarized words.
+    XCTAssertEqual(
+      AccuracyPass.merge(["one two three four five", "six seven eight nine ten"],
+        accurate: "one two three four fife sex seven eight nine ten"),
+      ["one two three four five", "six seven eight nine ten"])
+    // One matching word never replaces a long turn.
+    XCTAssertEqual(AccuracyPass.merge(["we should test all the microphones today"], accurate: "today"),
+      ["we should test all the microphones today"])
     // Unrelated text keeps the diarized words.
     XCTAssertEqual(AccuracyPass.merge(["hello there friend"], accurate: "completely different"), ["hello there friend"])
     XCTAssertEqual(AccuracyPass.merge(["kept"], accurate: ""), ["kept"])

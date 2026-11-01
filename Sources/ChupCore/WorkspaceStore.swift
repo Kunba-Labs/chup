@@ -269,10 +269,17 @@ public final class WorkspaceStore {
       }
       let allCorrections = try list(
         TranscriptSegment.self, kind: "correction", parent: window.meetingID)
-      // A rename belongs to the speaker, not the line: new lines from that group keep the name.
-      let names = Dictionary(
-        allCorrections.compactMap { c in c.speakerName.map { (c.speakerID, $0) } },
-        uniquingKeysWith: { _, b in b })
+      // A rename follows its group to new lines only with evidence: a new line of the same
+      // group, on the same track, covers audio the user already named. Provider labels alone are
+      // request-local and could now be a different voice.
+      var names: [String: String] = [:]
+      for line in job.context {
+        guard let named = allCorrections.first(where: {
+          $0.speakerName != nil && $0.speakerID == line.speakerID && $0.track == line.track
+            && min($0.end, line.end) - max($0.start, line.start) > 0.3
+        }) else { continue }
+        names[line.speakerID] = named.speakerName
+      }
       let corrections = allCorrections
         .filter { $0.track == window.track && $0.start < window.end && $0.end > window.start }
       let conflict = corrections.contains { correction in

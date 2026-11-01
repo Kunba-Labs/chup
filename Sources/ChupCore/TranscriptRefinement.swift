@@ -102,7 +102,10 @@ public enum AccuracyPass {
           ? table[i + 1][j + 1] + 1 : max(table[i + 1][j], table[i][j + 1])
       }
     }
-    guard Double(table[0][0]) >= 0.6 * Double(min(n, m)) else { return segments }
+    // Both sides must mostly agree; a short accurate result never stands in for a long turn.
+    guard Double(table[0][0]) >= 0.6 * Double(n), Double(table[0][0]) >= 0.4 * Double(m) else {
+      return segments
+    }
     var pairs: [(Int, Int)] = []
     var i = 0, j = 0
     while i < n && j < m {
@@ -110,21 +113,38 @@ public enum AccuracyPass {
         pairs.append((i, j)); i += 1; j += 1
       } else if table[i + 1][j] >= table[i][j + 1] { i += 1 } else { j += 1 }
     }
-    var assigned = [Int](repeating: 0, count: m)
+    var assigned = [Int?](repeating: nil, count: m)
+    var matched = [Int](repeating: 0, count: segments.count)
+    var unsafe = Set<Int>()
     var previous = (-1, -1)
     for pair in pairs + [(n, m)] {
       let gapDiar = (previous.0 + 1)..<pair.0, gapAcc = (previous.1 + 1)..<pair.1
-      for (r, k) in gapAcc.enumerated() {
-        assigned[k] = gapDiar.isEmpty
-          ? owner[previous.0 >= 0 ? previous.0 : min(pair.0, n - 1)]
-          : owner[gapDiar.lowerBound + r * gapDiar.count / gapAcc.count]
+      if !gapDiar.isEmpty || !gapAcc.isEmpty {
+        // A disagreement only moves words inside one turn. Across a speaker change there is no
+        // evidence which side said them, so every turn it touches keeps its diarized words.
+        var owners = Set(gapDiar.map { owner[$0] })
+        if previous.0 >= 0 { owners.insert(owner[previous.0]) }
+        if pair.0 < n { owners.insert(owner[pair.0]) }
+        if owners.count == 1, let only = owners.first {
+          for k in gapAcc { assigned[k] = only }
+        } else {
+          unsafe.formUnion(owners)
+        }
       }
-      if pair.0 < n { assigned[pair.1] = owner[pair.0] }
+      if pair.0 < n {
+        assigned[pair.1] = owner[pair.0]
+        matched[owner[pair.0]] += 1
+      }
       previous = pair
     }
     var merged = [[Substring]](repeating: [], count: segments.count)
-    for (k, word) in words.enumerated() { merged[assigned[k]].append(word) }
-    return segments.indices.map { merged[$0].isEmpty ? segments[$0] : merged[$0].joined(separator: " ") }
+    for (k, word) in words.enumerated() { if let o = assigned[k] { merged[o].append(word) } }
+    let sizes = owner.reduce(into: [Int](repeating: 0, count: segments.count)) { $0[$1] += 1 }
+    return segments.indices.map { index in
+      guard !unsafe.contains(index), !merged[index].isEmpty, matched[index] * 2 >= sizes[index]
+      else { return segments[index] }
+      return merged[index].joined(separator: " ")
+    }
   }
 }
 public enum SpeakerContinuity {
