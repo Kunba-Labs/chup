@@ -632,7 +632,8 @@ struct MeetingDetailView: View {
     HStack(spacing: 8) {
       HStack(spacing: 6) {
         Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
-        TextField("Find in transcript", text: $findQuery).textFieldStyle(.plain)
+        TextField(labelled ? "Find in transcript" : "Find", text: $findQuery).textFieldStyle(.plain)
+          .accessibilityLabel("Find in transcript")
           .focused($findFocused).onSubmit(nextMatch)
           .onChange(of: findQuery) { _, _ in
             findIndex = -1
