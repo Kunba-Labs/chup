@@ -54,11 +54,37 @@ extension WorkspaceState {
         meetingID: meetingID, provisional: false, segments: current, summary: result)
       try db().saveSummaryRevision(revision, segments: current)
       finishUsage(usageID, status: "completed")
+      await nameUntitledMeeting(meetingID, summary: result, segments: current)
       if selectedMeetingID == meetingID { try refreshDetail() }
     } catch {
       finishUsage(usageID, status: "failed")
       throw error
     }
+  }
+  /// Gives a still-untitled meeting a topic title from its summary, "with" the people named on
+  /// the call. Without a usable summary title it falls back to "Sunday morning with Rizwan".
+  /// A title the user typed is never replaced.
+  func nameUntitledMeeting(_ meetingID: String, summary: MeetingSummary, segments: [TranscriptSegment]) async {
+    guard meetings.first(where: { $0.id == meetingID })?.title == "Untitled meeting" else { return }
+    var people: [String] = []
+    for name in segments.filter({ $0.track != .microphone }).compactMap(\.speakerName)
+    where !people.contains(name) && !name.hasSuffix("· voice match") { people.append(name) }
+    let points = summary.items.map(\.text).filter { !$0.isEmpty }
+    var title = points.isEmpty ? nil : try? await backend(scope: meetingID).title(points: points, people: people)
+    if title == nil, !people.isEmpty, let created = meetings.first(where: { $0.id == meetingID })?.created {
+      title = Self.dayPart(created) + " with " + people.prefix(2).joined(separator: " and ")
+    }
+    guard let title, var meeting = meetings.first(where: { $0.id == meetingID }),
+      meeting.title == "Untitled meeting"
+    else { return }
+    meeting.title = title
+    do { try saveMeeting(meeting) } catch { NSLog("Chup meeting title not saved: %@", "\(error)") }
+  }
+  /// "Sunday morning", "Monday evening".
+  nonisolated static func dayPart(_ date: Date) -> String {
+    let hour = Calendar.current.component(.hour, from: date)
+    let part = hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "night"
+    return date.formatted(.dateTime.weekday(.wide)) + " " + part
   }
   /// Merges the user's notes with the refined transcript. Private thoughts are never included.
   func writeNotes(meetingID: String, template: String? = nil) async throws {

@@ -130,6 +130,12 @@ struct AssistantReply: Decodable {
       "enhance", body: JSONSerialization.data(withJSONObject: body))
     return result.blocks
   }
+  func title(points: [String], people: [String]) async throws -> String {
+    struct Result: Decodable { var title: String }
+    let result: Result = try await request(
+      "title", body: JSONSerialization.data(withJSONObject: ["points": points, "people": people]))
+    return result.title
+  }
   func followup(title: String, blocks: [NoteBlock]) async throws -> (subject: String, body: String)
   {
     struct Result: Decodable { var subject: String; var body: String }

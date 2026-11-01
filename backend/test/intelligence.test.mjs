@@ -72,3 +72,11 @@ test('HTTP outline route is wired and authenticated; empty evidence invokes no p
   assert.equal(response.status,200);
   assert.deepEqual(await response.json(),{items:[],_chup:{usage:[]}});
 });
+test('meeting title is one clean line from the summary and rejects empty input',async()=>{
+  const engine=createIntelligence(async(name,schema,instructions,input)=>{
+    assert.equal(name,'meeting_title'); assert.deepEqual(input.people,['Rizwan']);
+    return {title:' "Porting Verna to the new\nstaging setup with Rizwan" '};
+  });
+  assert.equal((await engine.title({points:['Verna is being ported'],people:['Rizwan']})).title,'Porting Verna to the new staging setup with Rizwan');
+  await assert.rejects(engine.title({points:[]}));
+});
