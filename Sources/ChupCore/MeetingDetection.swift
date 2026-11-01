@@ -82,9 +82,12 @@ public enum BrowserMeetingEvidence {
     guard let host = URL(string: url)?.host?.lowercased() else { return nil }
     return services.first { host == $0.host || host.hasSuffix("." + $0.host) }?.name
   }
-  /// The call service a window shows, by Meet code title or call-site URL.
+  /// The call service a window shows: a Meet code title (the active tab), or call-site URLs that
+  /// all name one service. Tabs naming different services are ambiguous, so nothing is named.
   public static func service(urls: [String], titles: [String]) -> String? {
-    titles.contains(where: isMeetTitle) ? "Google Meet" : urls.lazy.compactMap(service).first
+    if titles.contains(where: isMeetTitle) { return "Google Meet" }
+    let named = Set(urls.compactMap(service))
+    return named.count == 1 ? named.first : nil
   }
   /// "Meet - abc-defg-hij" (optionally followed by " - Google Chrome" etc).
   public static func isMeetTitle(_ title: String) -> Bool {

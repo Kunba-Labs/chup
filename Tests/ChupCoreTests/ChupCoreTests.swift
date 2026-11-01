@@ -156,6 +156,7 @@ final class ChupCoreTests: XCTestCase {
     XCTAssertEqual(window.fit(start: -0.1, end: 2)?.start, 0)
     XCTAssertNil(window.fit(start: 8, end: 7))  // reversed
     XCTAssertNil(window.fit(start: length + 5, end: length + 6))  // outside the clip
+    XCTAssertNil(window.fit(start: 10, end: length + 30))  // end far past the clip
     XCTAssertEqual(window.fit(start: length, end: length)?.end, length)
     XCTAssertNil(window.fit(start: .nan, end: 1))
   }
@@ -169,6 +170,7 @@ final class ChupCoreTests: XCTestCase {
       BrowserMeetingEvidence.service(urls: ["https://example.com", "https://teams.microsoft.com/x"], titles: []),
       "Microsoft Teams")
     XCTAssertNil(BrowserMeetingEvidence.service(urls: ["https://notzoom.us/"], titles: ["Meet - landing page"]))
+    XCTAssertNil(BrowserMeetingEvidence.service(urls: ["https://teams.microsoft.com/x", "https://zoom.us/j/1"], titles: []))
     XCTAssertTrue(
       BrowserMeetingEvidence.inCall(
         urls: ["https://teams.microsoft.com/v2/"], titles: ["Teams"], controls: ["Hang up "]))

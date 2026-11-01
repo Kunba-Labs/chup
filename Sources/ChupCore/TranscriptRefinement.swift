@@ -15,7 +15,8 @@ public struct TranscriptionWindow: Codable, Equatable, Identifiable {
     let length = audioEnd - audioStart
     // Tolerate boundary drift and zero-length words only; reversed or out-of-clip times are
     // provider errors, not evidence to place text against.
-    guard start.isFinite, end.isFinite, length > 0.05, end >= start, start < length + 0.5, end > -0.5
+    guard start.isFinite, end.isFinite, length > 0.05, end >= start, start < length + 0.5, end > -0.5,
+      end < length + 0.5
     else { return nil }
     // Stored segments need end > start, so a zero-length word gets a 50 ms span.
     let start = min(max(0, start), length - 0.05)
