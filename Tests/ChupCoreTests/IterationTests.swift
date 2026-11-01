@@ -120,6 +120,12 @@ final class IterationTests: XCTestCase {
       AccuracyPass.merge(["one two three four five", "six seven eight nine ten"],
         accurate: "one two three four fife sex seven eight nine ten"),
       ["one two three four five", "six seven eight nine ten"])
+    // Lines of one speaker: a fully misheard line between agreeing lines is replaced.
+    XCTAssertEqual(
+      AccuracyPass.merge(["Salaam alaikum how are you", "So Harik I will sing my audio.", "Thank you for asking me now"],
+        speakers: ["A", "A", "A"],
+        accurate: "Salaam alaikum how are you. So, how do you want to start? Thank you for asking me now."),
+      ["Salaam alaikum how are you.", "So, how do you want to start?", "Thank you for asking me now."])
     // One matching word never replaces a long turn.
     XCTAssertEqual(AccuracyPass.merge(["we should test all the microphones today"], accurate: "today"),
       ["we should test all the microphones today"])

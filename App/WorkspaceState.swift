@@ -1642,7 +1642,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
             ? nil : try? client.transcribe(wave, diarize: false, language: language, keywords: vocabulary)
           let result = try await diarized
           let providerItems = result.segments ?? []
-          let texts = await accurate.map { AccuracyPass.merge(providerItems.map(\.text), accurate: $0.text) }
+          let texts = await accurate.map { AccuracyPass.merge(
+            providerItems.map(\.text), speakers: providerItems.map(\.speaker), accurate: $0.text) }
             ?? providerItems.map(\.text)
           var mapped: [TranscriptSegment] = []
           for (segmentIndex, item) in providerItems.enumerated() {

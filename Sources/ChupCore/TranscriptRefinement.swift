@@ -76,9 +76,13 @@ public struct TranscriptReview: Codable, Equatable, Identifiable {
 /// The diarizing model labels speakers well but hears words worse than `gpt-transcribe`, which
 /// has no speakers. This keeps the diarized turns and swaps in the accurate pass's words, aligned
 /// by longest common word subsequence; words in an unmatched run are spread over the diarized
-/// words in the same run. Too little agreement keeps the diarized text untouched.
+/// words in the same run. Too little agreement keeps the diarized text untouched. `speakers`
+/// (one label per segment) lets words move between lines of one speaker, never across speakers.
 public enum AccuracyPass {
-  public static func merge(_ segments: [String], accurate: String) -> [String] {
+  public static func merge(_ segments: [String], speakers: [String] = [], accurate: String)
+    -> [String]
+  {
+    let speakerOf = { (index: Int) in speakers.count == segments.count ? speakers[index] : "\(index)" }
     func norm(_ word: Substring) -> String {
       String(word.lowercased().filter { $0.isLetter || $0.isNumber })
     }
@@ -114,7 +118,6 @@ public enum AccuracyPass {
       } else if table[i + 1][j] >= table[i][j + 1] { i += 1 } else { j += 1 }
     }
     var assigned = [Int?](repeating: nil, count: m)
-    var matched = [Int](repeating: 0, count: segments.count)
     var unsafe = Set<Int>()
     var previous = (-1, -1)
     for pair in pairs + [(n, m)] {
@@ -125,24 +128,24 @@ public enum AccuracyPass {
         var owners = Set(gapDiar.map { owner[$0] })
         if previous.0 >= 0 { owners.insert(owner[previous.0]) }
         if pair.0 < n { owners.insert(owner[pair.0]) }
-        if owners.count == 1, let only = owners.first {
-          for k in gapAcc { assigned[k] = only }
+        if Set(owners.map(speakerOf)).count == 1 {
+          // One speaker: spread the accurate words over the diarized words they replace.
+          for (r, k) in gapAcc.enumerated() {
+            assigned[k] = gapDiar.isEmpty
+              ? owner[previous.0 >= 0 ? previous.0 : min(pair.0, n - 1)]
+              : owner[gapDiar.lowerBound + r * gapDiar.count / gapAcc.count]
+          }
         } else {
           unsafe.formUnion(owners)
         }
       }
-      if pair.0 < n {
-        assigned[pair.1] = owner[pair.0]
-        matched[owner[pair.0]] += 1
-      }
+      if pair.0 < n { assigned[pair.1] = owner[pair.0] }
       previous = pair
     }
     var merged = [[Substring]](repeating: [], count: segments.count)
     for (k, word) in words.enumerated() { if let o = assigned[k] { merged[o].append(word) } }
-    let sizes = owner.reduce(into: [Int](repeating: 0, count: segments.count)) { $0[$1] += 1 }
     return segments.indices.map { index in
-      guard !unsafe.contains(index), !merged[index].isEmpty, matched[index] * 2 >= sizes[index]
-      else { return segments[index] }
+      guard !unsafe.contains(index), !merged[index].isEmpty else { return segments[index] }
       return merged[index].joined(separator: " ")
     }
   }
