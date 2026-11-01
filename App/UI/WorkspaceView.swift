@@ -311,33 +311,56 @@ struct MeetingDetailView: View {
     VStack(alignment: .leading, spacing: 0) {
       if askOpen {
         VStack(alignment: .leading, spacing: 0) {
-          pageTop
+          header
+          stickyBar
+          jobCard
           AssistantView { askOpen = false }.padding(16).frame(maxWidth: .infinity, maxHeight: .infinity)
             .workspaceSurface().padding(.top, 14)
         }.padding([.horizontal, .top], 30).padding(.bottom, 12)
       } else {
-        // One scroll area for the whole page (header, tabs, content): no boxes scrolling inside it.
+        // One scroll area for the whole page: no boxes scrolling inside it. The recording bar and
+        // tabs pin to the top, so Pause and Stop stay in reach on a long transcript.
         ScrollViewReader { proxy in
-          VStack(alignment: .leading, spacing: 0) {
-            pageTop
-            activeTab.padding(.top, 14)
-          }.padding([.horizontal, .top], 30).padding(.bottom, 12).pageScroll()
-            .onAppear {
-              pendingSource = state.selectedTranscriptSource
+          ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+              header
+              Section {
+                jobCard
+                activeTab.padding(.top, 14)
+              } header: {
+                stickyBar
+              }
+            }.padding([.horizontal, .top], 30).padding(.bottom, 12)
+              .frame(maxWidth: .infinity, alignment: .topLeading)
+          }
+          .scrollPosition($scroll)
+          .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, y in
+            if !restoringScroll { tabOffsets[tab] = y }
+          }
+          .onAppear {
+            pendingSource = state.selectedTranscriptSource
+            scrollToSource(proxy)
+          }
+          .onChange(of: state.selectedTranscriptSource) { _, id in
+            pendingSource = id
+            scrollToSource(proxy)
+          }
+          .onChange(of: tab) { _, new in
+            // Each tab comes back where it was left; a pending source line wins on Transcript.
+            restoringScroll = true
+            DispatchQueue.main.async {
+              scroll.scrollTo(y: tabOffsets[new] ?? 0)
               scrollToSource(proxy)
+              DispatchQueue.main.async { restoringScroll = false }
             }
-            .onChange(of: state.selectedTranscriptSource) { _, id in
-              pendingSource = id
-              scrollToSource(proxy)
-            }
-            .onChange(of: tab) { _, _ in scrollToSource(proxy) }
-            .onChange(of: summaryFindIndex) { _, index in
-              let ids = summaryMatches(SummaryOutline(summary: state.summary, actions: state.actions))
-              guard ids.indices.contains(index) else { return }
-              // A match inside the folded notes opens them first, then scrolls once laid out.
-              if ids[index].hasPrefix("note-") && !notesExpanded { notesExpanded = true }
-              DispatchQueue.main.async { withAnimation { proxy.scrollTo(ids[index], anchor: .center) } }
-            }
+          }
+          .onChange(of: summaryFindIndex) { _, index in
+            let ids = summaryMatches(SummaryOutline(summary: state.summary, actions: state.actions))
+            guard ids.indices.contains(index) else { return }
+            // A match inside the folded notes opens them first, then scrolls once laid out.
+            if ids[index].hasPrefix("note-") && !notesExpanded { notesExpanded = true }
+            DispatchQueue.main.async { withAnimation { proxy.scrollTo(ids[index], anchor: .center) } }
+          }
         }
       }
       askDock.padding(.horizontal, 30).padding(.bottom, 30)
@@ -407,6 +430,10 @@ struct MeetingDetailView: View {
   /// A transcript line asked for (source link, find, search) scrolls into view once the
   /// Transcript tab is showing.
   @State private var pendingSource: String?
+  @State private var scroll = ScrollPosition()
+  @State private var tabOffsets: [String: CGFloat] = [:]
+  /// Set while a tab switch restores its offset, so the switch's own clamping isn't saved.
+  @State private var restoringScroll = false
   private func scrollToSource(_ proxy: ScrollViewProxy) {
     guard tab == "Transcript", let id = pendingSource else { return }
     pendingSource = nil
@@ -419,9 +446,14 @@ struct MeetingDetailView: View {
     default: thoughtsTab
     }
   }
-  private var pageTop: some View {
+  @ViewBuilder private var jobCard: some View {
+    if let id = state.selectedMeetingID, let job = state.job(for: id) {
+      MeetingJobCard(job: job, meetingID: id).padding(.top, 14)
+    }
+  }
+  /// Recording controls and tabs: pinned while the page scrolls.
+  private var stickyBar: some View {
     VStack(alignment: .leading, spacing: 0) {
-      header
       HStack(spacing: 14) {
         if state.activeMeetingID == state.selectedMeetingID {
           Label(
@@ -462,8 +494,7 @@ struct MeetingDetailView: View {
         Palette.paper, in: Capsule()
       ).padding(.top, 14).padding(.bottom, 16)
       tabBar
-      if let job = state.job(for: state.selectedMeetingID) { MeetingJobCard(job: job).padding(.top, 14) }
-    }
+    }.background(Palette.workspace)
   }
   private var header: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -1294,14 +1325,14 @@ struct MeetingJob {
   var parts: (done: Int, total: Int)?
   var title: String {
     switch step {
-    case .transcript: "Transcribing the recording"
+    case .transcript: parts == nil ? "Preparing the recording" : "Transcribing the recording"
     case .summary: "Writing the summary"
     case .notes: "Writing notes"
     }
   }
   var short: String {
     switch step {
-    case .transcript: "Transcribing " + (fraction ?? 0).formatted(.percent.precision(.fractionLength(0)))
+    case .transcript: fraction.map { "Transcribing " + $0.formatted(.percent.precision(.fractionLength(0))) } ?? "Preparing"
     case .summary: "Summarizing"
     case .notes: "Writing notes"
     }
@@ -1310,24 +1341,26 @@ struct MeetingJob {
 extension WorkspaceState {
   func job(for id: String?) -> MeetingJob? {
     guard let id else { return nil }
-    let progress = transcriptionProgress
-    let pipeline = processingMeetingID == id && progress.total > 0
+    let phase = processingMeetingID == id ? refinePhase : nil
     let steps: [MeetingJob.Step] = autoSummaryEnabled ? [.transcript, .summary, .notes] : [.transcript, .notes]
-    if notesMeetingID == id { return MeetingJob(step: .notes, steps: pipeline ? steps : [.notes]) }
+    if notesMeetingID == id { return MeetingJob(step: .notes, steps: phase == nil ? [.notes] : steps) }
     guard processingMeetingID == id else { return nil }
-    guard pipeline else { return MeetingJob(step: .summary, steps: [.summary]) }
-    if progress.done < progress.total {
+    // No refine phase: a summary written on its own.
+    guard let phase else { return MeetingJob(step: .summary, steps: [.summary]) }
+    let progress = transcriptionProgress
+    if phase == .transcript, progress.total > 0 {
       return MeetingJob(
         step: .transcript, steps: steps, fraction: Double(progress.done) / Double(progress.total),
-        parts: (progress.done + 1, progress.total))
+        parts: (min(progress.done + 1, progress.total), progress.total))
     }
-    return MeetingJob(step: autoSummaryEnabled ? .summary : .notes, steps: steps)
+    return MeetingJob(step: phase, steps: steps)  // .transcript here: still planning the audio.
   }
 }
 /// The one progress display on a meeting page: what is happening, how far, which step is next.
 struct MeetingJobCard: View {
   @EnvironmentObject var state: WorkspaceState
   let job: MeetingJob
+  let meetingID: String
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -1337,7 +1370,7 @@ struct MeetingJobCard: View {
             .foregroundStyle(Palette.secondary)
         }
         Spacer()
-        Button("Cancel") { state.cancelMeetingJobs() }.controlSize(.small)
+        Button("Cancel") { state.cancelJobs(for: meetingID) }.controlSize(.small)
           .help("Stop now. Finished parts are kept, and Refine picks up where it stopped.")
       }
       Group {

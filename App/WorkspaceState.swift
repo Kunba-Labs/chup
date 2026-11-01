@@ -155,6 +155,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var processingMeetingID: String?
   /// Audio windows transcribed so far in the running refine, of `total`; 0 of 0 when none runs.
   @Published var transcriptionProgress = (done: 0, total: 0)
+  /// The refine pipeline's current step; nil when no refine runs (a lone summary or notes pass).
+  @Published var refinePhase: MeetingJob.Step?
   @Published var transcriptReviews: [TranscriptReview] = []
   @Published var enrollments: [VoiceEnrollment] = []
   var transcriptionTask: Task<Void, Never>?
@@ -1551,12 +1553,14 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     }
     processingMeeting = true
     processingMeetingID = id
+    refinePhase = .transcript
     transcriptionTask = Task {
       var notesDone = false
       defer {
         processingMeeting = false
         processingMeetingID = nil
         transcriptionProgress = (0, 0)
+        refinePhase = nil
         // Finished: dequeue. Failed or cancelled: stays queued for the next launch, skipped for
         // the rest of this session so it can't retry in a loop.
         if !notesDone { notesSkipped.insert(id) }  // writeNotes dequeues on success.
@@ -1651,11 +1655,13 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         var problems: [String] = []
         var failures: [String] = []
         if autoSummaryEnabled {
+          refinePhase = .summary
           do { try await finalizeSummary(meetingID: id) } catch {
             problems.append("Summary: " + error.localizedDescription)
             failures.append("summary " + Self.errorCategory(error))
           }
         }
+        refinePhase = .notes
         do {
           try await writeNotes(meetingID: id)
           notesDone = true

@@ -113,10 +113,13 @@ extension WorkspaceState {
 
   /// Cancels refine, summary and notes work for the open meeting. Nothing partial is saved:
   /// each job checks for cancellation before it writes.
-  func cancelMeetingJobs() {
-    transcriptionTask?.cancel()
-    summaryTask?.cancel()
-    notesTask?.cancel()
+  /// Stops only this meeting's jobs; another meeting's notes keep running.
+  func cancelJobs(for id: String) {
+    if processingMeetingID == id {
+      transcriptionTask?.cancel()
+      summaryTask?.cancel()
+    }
+    if notesMeetingID == id { notesTask?.cancel() }
   }
 
   // MARK: Tags
