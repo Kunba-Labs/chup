@@ -98,6 +98,12 @@ final class IterationTests: XCTestCase {
     XCTAssertTrue(try store.commitWindow(
       TranscriptionJob(window: window, context: [old, both]), acceptReview: true))
     XCTAssertNil(try store.list(TranscriptSegment.self, kind: "segment").first { $0.id == "both" }?.speakerName)
+    // The user's name beats an automatic voice-match name on the same audio.
+    var matched = segment(id: "auto", start: 10, end: 14.5, text: "Salaam", speaker: "a")
+    matched.speakerName = "Sam · voice match"
+    XCTAssertTrue(try store.commitWindow(
+      TranscriptionJob(window: window, context: [matched]), acceptReview: true))
+    XCTAssertEqual(try store.list(TranscriptSegment.self, kind: "segment").first { $0.id == "auto" }?.speakerName, "Waseem")
     // The same request-local label on audio nobody named stays unnamed.
     let later = TranscriptionWindow(meetingID: "m", track: .remote, start: 90, end: 180, duration: 180)
     XCTAssertTrue(try store.commitWindow(TranscriptionJob(

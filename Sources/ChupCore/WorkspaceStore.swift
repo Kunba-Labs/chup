@@ -278,8 +278,9 @@ public final class WorkspaceStore {
           $0.speakerID == line.speakerID && $0.track == line.track
             && min($0.end, line.end) - max($0.start, line.start) >= 0.5 * (line.end - line.start)
         }.map { $0.speakerName ?? "" })
-        // Corrections that disagree, including a cleared name, leave the line unnamed for review.
-        if candidates.count == 1, let name = candidates.first, !name.isEmpty { names[line.id] = name }
+        // Agreeing corrections win over an automatic name, including an explicitly cleared one
+        // (""). Corrections that disagree leave the line as the provider labelled it.
+        if candidates.count == 1, let name = candidates.first { names[line.id] = name }
       }
       let corrections = allCorrections
         .filter { $0.track == window.track && $0.start < window.end && $0.end > window.start }
@@ -307,7 +308,7 @@ public final class WorkspaceStore {
         }
         for value in incoming {
           var item = acceptReview ? value : overlay[value.id] ?? value
-          if item.speakerName == nil { item.speakerName = names[item.id] }
+          if let corrected = names[item.id] { item.speakerName = corrected.isEmpty ? nil : corrected }
           try execute(
             "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES('segment',?,?,?)",
             [item.id, window.meetingID, try json(item)])
