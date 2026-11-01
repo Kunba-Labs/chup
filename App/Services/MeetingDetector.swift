@@ -177,7 +177,7 @@ enum BrowserMeetingAX {
     var inspected = true
     var meeting = false
     var live = false
-    /// "Google Meet", "Zoom"…: the first window that names a call service.
+    /// "Google Meet", "Zoom"…: the first window in a live call that names its service.
     var service: String?
   }
   static func call(pid: pid_t) -> Call {
@@ -229,14 +229,17 @@ enum BrowserMeetingAX {
       budget = 4000  // Per window, so one large window can't hide the call window.
       walk(window, depth: 0)
       truncated = truncated || budget <= 0
-      // Only a window that shows the call names the service; other open tabs don't count.
       if BrowserMeetingEvidence.inCall(urls: urls, titles: titles, controls: controls) {
         call.meeting = true
+      }
+      // Only a window in a live call (a Leave control beside the call site) names the service:
+      // a stale Meet title or another open tab says nothing about what is being recorded.
+      if BrowserMeetingEvidence.inCall(
+        urls: urls, titles: titles, controls: controls, requireControl: true)
+      {
+        call.live = true
         call.service = call.service ?? BrowserMeetingEvidence.service(urls: urls, titles: titles)
       }
-      call.live = call.live
-        || BrowserMeetingEvidence.inCall(
-          urls: urls, titles: titles, controls: controls, requireControl: true)
     }
     if truncated && !call.meeting { call.inspected = false }
     return call

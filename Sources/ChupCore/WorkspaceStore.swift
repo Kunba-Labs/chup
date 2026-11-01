@@ -274,11 +274,12 @@ public final class WorkspaceStore {
       // provider labels are request-local and boundaries drift.
       var names: [String: String] = [:]
       for line in job.context {
-        let named = allCorrections.first {
-          $0.speakerName != nil && $0.speakerID == line.speakerID && $0.track == line.track
+        let candidates = Set(allCorrections.filter {
+          $0.speakerID == line.speakerID && $0.track == line.track
             && min($0.end, line.end) - max($0.start, line.start) >= 0.5 * (line.end - line.start)
-        }
-        if let name = named?.speakerName { names[line.id] = name }
+        }.map { $0.speakerName ?? "" })
+        // Corrections that disagree, including a cleared name, leave the line unnamed for review.
+        if candidates.count == 1, let name = candidates.first, !name.isEmpty { names[line.id] = name }
       }
       let corrections = allCorrections
         .filter { $0.track == window.track && $0.start < window.end && $0.end > window.start }

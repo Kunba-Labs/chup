@@ -86,6 +86,18 @@ final class IterationTests: XCTestCase {
     let names = try store.list(TranscriptSegment.self, kind: "segment")
     XCTAssertEqual(names.first { $0.id == "new" }?.speakerName, "Waseem")
     XCTAssertNil(names.first { $0.id == "drift" }?.speakerName)
+    // A new line covering two corrections named differently stays unnamed.
+    var other = segment(id: "other", start: 30, end: 32, text: "Hey", speaker: "b")
+    var other2 = segment(id: "other2", start: 32, end: 34, text: "there", speaker: "b")
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [old, other, other2])))
+    other.speakerName = "Mara"
+    other2.speakerName = "Sam"
+    try store.correct(other)
+    try store.correct(other2)
+    let both = segment(id: "both", start: 30, end: 34, text: "Hey there", speaker: "b")
+    XCTAssertTrue(try store.commitWindow(
+      TranscriptionJob(window: window, context: [old, both]), acceptReview: true))
+    XCTAssertNil(try store.list(TranscriptSegment.self, kind: "segment").first { $0.id == "both" }?.speakerName)
     // The same request-local label on audio nobody named stays unnamed.
     let later = TranscriptionWindow(meetingID: "m", track: .remote, start: 90, end: 180, duration: 180)
     XCTAssertTrue(try store.commitWindow(TranscriptionJob(
