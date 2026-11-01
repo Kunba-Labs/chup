@@ -74,6 +74,26 @@ public struct TranscriptReview: Codable, Equatable, Identifiable {
   }
 }
 public enum SpeakerContinuity {
+  /// Each window is diarized on its own, so the provider's labels restart every 90 s. One clip
+  /// per earlier acoustic group (its longest line, clipped to 2–10 s), most talk time first, is
+  /// sent as a known-speaker reference so the next window can reuse that group.
+  public static func carryReferences(_ seen: [TranscriptSegment], limit: Int)
+    -> [(speakerID: String, start: Double, end: Double)]
+  {
+    guard limit > 0 else { return [] }
+    let groups = Dictionary(grouping: seen.filter {
+      !$0.provisional && !$0.speakerID.hasPrefix("enrolled:") && $0.speakerID != "assistant"
+    }, by: \.speakerID)
+    return groups.compactMap { id, lines -> (String, Double, Double, Double)? in
+      guard let longest = lines.max(by: { $0.end - $0.start < $1.end - $1.start }),
+        longest.end - longest.start >= 2.5
+      else { return nil }
+      return (id, longest.start, min(longest.end, longest.start + 10),
+        lines.reduce(0) { $0 + $1.end - $1.start })
+    }
+    .sorted { $0.3 != $1.3 ? $0.3 > $1.3 : $0.0 < $1.0 }
+    .prefix(limit).map { ($0.0, $0.1, $0.2) }
+  }
   /// Matching content is only useful in shared audio, on the same track. Conflicting matches
   /// leave the request-local label unknown. Numeric speaker labels never establish identity.
   public static func reconcile(_ incoming: [TranscriptSegment], previous: [TranscriptSegment])

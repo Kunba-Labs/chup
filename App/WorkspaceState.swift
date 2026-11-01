@@ -1591,6 +1591,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           return ["name": "voice_" + profile.id, "audio": wave.base64EncodedString()]
         }
         var previous: [TrackKind: [TranscriptSegment]] = [:]
+        var seen: [TrackKind: [TranscriptSegment]] = [:]
         for (index, window) in windows.enumerated() {
           try Task.checkCancellation()
           transcriptionProgress = (index, windows.count)
@@ -1600,6 +1601,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
             ["completed", "review"].contains(saved.status)
           {
             previous[window.track] = saved.context
+            seen[window.track, default: []] += saved.context
             continue
           }
           var job = TranscriptionJob(window: window, status: "running")
@@ -1607,10 +1609,26 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           try db().put(job, kind: "transcriptionJob", id: job.id, parent: id)
           let wave = try await archive.wave(
             start: window.audioStart, end: window.audioEnd, track: window.track)
+          // Speakers heard in earlier windows of this track, so labels survive the 90 s split.
+          var carried: [String: TranscriptSegment] = [:]
+          var windowReferences = references
+          if window.track != .assistant {
+            for (slot, ref) in SpeakerContinuity.carryReferences(
+              seen[window.track] ?? [], limit: 4 - references.count
+            ).enumerated() {
+              let name = "voice_carry-\(slot)"
+              windowReferences.append([
+                "name": name,
+                "audio": try await archive.wave(start: ref.start, end: ref.end, track: window.track)
+                  .base64EncodedString(),
+              ])
+              carried[name] = seen[window.track]?.last { $0.speakerID == ref.speakerID }
+            }
+          }
           let result = try await client.transcribe(
             wave, diarize: true, language: language,
             keywords: DictationPersonalization.vocabulary(personalization, language: language),
-            references: window.track == .assistant ? [] : references)
+            references: window.track == .assistant ? [] : windowReferences)
           var mapped: [TranscriptSegment] = []
           for (segmentIndex, item) in (result.segments ?? []).enumerated() {
             guard let interval = window.fit(start: item.start, end: item.end) else {
@@ -1628,6 +1646,11 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
             segment.attribution =
               profile == nil
               ? "request-local acoustic group" : "enrolled reference match; review identity"
+            if let earlier = carried[item.speaker] {
+              segment.speakerID = earlier.speakerID
+              segment.speakerName = earlier.speakerName
+              segment.attribution = "matched to an earlier window's acoustic group"
+            }
             if window.track == .assistant {
               segment.speakerID = "assistant"
               segment.speakerName = "Chup! assistant"
@@ -1642,6 +1665,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           try Task.checkCancellation()
           _ = try db().commitWindow(job)
           previous[window.track] = job.context
+          seen[window.track, default: []] += job.context
           activeJob = nil
           if selectedMeetingID == id { try refreshDetail() }
         }

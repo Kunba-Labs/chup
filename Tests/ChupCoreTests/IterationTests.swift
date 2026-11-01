@@ -70,6 +70,22 @@ final class IterationTests: XCTestCase {
     next.end = 204
     XCTAssertEqual(SpeakerContinuity.reconcile([next], previous: [old]).first!.speakerID, "b")
   }
+  func testCarryReferencesPickLongestLinePerSpeakerByTalkTime() {
+    var enrolled = segment(id: "e", start: 0, end: 30, text: "", speaker: "enrolled:x")
+    enrolled.track = .remote
+    let refs = SpeakerContinuity.carryReferences(
+      [
+        segment(id: "1", start: 0, end: 3, text: "", speaker: "a"),
+        segment(id: "2", start: 5, end: 25, text: "", speaker: "a"),
+        segment(id: "3", start: 30, end: 32, text: "", speaker: "b"),  // too short to reference
+        segment(id: "4", start: 40, end: 44, text: "", speaker: "c"),
+        enrolled,
+      ], limit: 4)
+    XCTAssertEqual(refs.map(\.speakerID), ["a", "c"])
+    XCTAssertEqual(refs[0].start, 5)
+    XCTAssertEqual(refs[0].end, 15)
+    XCTAssertEqual(SpeakerContinuity.carryReferences([segment(id: "1", start: 0, end: 5, text: "", speaker: "a")], limit: 0).count, 0)
+  }
   func testCorrectionChangedSegmentationStagesReviewAndAtomicJobAcrossReopen() throws {
     let url = try directory().appendingPathComponent("store.sqlite")
     let store = try WorkspaceStore(url: url)
