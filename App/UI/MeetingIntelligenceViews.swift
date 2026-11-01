@@ -181,10 +181,29 @@ struct SummaryEditView: View {
   }
 }
 /// Granola-style notes: the user's lines in ink, AI additions in grey with transcript sources.
+/// Rewrites the filled-in notes with another template.
+struct NotesTemplateMenu: View {
+  @EnvironmentObject var state: WorkspaceState
+  var body: some View {
+    let id = state.enhancedNotes?.template ?? "general"
+    let busy = state.selectedMeetingID != nil
+      && (state.notesMeetingID == state.selectedMeetingID
+        || state.processingMeetingID == state.selectedMeetingID)
+    Menu("Template: " + (EnhancedNotes.templates.first { $0.id == id }?.name ?? "General")) {
+      ForEach(EnhancedNotes.templates, id: \.id) { template in
+        Button(template.name) { state.regenerateNotes(template: template.id) }
+      }
+    }.menuStyle(.button).buttonStyle(.pill).fixedSize()
+      .disabled(busy || state.activeMeetingID == state.selectedMeetingID)
+      .help("Rewrite the notes with this template")
+  }
+}
 struct EnhancedNotesView: View {
   @EnvironmentObject var state: WorkspaceState
   var showTab: (String) -> Void = { _ in }
   var embedded = false
+  /// The Summary tab puts the template picker beside its next-step field instead.
+  var showsHeader = true
   /// Find text from the Summary tab; matching lines are highlighted.
   var highlight = ""
   private func found(_ text: String) -> Bool {
@@ -193,32 +212,28 @@ struct EnhancedNotesView: View {
   }
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      HStack {
-        Text("Your notes, filled in").font(.system(size: embedded ? 17 : 22, weight: .semibold))
-        Spacer()
-        if busy {
+      if busy {
+        HStack(spacing: 6) {
           ProgressView().controlSize(.small)
           Text("Writing your notes…").font(.caption).foregroundStyle(Palette.secondary)
         }
-        Menu(templateName) {
-          ForEach(EnhancedNotes.templates, id: \.id) { template in
-            Button(template.name) { state.regenerateNotes(template: template.id) }
-          }
-        }.fixedSize().disabled(busy || state.activeMeetingID == state.selectedMeetingID)
-          .help("Rewrite the notes with this template")
+      }
+      if showsHeader { HStack {
+        Text("Your notes, filled in").font(.system(size: embedded ? 17 : 22, weight: .semibold))
+        Spacer()
+        NotesTemplateMenu()
         if !embedded {
           Menu("Share") {
             Button("Copy as Markdown") { state.copyNotesMarkdown() }
             Button("Draft follow-up email") { state.draftFollowup() }
           }.fixedSize().disabled(state.enhancedNotes?.blocks.isEmpty ?? true)
         }
-      }.padding(.top, embedded ? 0 : 24)
+      }.padding(.top, embedded ? 0 : 24) }
       if let notes = state.enhancedNotes, !notes.blocks.isEmpty {
-        Text("Black is yours. Grey comes from the transcript.")
-          .font(.caption).foregroundStyle(Palette.secondary)
         let document = VStack(alignment: .leading, spacing: 8) {
           ForEach(notes.blocks) { block in row(block).id("note-" + block.id) }
         }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
+          .help("Black is yours. Grey comes from the transcript.")
         if embedded { document.workspaceSurface() } else { ScrollView { document }.workspaceSurface() }
       } else {
         QuietEmpty(
@@ -239,10 +254,6 @@ struct EnhancedNotesView: View {
     state.selectedMeetingID != nil
       && (state.notesMeetingID == state.selectedMeetingID
         || state.processingMeetingID == state.selectedMeetingID)
-  }
-  private var templateName: String {
-    let id = state.enhancedNotes?.template ?? "general"
-    return "Template: " + (EnhancedNotes.templates.first { $0.id == id }?.name ?? "General")
   }
   @ViewBuilder private func row(_ block: NoteBlock) -> some View {
     if block.isHeading {

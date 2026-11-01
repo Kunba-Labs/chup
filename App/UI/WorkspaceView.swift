@@ -490,7 +490,7 @@ struct MeetingDetailView: View {
           }.accessibilityLabel("Pause or resume recording")
           Button("Stop and save") { state.stopMeeting() }
         } else {
-          Label("Notes save as you type", systemImage: "checkmark.circle").font(.caption)
+          Label("Notes save as you type", systemImage: "checkmark.circle").font(.system(size: 14))
             .foregroundStyle(Palette.secondary)
           Spacer()
           Button {
@@ -777,8 +777,9 @@ struct MeetingDetailView: View {
       }
       if outline.isEmpty && state.summaryEdits.isEmpty, state.enhancedNotes?.blocks.isEmpty == false {
         // Notes written from the transcript when no summary was made still have a home.
-        addStepField
-        EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true, highlight: summaryQuery).padding(4)
+        addStepField(template: true)
+        EnhancedNotesView(
+          showTab: { tab = Self.tabName($0) }, embedded: true, showsHeader: false, highlight: summaryQuery)
       } else if outline.isEmpty && state.summaryEdits.isEmpty {
         QuietEmpty(
           icon: "text.alignleft", art: "VoxelNotebook", title: "No summary yet",
@@ -786,7 +787,7 @@ struct MeetingDetailView: View {
             ? "Press Write summary to make one."
             : state.autoSummaryEnabled && state.cloudEnabled
               ? "It’s written when the meeting ends." : "After the meeting, press Write summary.")
-        addStepField
+        addStepField(template: false)
       } else {
           VStack(alignment: .leading, spacing: 22) {
             if !state.summaryEdits.isEmpty {
@@ -828,7 +829,7 @@ struct MeetingDetailView: View {
                   .padding(.top, 4)
                 ForEach(group.steps) { step in nextStep(step) }
               }
-              addStepField.padding(.top, 4)
+              addStepField(template: false).padding(.top, 4)
               if state.lastActionReceipt != nil {
                 Button("Undo last change") { state.undoAction() }.controlSize(.small)
               }
@@ -840,7 +841,12 @@ struct MeetingDetailView: View {
             }
             if state.enhancedNotes?.blocks.isEmpty == false {
               DisclosureGroup(isExpanded: $notesExpanded) {
-                EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true, highlight: summaryQuery).padding(.top, 8)
+                VStack(alignment: .leading, spacing: 10) {
+                  NotesTemplateMenu()
+                  EnhancedNotesView(
+                    showTab: { tab = Self.tabName($0) }, embedded: true, showsHeader: false,
+                    highlight: summaryQuery)
+                }.padding(.top, 8)
               } label: {
                 Text("Notes filled in from the transcript").font(.system(size: 15, weight: .semibold))
               }
@@ -850,11 +856,15 @@ struct MeetingDetailView: View {
     }
   }
   @State private var newStep = ""
-  private var addStepField: some View {
-    HStack {
+  /// Field and buttons share the 40 pt pill height; the template picker joins when notes show.
+  private func addStepField(template: Bool) -> some View {
+    HStack(spacing: 8) {
       TextField("Add a next step…", text: $newStep).textFieldStyle(.plain).onSubmit(addStep)
-        .padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
-      Button("Add", action: addStep).disabled(newStep.trimmingCharacters(in: .whitespaces).isEmpty)
+        .font(.system(size: 14)).padding(.horizontal, 14).frame(height: 40)
+        .background(Palette.paper, in: Capsule())
+      Button("Add", action: addStep).buttonStyle(.pill)
+        .disabled(newStep.trimmingCharacters(in: .whitespaces).isEmpty)
+      if template { NotesTemplateMenu() }
     }
   }
   @State private var summaryFinding = false
