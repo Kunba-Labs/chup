@@ -74,7 +74,7 @@ struct DictationView: View {
       }
       if state.history.isEmpty {
         QuietEmpty(
-          icon: "text.cursor", title: "No dictations yet",
+          icon: "text.cursor", art: "VoxelDictation", title: "No dictations yet",
           subtitle:
             "Your dictations show here. Copy or retry any of them."
         )
@@ -195,7 +195,7 @@ struct NotebookView: View {
       ListSearchField(placeholder: "Search notebook", text: $query)
       if state.meetings.isEmpty {
         QuietEmpty(
-          icon: "book.closed", title: "No notes yet",
+          icon: "book.closed", art: "VoxelNotebook", title: "No notes yet",
           subtitle:
             "Press New note to start one.")
       } else {
@@ -297,7 +297,7 @@ struct PersonalizationView: View {
         .onAppear(perform: takeListQuery).onChange(of: state.listQuery) { _, _ in takeListQuery() }
       if !state.personalization.contains(where: { $0.kind == kind }) {
         QuietEmpty(
-          icon: page.icon, title: "Nothing here yet",
+          icon: page.icon, art: "VoxelPersonal", title: "Nothing here yet",
           subtitle: "Add your first entry above.")
       } else {
           LazyVStack(spacing: 12) {

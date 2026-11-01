@@ -2,8 +2,7 @@ import AppKit
 import ChupCore
 import SwiftUI
 
-/// Notes column while recording (Wispr's Notepad): full height against the screen edge opposite
-/// the rail, dragged anywhere by its header and kept there. Hidden from screen sharing, takes
+/// Notes column while recording (Wispr's Notepad): full height against the right screen edge, dragged anywhere by its header and kept there. Hidden from screen sharing, takes
 /// keyboard focus without activating Chup!.
 @MainActor final class MeetingSidebar: ObservableObject {
   @Published var collapsed = false
@@ -16,8 +15,10 @@ import SwiftUI
   /// Edge chosen from the move menu; nil follows the rail (opposite side).
   private var dockLeft: Bool?
   private weak var state: WorkspaceState?
+  /// Column width: 20% wider than the original 360 pt card.
+  static let width: CGFloat = 432
   private let panel = NonactivatingPanel(
-    contentRect: NSRect(x: 0, y: 0, width: 360, height: 600),
+    contentRect: NSRect(x: 0, y: 0, width: MeetingSidebar.width, height: 600),
     styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
   init(state: WorkspaceState) {
     self.state = state
@@ -77,13 +78,13 @@ import SwiftUI
     let screen = placed.flatMap { point in NSScreen.screens.first { $0.visibleFrame.insetBy(dx: -1, dy: -1).contains(point) } }
       ?? panel.screen ?? NSScreen.main ?? NSScreen.screens[0]
     let frame = screen.visibleFrame
-    let left = dockLeft ?? (state?.railDock == "right")
+    let left = dockLeft ?? false  // Right edge by default; the move menu can dock it left.
     // Docked: a column the full height of the screen. Placed: the user's spot, same top edge.
     let top = min(max(placed?.y ?? frame.maxY - 8, frame.minY + 120), frame.maxY)
-    let x = min(max(placed?.x ?? (left ? frame.minX + 8 : frame.maxX - 368), frame.minX), frame.maxX - 360)
+    let x = min(max(placed?.x ?? (left ? frame.minX + 8 : frame.maxX - Self.width - 8), frame.minX), frame.maxX - Self.width)
     let height = collapsed ? 56 : max(112, top - frame.minY - 8)
     placing = true
-    panel.setFrame(NSRect(x: x, y: top - height, width: 360, height: height), display: true)
+    panel.setFrame(NSRect(x: x, y: top - height, width: Self.width, height: height), display: true)
     placing = false
   }
 }
@@ -116,7 +117,7 @@ struct MeetingSidebarView: View {
         }.frame(maxHeight: .infinity)
         footer
       }
-    }.padding(14).frame(width: 360, alignment: .topLeading)
+    }.padding(14).frame(width: MeetingSidebar.width, alignment: .topLeading)
       .frame(maxHeight: .infinity, alignment: .top)
       .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 18))
       .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.border) }

@@ -222,7 +222,7 @@ struct EnhancedNotesView: View {
         if embedded { document.workspaceSurface() } else { ScrollView { document }.workspaceSurface() }
       } else {
         QuietEmpty(
-          icon: "doc.text",
+          icon: "doc.text", art: "VoxelNotebook",
           title: state.activeMeetingID == state.selectedMeetingID
             ? "Notes come when the meeting ends" : "No notes yet",
           subtitle:

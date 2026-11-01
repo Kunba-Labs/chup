@@ -383,7 +383,8 @@ struct TodayView: View {
         }
       }.padding(38).frame(maxWidth: 760, alignment: .leading)
         .frame(maxWidth: .infinity)  // Full-width scroll area: scrollbar at the window edge.
-    }.onAppear(perform: load).onChange(of: state.meetings) { _, _ in load() }
+    }.background(alignment: .bottom) { FujiLandscape().frame(height: 340) }
+      .onAppear(perform: load).onChange(of: state.meetings) { _, _ in load() }
       .onChange(of: state.actions) { _, _ in load() }
   }
   @ViewBuilder private func section(_ title: String, @ViewBuilder _ content: () -> some View)

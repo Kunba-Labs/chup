@@ -256,7 +256,7 @@ struct MeetingsView: View {
         if let searchError { Text(searchError).font(.caption).foregroundStyle(Palette.red) }
         if filtered.isEmpty {
           QuietEmpty(
-            icon: "person.2.wave.2", title: "No meetings yet",
+            icon: "person.2.wave.2", art: "VoxelMeetings", title: "No meetings yet",
             subtitle:
               "Press Record in the rail to start your first meeting."
           )
@@ -680,7 +680,7 @@ struct MeetingDetailView: View {
         EnhancedNotesView(showTab: { tab = Self.tabName($0) }, embedded: true, highlight: summaryQuery).padding(4)
       } else if outline.isEmpty && state.summaryEdits.isEmpty {
         QuietEmpty(
-          icon: "text.alignleft", title: "No summary yet",
+          icon: "text.alignleft", art: "VoxelNotebook", title: "No summary yet",
           subtitle: !state.segments.isEmpty
             ? "Press Write summary to make one."
             : state.autoSummaryEnabled && state.cloudEnabled
@@ -1008,7 +1008,7 @@ struct MeetingDetailView: View {
       }
       if state.segments.isEmpty {
         QuietEmpty(
-          icon: "waveform", title: "No transcript yet",
+          icon: "waveform", art: "VoxelDictation", title: "No transcript yet",
           subtitle:
             "Record the meeting. The transcript shows here when you stop."
         )

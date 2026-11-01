@@ -55,12 +55,18 @@ struct WaveMark: View {
 }
 struct QuietEmpty: View {
   var icon: String
+  /// A voxel illustration from the asset catalog; the SF Symbol is the fallback.
+  var art: String?
   var title: String
   var subtitle: String
   var body: some View {
     VStack(spacing: 16) {
-      Image(systemName: icon).font(.system(size: 32, weight: .ultraLight)).foregroundStyle(
-        Palette.accent)
+      if let art {
+        Image(art).resizable().interpolation(.high).frame(width: 72, height: 72).accessibilityHidden(true)
+      } else {
+        Image(systemName: icon).font(.system(size: 32, weight: .ultraLight)).foregroundStyle(
+          Palette.accent)
+      }
       Text(title).font(.system(size: 25, weight: .semibold))
       Text(subtitle).font(.system(size: 14)).foregroundStyle(Palette.secondary)
         .multilineTextAlignment(.center).frame(maxWidth: 370)
