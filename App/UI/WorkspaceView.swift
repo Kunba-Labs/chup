@@ -968,6 +968,20 @@ struct MeetingDetailView: View {
     }.menuStyle(.borderlessButton).fixedSize().font(.system(size: 12, weight: .semibold))
       .accessibilityLabel("Speaker \(label)").accessibilityHint("Rename this speaker or move this line")
   }
+  /// Consecutive lines from one speaker on one track, in order.
+  private var transcriptGroups: [[TranscriptSegment]] {
+    var groups: [[TranscriptSegment]] = []
+    for segment in state.segments {
+      if let last = groups.last?.last, last.speakerID == segment.speakerID, last.track == segment.track,
+        last.provisional == segment.provisional
+      {
+        groups[groups.count - 1].append(segment)
+      } else {
+        groups.append([segment])
+      }
+    }
+    return groups
+  }
   private var transcriptBody: some View {
     VStack(alignment: .leading) {
       HStack(spacing: 8) {
@@ -1019,13 +1033,15 @@ struct MeetingDetailView: View {
             "Record the meeting. The transcript shows here when you stop."
         )
       } else {
-          LazyVStack(alignment: .leading, spacing: 25) {
-            ForEach(state.segments) { segment in
+          // One flowing document: back-to-back lines from the same speaker share one heading.
+          LazyVStack(alignment: .leading, spacing: 22) {
+            ForEach(transcriptGroups, id: \.first!.id) { group in
+              let segment = group[0]
               HStack(alignment: .top, spacing: 18) {
                 Button(WorkspaceState.time(segment.start)) { state.play(at: segment.start) }.font(
                   .caption.monospacedDigit()
-                ).buttonStyle(.plain).foregroundStyle(Palette.accent).frame(width: 48)
-                VStack(alignment: .leading, spacing: 8) {
+                ).buttonStyle(.plain).foregroundStyle(Palette.accent).frame(width: 48).padding(.top, 2)
+                VStack(alignment: .leading, spacing: 6) {
                   HStack {
                     if segment.provisional {
                       Text("Live text · speaker not known yet").font(.system(size: 12, weight: .semibold))
@@ -1050,24 +1066,40 @@ struct MeetingDetailView: View {
                       .system(size: 9, weight: .semibold)
                     ).foregroundStyle(Palette.secondary)
                     Spacer()
-                    Button {
-                      source = segment
-                    } label: {
-                      Image(systemName: "pencil")
-                    }.buttonStyle(.plain).accessibilityLabel("Fix this line")
                   }
-                  Text(segment.text).padding(5).background(
-                    state.selectedTranscriptSource == segment.id
-                      ? Palette.sidebar
-                      : findMatches.contains(segment.id) ? Palette.accent.opacity(0.10) : .clear,
-                    in: RoundedRectangle(cornerRadius: 5)
-                  ).font(.system(size: 16)).lineSpacing(5).textSelection(.enabled)
+                  ForEach(group) { line in
+                    TranscriptLine(
+                      text: line.text, time: WorkspaceState.time(line.start),
+                      highlight: state.selectedTranscriptSource == line.id
+                        ? Palette.sidebar
+                        : findMatches.contains(line.id) ? Palette.accent.opacity(0.10) : .clear
+                    ) { source = line }.id(line.id)
+                  }
                 }
-              }.padding(18).workspaceSurface().id(segment.id)
+              }
             }
-          }
+          }.padding(22).workspaceSurface()
       }
     }
+  }
+}
+/// One transcript line inside a speaker's block; its edit button shows on hover and stays
+/// reachable by keyboard and VoiceOver.
+private struct TranscriptLine: View {
+  let text: String
+  let time: String
+  let highlight: Color
+  let edit: () -> Void
+  @State private var hovering = false
+  var body: some View {
+    HStack(alignment: .firstTextBaseline, spacing: 8) {
+      Text(text).font(.system(size: 16)).lineSpacing(5).textSelection(.enabled)
+        .padding(.horizontal, 4).padding(.vertical, 1)
+        .background(highlight, in: RoundedRectangle(cornerRadius: 5)).help(time)
+      Spacer(minLength: 0)
+      Button(action: edit) { Image(systemName: "pencil") }.buttonStyle(.plain)
+        .foregroundStyle(Palette.secondary).opacity(hovering ? 1 : 0).accessibilityLabel("Fix this line")
+    }.contentShape(Rectangle()).onHover { hovering = $0 }
   }
 }
 struct CaptureSetupView: View {
