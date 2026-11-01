@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0140CEC246F4611886A8E1F7 /* Shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210C2DCF47CD4D22236D3484 /* Shell.swift */; };
+		01F06E2A9BA38CF17759C925 /* FujiLandscape.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13337C92449822E5E8951D2 /* FujiLandscape.swift */; };
 		0237E234DF59BE430581E9F5 /* AssistantRouteDevices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C042F45AEF8DD558DCB8D2 /* AssistantRouteDevices.swift */; };
 		0E85B97430E4DE3415627ACC /* LocalSpeechModel.json in Resources */ = {isa = PBXBuildFile; fileRef = 2EFB557A7A12064321D5DB97 /* LocalSpeechModel.json */; };
 		1108AA200B98985E08F14B00 /* FluidAudio-vbx-LICENSE.md in Resources */ = {isa = PBXBuildFile; fileRef = E646FCF429D51F65E2FAE0DE /* FluidAudio-vbx-LICENSE.md */; };
@@ -197,6 +198,7 @@
 		CC8CB95E2A7951CDD4BFAB49 /* DataViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataViews.swift; sourceTree = "<group>"; };
 		CD46CB93BBAEEF9446BA9C2B /* ParakeetModel.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ParakeetModel.json; sourceTree = "<group>"; };
 		CE4BDA2CFB6B8BD22953EDA1 /* WorkspaceDictationPlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDictationPlayback.swift; sourceTree = "<group>"; };
+		D13337C92449822E5E8951D2 /* FujiLandscape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FujiLandscape.swift; sourceTree = "<group>"; };
 		E4C0AB363B22B7AED4A2D67E /* ProcessAudioCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessAudioCapture.swift; sourceTree = "<group>"; };
 		E646FCF429D51F65E2FAE0DE /* FluidAudio-vbx-LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "FluidAudio-vbx-LICENSE.md"; sourceTree = "<group>"; };
 		E8F3550A25FB84F2BD9D8F23 /* WorkspaceTracing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTracing.swift; sourceTree = "<group>"; };
@@ -285,6 +287,7 @@
 				C64A14F11CCE3285A0EF5709 /* DictationIndicator.swift */,
 				EFCD229CCD46BC603F0D6258 /* DictationReview.swift */,
 				A35EDA935A69CF35122BA0A7 /* DynamicIsland.swift */,
+				D13337C92449822E5E8951D2 /* FujiLandscape.swift */,
 				A6D6D9542FAA1FD5814ECDD6 /* HoverRail.swift */,
 				222145F9B4D63BF301B064CA /* LibraryViews.swift */,
 				AFC0F9A366CB410ADC333269 /* LocalSpeechSettings.swift */,
@@ -512,6 +515,7 @@
 				31802E73B3DAB3691EC423FE /* DictationReview.swift in Sources */,
 				D57B2353A5F14F37B32A12EB /* DictationTraceValidation.swift in Sources */,
 				A5E9F7AB0EC62D226742127B /* DynamicIsland.swift in Sources */,
+				01F06E2A9BA38CF17759C925 /* FujiLandscape.swift in Sources */,
 				D533A97196AC14655B3F6233 /* HoverRail.swift in Sources */,
 				5B4585E986F598D84F90CCFD /* KeyVault.swift in Sources */,
 				EC6CE8261B0EC2C2936730A2 /* LibraryViews.swift in Sources */,

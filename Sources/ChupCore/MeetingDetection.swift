@@ -67,6 +67,11 @@ public struct MeetingDetectionPolicy {
 /// site plus an in-call control, or a Meet code title, so a browser merely holding the mic
 /// doesn't count.
 public enum BrowserMeetingEvidence {
+  /// Service names, for choosing one by hand when detection missed it.
+  public static var serviceNames: [String] {
+    var seen = Set<String>()
+    return services.map(\.name).filter { seen.insert($0).inserted }
+  }
   static let services: [(host: String, name: String)] = [
     ("meet.google.com", "Google Meet"), ("teams.microsoft.com", "Microsoft Teams"),
     ("teams.live.com", "Microsoft Teams"), ("zoom.us", "Zoom"), ("webex.com", "Webex"),

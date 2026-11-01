@@ -854,8 +854,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       self.lastReceipt = nil
     } catch { notice = error.localizedDescription }
   }
-  func renameMeeting(_ title: String, participants: String, tags: String) {
+  func renameMeeting(_ title: String, participants: String, tags: String, callService: String?? = nil) {
     guard var meeting = selectedMeeting else { return }
+    if let callService { meeting.callService = callService }
     meeting.title = title
     meeting.participants = participants
     meeting.tags = tags

@@ -299,6 +299,7 @@ struct MeetingDetailView: View {
   @State private var title = ""
   @State private var people = ""
   @State private var tags = ""
+  @State private var callService: String?
   @State private var source: TranscriptSegment?
   @State private var renaming: TranscriptSegment?
   @State private var newSpeakerName = ""
@@ -390,11 +391,15 @@ struct MeetingDetailView: View {
           TextField("Title", text: $title)
           TextField("People in the meeting", text: $people)
           TextField("Tags, separated by commas", text: $tags)
+          Picker("Call", selection: $callService) {
+            Text("The recorded app").tag(String?.none)
+            ForEach(BrowserMeetingEvidence.serviceNames, id: \.self) { Text($0).tag(Optional($0)) }
+          }.help("Shown on the meeting instead of the browser, when Chup! didn’t recognise the call")
           HStack {
             Button("Cancel") { editMetadata = false }
             Spacer()
             Button("Save") {
-              state.renameMeeting(title, participants: people, tags: tags)
+              state.renameMeeting(title, participants: people, tags: tags, callService: .some(callService))
               editMetadata = false
             }.buttonStyle(.pillPrimary)
           }
@@ -523,6 +528,7 @@ struct MeetingDetailView: View {
             title = state.selectedMeeting?.title ?? ""
             people = state.selectedMeeting?.participants ?? ""
             tags = state.selectedMeeting?.tags ?? ""
+            callService = state.selectedMeeting?.callService
             editMetadata = true
           }
           Divider()
