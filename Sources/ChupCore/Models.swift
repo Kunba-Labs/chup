@@ -82,6 +82,11 @@ public struct TranscriptSegment: Identifiable, Codable, Equatable {
   public var track: TrackKind
   public var provisional: Bool
   public var attribution: String?
+  /// On a correction: what the user changed. A rename alone (`nameCorrected`, no
+  /// `textCorrected`) never sends a refined window to review; it follows its audio instead.
+  /// Both nil marks a correction saved before these flags existed.
+  public var nameCorrected: Bool?
+  public var textCorrected: Bool?
   public init(
     id: String = UUID().uuidString, meetingID: String, start: Double, end: Double, text: String,
     speakerID: String, speakerName: String? = nil, track: TrackKind, provisional: Bool = false

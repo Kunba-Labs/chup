@@ -80,9 +80,8 @@ final class IterationTests: XCTestCase {
     let new = segment(id: "new", start: 10, end: 15, text: "Salaam Alaikum", speaker: "a")
     // Same label, but a turn that only grazes the named audio after boundary drift.
     let drift = segment(id: "drift", start: 13.6, end: 20, text: "Hi there", speaker: "a")
-    XCTAssertFalse(try store.commitWindow(TranscriptionJob(window: window, context: [new, drift])))
-    XCTAssertTrue(try store.commitWindow(
-      TranscriptionJob(window: window, context: [new, drift]), acceptReview: true))
+    // A rename alone never stages a review; the name follows its audio.
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [new, drift])))
     let names = try store.list(TranscriptSegment.self, kind: "segment")
     XCTAssertEqual(names.first { $0.id == "new" }?.speakerName, "Waseem")
     XCTAssertNil(names.first { $0.id == "drift" }?.speakerName)
@@ -109,6 +108,41 @@ final class IterationTests: XCTestCase {
     XCTAssertTrue(try store.commitWindow(TranscriptionJob(
       window: later, context: [segment(id: "far", start: 100, end: 104, text: "Hi", speaker: "a")])))
     XCTAssertNil(try store.list(TranscriptSegment.self, kind: "segment").first { $0.id == "far" }?.speakerName)
+  }
+  func testRenameOnlyReviewSettlesAndLatestRenameWins() throws {
+    let store = try WorkspaceStore(url: try directory().appendingPathComponent("store.sqlite"))
+    let window = TranscriptionWindow(meetingID: "m", track: .remote, start: 0, end: 90, duration: 180)
+    var line = segment(id: "l1", start: 10, end: 14, text: "Salaam", speaker: "a")
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [line])))
+    // A legacy rename (no flags) staged a review before; it settles and keeps the name.
+    line.speakerName = "Waseem"
+    try store.correct(line)
+    let next = segment(id: "l2", start: 10, end: 14.2, text: "Salaam Alaikum", speaker: "a")
+    try store.put(TranscriptReview(window: window, incoming: [next], current: [line]),
+      kind: "transcriptReview", id: window.id, parent: "m")
+    try store.settleRenameOnlyReviews(meetingID: "m")
+    XCTAssertTrue(try store.list(TranscriptReview.self, kind: "transcriptReview").isEmpty)
+    var shown = try XCTUnwrap(store.list(TranscriptSegment.self, kind: "segment").first)
+    XCTAssertEqual(shown.speakerName, "Waseem")
+    // Renamed again on the new line: the next refine uses the latest name, not the old one.
+    shown.speakerName = "Waseem Ahmed"
+    shown.nameCorrected = true
+    shown.textCorrected = false
+    try store.correct(shown)
+    let third = segment(id: "l3", start: 10.1, end: 14.2, text: "Salaam Alaikum.", speaker: "a")
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [third])))
+    XCTAssertEqual(try store.list(TranscriptSegment.self, kind: "segment").first?.speakerName, "Waseem Ahmed")
+    // A text edit on an unnamed line is not a name clear: an automatic name survives.
+    var edited = try XCTUnwrap(store.list(TranscriptSegment.self, kind: "segment").first)
+    edited.speakerName = nil
+    edited.text = "Salaam alaikum!"
+    edited.nameCorrected = false
+    edited.textCorrected = true
+    try store.correct(edited)
+    var matched = segment(id: "l4", start: 10.1, end: 14.2, text: "Salaam alaikum", speaker: "a")
+    matched.speakerName = "Sam · voice match"
+    XCTAssertTrue(try store.commitWindow(TranscriptionJob(window: window, context: [matched]), acceptReview: true))
+    XCTAssertEqual(try store.list(TranscriptSegment.self, kind: "segment").first?.speakerName, "Sam · voice match")
   }
   func testAccuracyPassSwapsWordsIntoDiarizedTurns() {
     XCTAssertEqual(

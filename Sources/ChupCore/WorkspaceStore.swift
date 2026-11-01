@@ -267,29 +267,8 @@ public final class WorkspaceStore {
       else {
         throw WorkspaceError.invalidEvidence
       }
-      let allCorrections = try list(
-        TranscriptSegment.self, kind: "correction", parent: window.meetingID)
-      // A rename carries only to a new line that mostly re-covers audio the user named, with the
-      // same group label on the same track. It never spreads to the group's other lines:
-      // provider labels are request-local and boundaries drift.
-      var names: [String: String] = [:]
-      for line in job.context {
-        let candidates = Set(allCorrections.filter {
-          $0.speakerID == line.speakerID && $0.track == line.track
-            && min($0.end, line.end) - max($0.start, line.start) >= 0.5 * (line.end - line.start)
-        }.map { $0.speakerName ?? "" })
-        // Agreeing corrections win over an automatic name, including an explicitly cleared one
-        // (""). Corrections that disagree leave the line as the provider labelled it.
-        if candidates.count == 1, let name = candidates.first { names[line.id] = name }
-      }
-      let corrections = allCorrections
-        .filter { $0.track == window.track && $0.start < window.end && $0.end > window.start }
-      let conflict = corrections.contains { correction in
-        !incoming.contains {
-          $0.id == correction.id && abs($0.start - correction.start) < 0.02
-            && abs($0.end - correction.end) < 0.02
-        }
-      }
+      let review = try correctionReview(window: window, context: job.context)
+      let names = review.names, corrections = review.corrections, conflict = review.conflict
       try execute(
         "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES('transcriptRevision',?,?,?)",
         [UUID().uuidString, window.meetingID, try json(job.context)])
@@ -301,14 +280,30 @@ public final class WorkspaceStore {
           "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES('transcriptReview',?,?,?)",
           [review.id, window.meetingID, try json(review)])
       } else {
-        let overlay = Dictionary(corrections.map { ($0.id, $0) }, uniquingKeysWith: { _, b in b })
+        // A correction on an unchanged line keeps applying. Superseded ones stay as the audit
+        // trail but no longer count: only corrections on lines still in the transcript do.
+        let overlay = acceptReview ? [:] : Dictionary(
+          corrections.filter { c in
+            incoming.contains {
+              $0.id == c.id && abs($0.start - c.start) < 0.02 && abs($0.end - c.end) < 0.02
+            }
+          }.map { ($0.id, $0) }, uniquingKeysWith: { _, b in b })
         for old in current {
           try execute("DELETE FROM objects WHERE kind='segment' AND id=?", [old.id])
           try execute("DELETE FROM search WHERE kind='segment' AND id=?", [old.id])
         }
         for value in incoming {
-          var item = acceptReview ? value : overlay[value.id] ?? value
-          if let corrected = names[item.id] { item.speakerName = corrected.isEmpty ? nil : corrected }
+          var item = overlay[value.id] ?? value
+          if overlay[value.id] == nil, let corrected = names[item.id] {
+            // The rename moves onto the new line and stays a rename for the next refine.
+            item.speakerName = corrected.isEmpty ? nil : corrected
+            var record = item
+            record.nameCorrected = true
+            record.textCorrected = false
+            try execute(
+              "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES('correction',?,?,?)",
+              [record.id, window.meetingID, try json(record)])
+          }
           try execute(
             "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES('segment',?,?,?)",
             [item.id, window.meetingID, try json(item)])
@@ -323,6 +318,60 @@ public final class WorkspaceStore {
         "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES('transcriptionJob',?,?,?)",
         [job.id, window.meetingID, try json(finished)])
       return finished.status == "completed"
+    }
+  }
+  /// How a window's corrections meet a new revision. Only text or speaker corrections on lines
+  /// that changed make it a review; renames carry by audio overlap when all agree.
+  func correctionReview(window: TranscriptionWindow, context: [TranscriptSegment]) throws
+    -> (names: [String: String], corrections: [TranscriptSegment], conflict: Bool)
+  {
+    // Only corrections on lines still shown count; ones whose line a refine replaced are audit
+    // history, so an older rename can't outvote the latest one or reopen a review.
+    let shown = Set(try list(TranscriptSegment.self, kind: "segment", parent: window.meetingID).map(\.id))
+    let all = try list(TranscriptSegment.self, kind: "correction", parent: window.meetingID)
+      .filter { shown.contains($0.id) }
+    // Legacy corrections carry no flags: a line whose words and group match a provider revision
+    // was only renamed.
+    var legacyRevision: [String: [(String, String)]] = [:]
+    if all.contains(where: { $0.nameCorrected == nil && $0.textCorrected == nil }) {
+      for revision in try list([TranscriptSegment].self, kind: "transcriptRevision", parent: window.meetingID) {
+        for line in revision { legacyRevision[line.id, default: []].append((line.text, line.speakerID)) }
+      }
+    }
+    func nameOnly(_ c: TranscriptSegment) -> Bool {
+      if c.nameCorrected != nil || c.textCorrected != nil { return c.textCorrected != true }
+      return legacyRevision[c.id]?.contains { $0 == (c.text, c.speakerID) } ?? false
+    }
+    func explicitName(_ c: TranscriptSegment) -> Bool {
+      c.nameCorrected == true || (c.nameCorrected == nil && c.textCorrected == nil && c.speakerName != nil)
+    }
+    var names: [String: String] = [:]
+    for line in context {
+      let candidates = Set(all.filter {
+        explicitName($0) && $0.speakerID == line.speakerID && $0.track == line.track
+          && min($0.end, line.end) - max($0.start, line.start) >= 0.5 * (line.end - line.start)
+      }.map { $0.speakerName ?? "" })
+      // Agreeing renames win over an automatic name, including an explicit clear (""); renames
+      // that disagree leave the line as the provider labelled it.
+      if candidates.count == 1, let name = candidates.first { names[line.id] = name }
+    }
+    let incoming = context.filter { window.owns($0) }
+    let corrections = all.filter {
+      $0.track == window.track && $0.start < window.end && $0.end > window.start
+    }
+    let conflict = corrections.contains { correction in
+      !nameOnly(correction) && !incoming.contains {
+        $0.id == correction.id && abs($0.start - correction.start) < 0.02
+          && abs($0.end - correction.end) < 0.02
+      }
+    }
+    return (names, corrections, conflict)
+  }
+  /// Reviews staged only because of renames resolve themselves: the new lines take the names.
+  public func settleRenameOnlyReviews(meetingID: String) throws {
+    for review in try list(TranscriptReview.self, kind: "transcriptReview", parent: meetingID)
+    where try !correctionReview(window: review.window, context: review.incoming).conflict {
+      _ = try commitWindow(TranscriptionJob(window: review.window, context: review.incoming))
     }
   }
   public func keepTranscriptReview(_ review: TranscriptReview) throws {

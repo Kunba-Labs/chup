@@ -818,6 +818,12 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     segments = try db().list(TranscriptSegment.self, kind: "segment", parent: id).sorted {
       $0.start < $1.start
     }
+    if !(try db().list(TranscriptReview.self, kind: "transcriptReview", parent: id).isEmpty) {
+      try db().settleRenameOnlyReviews(meetingID: id)
+      segments = try db().list(TranscriptSegment.self, kind: "segment", parent: id).sorted {
+        $0.start < $1.start
+      }
+    }
     transcriptReviews = try db().list(TranscriptReview.self, kind: "transcriptReview", parent: id)
     enrollments = try db().list(VoiceEnrollment.self, kind: "enrollment")
     captureGaps = try db().list(CaptureGap.self, kind: "gap", parent: id).sorted {
@@ -1868,6 +1874,10 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
       corrected.text = text
       corrected.speakerName = name.isEmpty ? nil : name
       if let mergeID { corrected.speakerID = mergeID }
+      corrected.textCorrected = (original.textCorrected ?? false) || text != original.text
+        || corrected.speakerID != original.speakerID
+      corrected.nameCorrected = (original.nameCorrected ?? false)
+        || corrected.speakerName != original.speakerName
       try db().correct(corrected)
       try refreshDetail()
     } catch { notice = error.localizedDescription }
@@ -1876,6 +1886,8 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     do {
       for var segment in segments where segment.speakerID == id {
         segment.speakerName = name.isEmpty ? nil : name
+        segment.nameCorrected = true
+        segment.textCorrected = segment.textCorrected ?? false
         try db().correct(segment)
       }
       try refreshDetail()
