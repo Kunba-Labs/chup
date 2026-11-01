@@ -160,12 +160,8 @@ struct MeetingListColumn: View {
           }
         }
       }
+      // Keyboard focus for Delete, without a ring: the selected row already shows what it acts on.
       .focusable().focused($listFocused).focusEffectDisabled()
-      // Our own focus ring, so it's clear when Delete acts on the list.
-      .overlay {
-        RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.accent.opacity(listFocused ? 0.6 : 0), lineWidth: 2)
-          .allowsHitTesting(false)
-      }
       .onKeyPress(keys: [.delete, .deleteForward]) { _ in
         deleteSelection()
         return .handled
