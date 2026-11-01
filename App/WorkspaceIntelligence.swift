@@ -67,7 +67,7 @@ extension WorkspaceState {
   func nameUntitledMeeting(_ meetingID: String, summary: MeetingSummary, segments: [TranscriptSegment]) async {
     guard meetings.first(where: { $0.id == meetingID })?.title == "Untitled meeting" else { return }
     var people: [String] = []
-    for name in segments.filter({ $0.track != .microphone }).compactMap(\.speakerName)
+    for name in segments.filter({ $0.track == .remote }).compactMap(\.speakerName)
     where !people.contains(name) && !name.hasSuffix("· voice match") { people.append(name) }
     let points = summary.items.map(\.text).filter { !$0.isEmpty }
     var title = points.isEmpty ? nil : try? await backend(scope: meetingID).title(points: points, people: people)

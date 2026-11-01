@@ -640,7 +640,7 @@ struct MeetingDetailView: View {
         : "Replace “\(findQuery)” in \(count) \(count == 1 ? "line" : "lines")")
         .font(.headline)
       TextField("Replace with", text: $replaceWith).textFieldStyle(.roundedBorder)
-        .onSubmit(applyReplace)
+        .onSubmit { if count > 0, !replaceWith.trimmingCharacters(in: .whitespaces).isEmpty { applyReplace() } }
       Toggle("Use this spelling in future transcripts and dictation", isOn: $rememberSpelling)
         .font(.caption)
       HStack {

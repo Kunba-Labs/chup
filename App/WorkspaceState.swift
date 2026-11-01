@@ -1902,7 +1902,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
     let replacement = replacement.trimmingCharacters(in: .whitespaces)
     guard !replacement.isEmpty, let meetingID = selectedMeetingID else { return 0 }
     let flags = try db().correctionFlags(meetingID: meetingID)
-    let changed = replacementLines(find, with: replacement).map { line in
+    let lines = replacementLines(find, with: replacement)
+    guard !lines.isEmpty else { return 0 }  // Nothing to replace: no spelling saved either.
+    let changed = lines.map { line in
       var line = line
       line.textCorrected = flags.text.contains(line.id) || !remember
       line.nameCorrected = flags.name.contains(line.id)
