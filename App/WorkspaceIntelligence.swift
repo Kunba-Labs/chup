@@ -150,6 +150,11 @@ extension WorkspaceState {
     liveAskTask = Task {
       defer { if activeMeetingID == id { liveAskTask = nil } }  // A newer call's task is not ours to clear.
       var exchange = AssistantExchange(meetingID: id, question: question, noteVersion: 0)
+      // Saved before the request, like the meeting page's Ask, so a failure never loses the question.
+      do { try db().put(exchange, kind: "assistantExchange", id: exchange.id, parent: id) } catch {
+        liveAnswer = (id, question, "Couldn't save the question: " + error.localizedDescription)
+        return
+      }
       do {
         // Captions only, as the notepad says: your notes are not sent from here.
         let answer = try await backend(scope: id, associationID: exchange.id)
@@ -162,6 +167,9 @@ extension WorkspaceState {
         // Caption lines are replaced after Stop, so history keeps the quotes as text instead of
         // links that would stop resolving.
         let quotes = answer.sources.map { "“\($0.quote)”" }.joined(separator: " ")
+        // The call ended or changed while waiting: the answer is not kept as if it still applied.
+        try Task.checkCancellation()
+        guard activeMeetingID == id else { throw CancellationError() }
         exchange.answer = answer.text + (quotes.isEmpty ? "" : "\n\nFrom the live captions: " + quotes)
         exchange.status = "completed"
         try db().put(exchange, kind: "assistantExchange", id: exchange.id, parent: id)
@@ -169,7 +177,13 @@ extension WorkspaceState {
         guard activeMeetingID == id else { return }  // A newer call's notepad never shows it.
         liveAnswer = (id, question, answer.text)
       } catch {
-        guard activeMeetingID == id else { return }
+        let stopped = error is CancellationError || Task.isCancelled || activeMeetingID != id
+        exchange.status = "failed"
+        exchange.answer = stopped
+          ? "Not answered: the call ended first." : "Could not complete that request: \(error.localizedDescription)"
+        try? db().put(exchange, kind: "assistantExchange", id: exchange.id, parent: id)
+        if selectedMeetingID == id { try? refreshDetail() }
+        guard !stopped else { return }
         liveAnswer = (id, question, "Couldn't answer that: " + error.localizedDescription)
       }
     }
