@@ -129,10 +129,14 @@ struct DictationView: View {
                         && state.recordingEntry?.id == entry.id)
                   )
                   .help("Play the saved audio")
-                  Button("Copy") { TextInsertion.copy(entry.text) }.disabled(entry.text.isEmpty)
-                  Button("Retry audio") { state.retryDictation(entry) }
+                  // Icon-only secondary actions; names stay as tooltips and VoiceOver labels.
+                  Button { TextInsertion.copy(entry.text) } label: { Image(systemName: "doc.on.doc") }
+                    .disabled(entry.text.isEmpty).help("Copy").accessibilityLabel("Copy")
+                  Button { state.retryDictation(entry) } label: { Image(systemName: "arrow.clockwise") }
+                    .help("Retry audio").accessibilityLabel("Retry audio")
                   Spacer()
-                  Button("Delete", role: .destructive) { state.trashDictations([entry]) }
+                  Button(role: .destructive) { state.trashDictations([entry]) } label: { Image(systemName: "trash") }
+                    .help("Delete").accessibilityLabel("Delete")
                 }.buttonStyle(.pill).controlSize(.small)
                 if state.dictationPlaybackID == entry.id {
                   HStack(spacing: 12) {
