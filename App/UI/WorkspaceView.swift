@@ -855,16 +855,22 @@ struct MeetingDetailView: View {
   @State private var notesExpanded = false
   /// Row IDs of summary lines matching the find field, in the order they appear.
   private func summaryMatches(_ outline: SummaryOutline) -> [String] {
+    // Display order: with notes, the outline sits last, folded under "Summary points".
+    let notes = (state.enhancedNotes?.blocks ?? []).map { ("note-" + $0.id, $0.text) }
+    let steps = outline.nextSteps.flatMap(\.steps).map { ($0.id, $0.text) }
+    let points = (outline.tldr + outline.points + outline.decisions + outline.questions).map { ($0.id, $0.text) }
     var ids: [(String, String)] = state.summaryEdits.map { ("edit-" + $0.id, $0.text) }
-    ids += (outline.tldr + outline.points + outline.decisions).map { ($0.id, $0.text) }
-    ids += outline.nextSteps.flatMap(\.steps).map { ($0.id, $0.text) }
-    ids += outline.questions.map { ($0.id, $0.text) }
-    ids += (state.enhancedNotes?.blocks ?? []).map { ("note-" + $0.id, $0.text) }
+    ids += notes.isEmpty ? points + steps : notes + steps + points
     return ids.filter { found($0.1) }.map(\.0)
   }
   private func nextSummaryMatch(_ outline: SummaryOutline) {
-    let count = summaryMatches(outline).count
-    summaryFindIndex = count == 0 ? -1 : (summaryFindIndex + 1) % count
+    let matches = summaryMatches(outline)
+    summaryFindIndex = matches.isEmpty ? -1 : (summaryFindIndex + 1) % matches.count
+    // A match inside the folded summary points opens them so it can be shown.
+    let folded = Set((outline.tldr + outline.points + outline.decisions + outline.questions).map(\.id))
+    if summaryFindIndex >= 0, folded.contains(matches[summaryFindIndex]),
+      state.enhancedNotes?.blocks.isEmpty == false
+    { notesExpanded = true }
   }
   @FocusState private var summaryFindFocused: Bool
   /// Summary lines matching the find field get a highlight.
@@ -1635,7 +1641,7 @@ struct SummaryWritingPlaceholder: View {
       }
     }.padding(22).frame(maxWidth: .infinity, alignment: .leading).workspaceSurface()
       .accessibilityElement(children: .ignore)
-      .accessibilityLabel("Writing your summary, step \(index) of \(job.steps.count): \(job.title)")
+      .accessibilityLabel("Step \(index) of \(job.steps.count): \(job.title)")
   }
   private func bar(_ width: CGFloat, height: CGFloat = 10) -> some View {
     GeometryReader { geometry in

@@ -239,7 +239,9 @@ extension WorkspaceState {
     let title = selectedMeeting?.title ?? "Meeting"
     // With topic-led notes, copy what the Summary tab shows: the notes, then next steps.
     let text = enhancedNotes.flatMap { $0.blocks.isEmpty ? nil : $0 }.map {
-      $0.markdown(title: title) + outline.nextStepsMarkdown()
+      $0.markdown(title: title)
+        + (summaryEdits.isEmpty ? "" : "\n## Your edits\n" + summaryEdits.map { "- " + $0.text }.joined(separator: "\n") + "\n")
+        + outline.nextStepsMarkdown()
     } ?? outline.markdown(title: title, thoughts: noteDraft)
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(text, forType: .string)
