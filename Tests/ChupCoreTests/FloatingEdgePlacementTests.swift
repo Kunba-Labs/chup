@@ -33,4 +33,27 @@ final class FloatingEdgePlacementTests: XCTestCase {
       screen: screen, visible: visible, edge: "right", inset: 52)
     XCTAssertEqual(alongside.maxX, screen.maxX - 52)
   }
+  func testPromptSitsBesideRailClearOfItsExpandedWidth() {
+    let visible = CGRect(x: 0, y: 0, width: 1600, height: 976)
+    let size = CGSize(width: 380, height: 70)
+    let right = FloatingEdgePlacement.beside(CGRect(x: 1590, y: 400, width: 10, height: 36),
+      size: size, visible: visible, edge: "right")
+    XCTAssertEqual(right.maxX, 1600 - 44 - 10)
+    XCTAssertEqual(right.midY, 418)
+    let left = FloatingEdgePlacement.beside(CGRect(x: 0, y: 950, width: 10, height: 36),
+      size: size, visible: visible, edge: "left")
+    XCTAssertEqual(left.minX, 54)
+    XCTAssertEqual(left.maxY, visible.maxY - 8)
+    let bottom = FloatingEdgePlacement.beside(CGRect(x: 800, y: 2, width: 36, height: 10),
+      size: size, visible: visible, edge: "bottom")
+    XCTAssertEqual(bottom.minY, 56)
+    XCTAssertEqual(bottom.midX, 818)
+  }
+  func testPromptClearsAnOpenDrawer() {
+    let visible = CGRect(x: 0, y: 0, width: 1600, height: 976)
+    let drawer = CGRect(x: 1300, y: 300, width: 300, height: 230)
+    let right = FloatingEdgePlacement.beside(drawer, size: CGSize(width: 380, height: 70),
+      visible: visible, edge: "right")
+    XCTAssertEqual(right.maxX, 1290)
+  }
 }

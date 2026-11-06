@@ -152,6 +152,8 @@ extension WorkspaceState {
     presentation.expanded = false
     presentation.drawer = nil
   }
+  /// Where the rail rests now, so prompts can sit beside it; nil while it is hidden.
+  var restingFrame: NSRect? { panel.isVisible ? panel.frame : nil }
   private var screen: NSScreen {
     NSScreen.screens.first(where: { $0.frame.contains(anchor ?? NSEvent.mouseLocation) })
       ?? NSScreen.main ?? NSScreen.screens[0]

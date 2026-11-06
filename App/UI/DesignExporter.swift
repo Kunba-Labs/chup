@@ -61,6 +61,17 @@ import ChupCore
           to: destination.appendingPathComponent("23-unified-popups.png"))
         return
       }
+      if ProcessInfo.processInfo.environment["CHUP_MEETING_PROMPT_PREVIEW"] == "1" {
+        let detector = MeetingDetector(state: state)
+        for (file, browser, ended) in [("zoom", false, false), ("browser", true, false), ("ended", false, true)] {
+          detector.candidate = MeetingCandidate(pid: 1, name: browser ? "Chrome" : "Zoom", browser: browser)
+          detector.remaining = 7
+          detector.ended = ended
+          try renderNative(MeetingPrompt(detector: detector).padding(24).background(Color(white: 0.85)),
+            size: CGSize(width: 620, height: 140), to: destination.appendingPathComponent("30-meeting-\(file).png"))
+        }
+        return
+      }
       if ProcessInfo.processInfo.environment["CHUP_COMPACT_PREVIEW"] == "1" {
         try exportCompactMotion(state: state, destination: destination)
         return

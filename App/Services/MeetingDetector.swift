@@ -12,7 +12,7 @@ import ChupCore
   private var scanning = Set<pid_t>()
   private var timer: Timer?
   private let panel = NonactivatingPanel(
-    contentRect: NSRect(x: 0, y: 0, width: 336, height: 230),
+    contentRect: NSRect(x: 0, y: 0, width: 400, height: 90),
     styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
   private weak var state: WorkspaceState?
   init(state: WorkspaceState) {
@@ -22,10 +22,10 @@ import ChupCore
     panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     panel.isOpaque = false
     panel.backgroundColor = .clear
-    panel.appearance = NSAppearance(named: .aqua)
+    panel.appearance = NSAppearance(named: .darkAqua)
     panel.hasShadow = true
     panel.contentView = NSHostingView(
-      rootView: MeetingPrompt(detector: self).environment(\.colorScheme, .light))
+      rootView: MeetingPrompt(detector: self).environment(\.colorScheme, .dark))
     timer = MainActorTimer.repeating(every: 1) { [weak self] in self?.tick() }
   }
   private func tick() {
@@ -60,10 +60,16 @@ import ChupCore
     Task { @MainActor [weak self] in
       await Task.yield() // Allow the prompt's SwiftUI layout to settle.
       guard let self, stillWanted() else { return }
-      let frame = (NSScreen.main ?? NSScreen.screens[0]).visibleFrame
-      let size = panel.contentView?.fittingSize ?? NSSize(width: 336, height: 230)
-      panel.setFrame(NSRect(x: frame.maxX - size.width - 16, y: frame.maxY - size.height - 16,
-        width: size.width, height: size.height), display: true)
+      // Beside the hover rail on its docked edge; mid-edge of the main screen if it is hidden.
+      let edge = state?.railDock ?? "right"
+      let main = NSScreen.main ?? NSScreen.screens[0]
+      let rail = state?.rail?.restingFrame ?? FloatingEdgePlacement.frame(
+        size: NSSize(width: 10, height: 36), screen: main.frame, visible: main.visibleFrame,
+        edge: edge)
+      let screen = NSScreen.screens.first { $0.frame.intersects(rail) } ?? main
+      let size = panel.contentView?.fittingSize ?? NSSize(width: 400, height: 90)
+      panel.setFrame(FloatingEdgePlacement.beside(rail, size: size, visible: screen.visibleFrame,
+        edge: edge), display: true)
       panel.alphaValue = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 1 : 0
       panel.orderFrontRegardless()
       NSAnimationContext.runAnimationGroup({ context in
@@ -245,22 +251,84 @@ enum BrowserMeetingAX {
     return call
   }
 }
+/// Dark glass pill beside the hover rail: start a call's notes, or confirm that it ended.
 struct MeetingPrompt: View {
   @ObservedObject var detector: MeetingDetector
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  private var name: String { detector.candidate?.name ?? "the call" }
   var body: some View {
-    if detector.ended {
-      NotificationCard(
-        kind: .meetingEnded, appName: detector.candidate?.name ?? "the call",
-        primary: { detector.stopEndedMeeting() }, secondary: { detector.keepRecording() })
-    } else {
-      callPrompt
+    HStack(spacing: 14) {
+      Image(systemName: detector.ended ? "phone.down" : "video")
+        .font(.system(size: 19, weight: .regular)).foregroundStyle(RailPalette.secondary)
+        .frame(width: 26)
+      VStack(alignment: .leading, spacing: 3) {
+        Text(detector.ended ? "Did the call end?" : "Meeting detected")
+          .font(.system(size: 15, weight: .semibold))
+        HStack(spacing: 6) {
+          Circle().fill(detector.ended ? RailPalette.red : Color.green).frame(width: 6, height: 6)
+          Text(subtitle).lineLimit(1)
+        }.font(.system(size: 11)).foregroundStyle(RailPalette.secondary)
+      }
+      Spacer(minLength: 8)
+      if detector.ended {
+        Button("Keep recording") { detector.keepRecording() }.buttonStyle(.plain)
+          .font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
+        action("Stop and save", symbol: "stop.fill") { detector.stopEndedMeeting() }
+      } else {
+        HStack(spacing: 0) {
+          action("Record", symbol: "record.circle") { detector.accept() }
+          Rectangle().fill(RailPalette.base.opacity(0.15)).frame(width: 1, height: 26)
+          Menu {
+            Button("Snooze 2 minutes") { detector.dismiss(snooze: true) }
+            Button("Not now") { detector.dismiss() }
+          } label: {
+            Image(systemName: "chevron.up").font(.system(size: 11, weight: .semibold))
+              .frame(width: 30, height: 36)
+          }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().tint(RailPalette.base)
+            .accessibilityLabel("More options")
+        }.foregroundStyle(RailPalette.base)
+          .background(RailPalette.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+      }
     }
+    .padding(.horizontal, 18).padding(.vertical, 14).frame(minWidth: 380)
+    .background { RailSurface(cornerRadius: 22) }
+    .overlay(alignment: .topLeading) { if !detector.ended { close.offset(x: -9, y: -9) } }
+    .foregroundStyle(RailPalette.ink).tint(RailPalette.accent)
+    .padding(12).fixedSize()  // Room for the close button outside the pill's corner.
   }
-  private var callPrompt: some View {
-    NotificationCard(
-      kind: detector.candidate?.browser == true ? .browserDetected : .callDetected,
-      appName: detector.candidate?.name ?? "Meeting", countdown: detector.remaining,
-      primary: { detector.accept() }, secondary: { detector.dismiss() },
-      tertiary: { detector.dismiss(snooze: true) })
+  /// The consent and capture caveats stay visible: they decide whether recording is OK.
+  private var subtitle: String {
+    if detector.ended { return "\(name) stopped using the mic. Still recording." }
+    return detector.candidate?.browser == true
+      ? "\(name) · capture can include other tabs" : "\(name) · tell everyone before you record"
+  }
+  private func action(_ title: String, symbol: String, run: @escaping () -> Void) -> some View {
+    Button(action: run) {
+      HStack(spacing: 8) {
+        Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+          .foregroundStyle(RailPalette.ink).frame(width: 24, height: 24)
+          .background(RailPalette.base, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        Text(title).font(.system(size: 13, weight: .medium))
+      }.padding(.leading, 6).padding(.trailing, 12).frame(height: 36)
+        .foregroundStyle(RailPalette.base)
+        .background(RailPalette.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .contentShape(Rectangle())
+    }.buttonStyle(.plain)
+  }
+  /// Not now, ringed by the 10-second countdown before the prompt dismisses itself.
+  private var close: some View {
+    Button { detector.dismiss() } label: {
+      ZStack {
+        Circle().fill(RailPalette.base)
+        Circle().strokeBorder(.white.opacity(0.14))
+        Circle().trim(from: 0, to: Double(detector.remaining) / 10)
+          .stroke(RailPalette.secondary, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+          .rotationEffect(.degrees(-90)).padding(0.75)
+          .animation(reduceMotion ? nil : .linear(duration: 1), value: detector.remaining)
+        Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+          .foregroundStyle(RailPalette.secondary)
+      }.frame(width: 24, height: 24)
+    }.buttonStyle(.plain)
+      .accessibilityLabel("Not now, dismisses in \(detector.remaining) seconds")
   }
 }

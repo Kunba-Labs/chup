@@ -1,6 +1,6 @@
 # Appearance and motion
 
-The management window, sheets, meeting prompts and Settings use the light paper palette even when macOS uses Dark Mode. The independent hover rail and drawers use dark charcoal glass. The old System/Light/Dark setting is removed, so a previously saved preference cannot override this choice.
+The management window, sheets and Settings use the light paper palette even when macOS uses Dark Mode. The independent hover rail, its drawers and the meeting prompt (a pill that opens beside the rail on its docked edge) use dark charcoal glass. The old System/Light/Dark setting is removed, so a previously saved preference cannot override this choice.
 
 ## Native implementation
 
