@@ -68,7 +68,9 @@ extension WorkspaceState {
   func nameSpeakersFromTranscript(meetingID: String) async throws {
     let source = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID)
       .filter { !$0.provisional }
-    let unnamed = Set(source.filter { $0.speakerName == nil && $0.track != .assistant }.map(\.speakerID))
+    // A group with any name or rename on any of its lines is someone's call already.
+    let named = Set(source.filter { $0.speakerName != nil || $0.nameCorrected == true }.map(\.speakerID))
+    let unnamed = Set(source.filter { $0.track != .assistant }.map(\.speakerID)).subtracting(named)
     guard !unnamed.isEmpty else { return }
     // Only what was said names anyone: a shared microphone proves nothing about who spoke.
     var names: [String: (name: String, why: String)] = [:]
@@ -85,7 +87,11 @@ extension WorkspaceState {
     // ponytail: one put per line, not one transaction; a crash mid-way leaves some lines named.
     let current = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID)
     for var segment in current
-    where !segment.provisional && segment.speakerName == nil && segment.nameCorrected != true {
+    where !segment.provisional && segment.speakerName == nil && segment.nameCorrected != true
+      && !current.contains(where: {
+        $0.speakerID == segment.speakerID && ($0.speakerName != nil || $0.nameCorrected == true)
+      })
+    {
       guard let found = names[segment.speakerID] else { continue }
       segment.speakerName = found.name
       segment.attribution = Self.inferredNamePrefix + found.why
@@ -135,9 +141,9 @@ extension WorkspaceState {
       defer { liveAskTask = nil }
       var exchange = AssistantExchange(meetingID: id, question: question, noteVersion: 0)
       do {
-        let note = try db().note(id)
+        // Captions only, as the notepad says: your notes are not sent from here.
         let answer = try await backend(scope: id, associationID: exchange.id)
-          .ask(question, segments: lines, note: note)
+          .ask(question, segments: lines, note: Note())
         if !answer.sources.isEmpty {
           try EvidenceValidator.validate(
             MeetingSummary(items: [SummaryItem(category: "overview", text: answer.text, sources: answer.sources)]),

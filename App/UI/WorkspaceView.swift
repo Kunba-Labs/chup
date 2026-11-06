@@ -1624,7 +1624,9 @@ struct SummaryWritingPlaceholder: View {
       HStack(spacing: 10) {
         Image(systemName: "sparkle").foregroundStyle(Palette.accent)
         TimelineView(.periodic(from: .now, by: 5)) { context in
-          let line = Self.lines[Int(context.date.timeIntervalSinceReferenceDate / 5) % Self.lines.count]
+          // Reduce Motion: one fixed line, nothing changing on its own.
+          let line = reduceMotion
+            ? Self.lines[0] : Self.lines[Int(context.date.timeIntervalSinceReferenceDate / 5) % Self.lines.count]
           Text(line).transition(.opacity).id(reduceMotion ? Self.lines[0] : line)
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.4), value: line)
         }
