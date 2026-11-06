@@ -14,7 +14,7 @@ struct UndoToastView: View {
         .keyboardShortcut("z", modifiers: .command)
     }
     .font(.ui).foregroundStyle(.white).padding(.horizontal, 18).padding(.vertical, 11)
-    .background(RailPalette.base.opacity(0.94), in: Capsule())
+    .background(RailPalette.base.opacity(0.94), in: Rectangle())
     .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
   }
 }
@@ -89,8 +89,9 @@ struct TagEditor: View {
             Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
           }.buttonStyle(.plain).accessibilityLabel("Remove tag \(tag)")
         }
-        .font(.detail.weight(.medium)).padding(.horizontal, 8).padding(.vertical, 3)
-        .background(Palette.accent.opacity(0.12), in: Capsule()).foregroundStyle(Palette.accent)
+        .font(.system(size: 10, weight: .semibold)).tracking(1.2).textCase(.uppercase)
+        .padding(.horizontal, 7).padding(.vertical, 3)
+        .background(Palette.red, in: Rectangle()).foregroundStyle(Palette.onAccent)  // Red files.
       }
       Button {
         adding = true

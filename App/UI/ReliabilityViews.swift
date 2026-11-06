@@ -169,7 +169,7 @@ struct TranscriptReviewGroup: View {
         DisclosureGroup("Compare each part", isExpanded: $expanded) {
           VStack(spacing: 8) { ForEach(reviews) { TranscriptReviewView(review: $0) } }.padding(.top, 8)
         }.font(.detail)
-      }.padding(16).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
+      }.padding(16).background(Palette.paper, in: RoundedRectangle(cornerRadius: 0))
     }
   }
 }
@@ -199,6 +199,6 @@ struct TranscriptReviewView: View {
       Label(
         "Your edits vs new version · \(WorkspaceState.time(review.window.start))–\(WorkspaceState.time(review.window.end)) · \(review.window.track == .microphone ? "Mic" : review.window.track == .assistant ? "Assistant" : "Call")",
         systemImage: "pencil.and.list.clipboard")
-    }.padding(16).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
+    }.padding(16).background(Palette.paper, in: RoundedRectangle(cornerRadius: 0))
   }
 }

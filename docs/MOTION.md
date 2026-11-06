@@ -1,6 +1,6 @@
 # Appearance and motion
 
-The management window, sheets and Settings use the light paper palette even when macOS uses Dark Mode. The independent hover rail, its drawers and the meeting prompt (a pill that opens beside the rail on its docked edge) use dark charcoal glass. The old System/Light/Dark setting is removed, so a previously saved preference cannot override this choice.
+The management window and Settings use membox's Bauhaus theme in every system appearance: an ink ground, square ruled panels and three primaries (blue selects, red files, yellow marks). The live notepad and dictation review stay light. The independent hover rail, its drawers and the meeting prompt (a pill that opens beside the rail on its docked edge) use dark charcoal glass. The old System/Light/Dark setting is removed, so a previously saved preference cannot override this choice.
 
 ## Native implementation
 

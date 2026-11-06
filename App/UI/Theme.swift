@@ -29,18 +29,25 @@ enum Palette {
           blue: Double(hex & 255) / 255, alpha: 1)
       })
   }
-  // Neutral Apple-style greys with the violet accent (design pass 2026-11-06).
-  static let workspace = color(0xF5F5F7, 0x17161C), paper = color(0xFFFFFF, 0x201F27),
-    sidebar = color(0xEDEDF0, 0x1B1A21)
-  static let ink = color(0x1D1D1F, 0xF4F3F8), secondary = color(0x6E6E73, 0xA9A6B5),
-    accent = color(0x5B3DE6, 0xB9A8FF), red = color(0xB03D30, 0xF29A8C)
-  static let border = color(0xE3E3E8, 0x34323D)
-  /// Apple system red, for Record and Stop only; `red` stays the quieter error colour.
-  static let record = color(0xFF3B30, 0xFF453A)
-  /// Unselected sidebar symbols: macOS label grey, darker than `secondary` so outlines hold up
-  /// on the translucent rail.
-  static let railIcon = color(0x3C3C43, 0xC7C7CC).opacity(0.78)
-  static let backdrop = color(0xF5ECE6, 0x121116)  // Voice gradient end (sidebar is the start).
+  // Light: neutral greys with the violet accent, for the floating notepad and panels that stay
+  // light. Dark: membox's Bauhaus (membox/desktop/src/tokens.css), which the main window uses
+  // (decided 2026-11-06): ink ground, ruled panels, three unmixed primaries at full strength —
+  // blue selects, red files, yellow marks.
+  static let workspace = color(0xF5F5F7, 0x17171C), paper = color(0xFFFFFF, 0x202027),
+    sidebar = color(0xEDEDF0, 0x0D0D10)
+  static let ink = color(0x1D1D1F, 0xF2F1EE), secondary = color(0x6E6E73, 0x98979F),
+    tertiary = color(0x8A8A93, 0x66656D),
+    accent = color(0x5B3DE6, 0x2D51E0), red = color(0xB03D30, 0xD93B2B)
+  static let border = color(0xE3E3E8, 0x2C2C34)
+  /// Text on an accent, folder or record block.
+  static let onAccent = color(0xFFFFFF, 0xF2F1EE)
+  /// Bauhaus yellow: marks (open counts, stars). Folders and tags are `red`.
+  static let star = color(0xC98A06, 0xF0B323)
+  /// Record and Stop: Apple red in light panels, Bauhaus red in the window.
+  static let record = color(0xFF3B30, 0xD93B2B)
+  /// Unselected sidebar symbols: label grey, darker than `secondary` so outlines hold up.
+  static let railIcon = color(0x3C3C43, 0x98979F).opacity(0.85)
+  static let backdrop = color(0xF5ECE6, 0x0D0D10)  // Voice gradient end (sidebar is the start).
   static let violet = Color(red: 106 / 255, green: 76 / 255, blue: 245 / 255)
   static let coral = Color(red: 232 / 255, green: 115 / 255, blue: 90 / 255)
   static let gradient = LinearGradient(
@@ -63,11 +70,15 @@ enum Palette {
 }
 struct WaveMark: View {
   var color: Color?
+  @Environment(\.colorScheme) private var scheme
+  /// Bauhaus bars in the three primaries, as in membox's mark.
+  private static let primaries = [Palette.accent, Palette.accent, Palette.red, Palette.star, Palette.ink]
   var body: some View {
     let heights = [12.0, 22, 30, 20, 11]
     HStack(spacing: 3) {
       ForEach(Array(heights.enumerated()), id: \.offset) { index, height in
-        Capsule().fill(color ?? Palette.gradient(at: Double(index) / Double(heights.count - 1)))
+        Rectangle().fill(color ?? (scheme == .dark ? Self.primaries[index]
+          : Palette.gradient(at: Double(index) / Double(heights.count - 1))))
           .frame(width: 5, height: height)
       }
     }.accessibilityHidden(true)
@@ -128,7 +139,7 @@ struct WorkspaceCard<Content: View>: View {
           if let icon {
             Image(systemName: icon).font(.system(size: 14, weight: .medium))
               .foregroundStyle(Palette.accent).frame(width: 26, height: 26)
-              .background(Palette.sidebar.opacity(0.55), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+              .background(Palette.sidebar.opacity(0.55), in: Rectangle())
               .accessibilityHidden(true)
           }
           VStack(alignment: .leading, spacing: 5) {
@@ -146,18 +157,35 @@ struct WorkspaceCard<Content: View>: View {
   }
 }
 
+/// Bauhaus (the dark window) is square and held by a 1 pt keyline; the light panels keep soft
+/// corners and a hairline. Shape is a token, like membox's --r-tile.
+private struct Surface: ViewModifier {
+  var fill: Color
+  var radius: CGFloat
+  var keyline: Bool
+  @Environment(\.colorScheme) private var scheme
+  func body(content: Content) -> some View {
+    let bauhaus = scheme == .dark
+    let shape = RoundedRectangle(cornerRadius: bauhaus ? 0 : radius, style: .continuous)
+    return content.background(fill, in: shape).overlay {
+      if keyline || bauhaus {
+        shape.strokeBorder(Palette.border.opacity(bauhaus ? 1 : 0.6), lineWidth: bauhaus ? 1 : 0.75)
+          .allowsHitTesting(false)
+      }
+    }
+  }
+}
 extension View {
   func workspaceSurface() -> some View {
-    self.background(Palette.paper, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-      .overlay {
-        RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(
-          Palette.border.opacity(0.6), lineWidth: 0.75
-        ).allowsHitTesting(false)
-      }
+    modifier(Surface(fill: Palette.paper, radius: 12, keyline: true))
   }
   func insetSurface() -> some View {
     self.padding(16).frame(maxWidth: .infinity, alignment: .leading)
-      .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 10))
+      .modifier(Surface(fill: Palette.workspace, radius: 10, keyline: false))
+  }
+  /// membox's label: a word that names something. 10 pt semibold, tracked, uppercase.
+  func bauhausLabel(_ color: Color = Palette.tertiary) -> some View {
+    font(.system(size: 10, weight: .semibold)).tracking(1.2).textCase(.uppercase).foregroundStyle(color)
   }
 }
 
@@ -235,24 +263,26 @@ struct PillButtonStyle: ButtonStyle {
   var primary = false
   @Environment(\.isEnabled) private var enabled
   @Environment(\.controlSize) private var controlSize
+  @Environment(\.colorScheme) private var scheme
   private var compact: Bool { controlSize == .small || controlSize == .mini }
   func makeBody(configuration: Configuration) -> some View {
-    configuration.label
+    let radius: CGFloat = scheme == .dark ? 0 : 7
+    return configuration.label
       .font(.ui.weight(primary ? .semibold : .medium)).labelStyle(PillLabelStyle())
       .padding(.horizontal, compact ? 10 : 14).frame(minHeight: compact ? 22 : 28)
-      .foregroundStyle(primary ? Color.white : Palette.ink)
+      .foregroundStyle(primary ? Palette.onAccent : Palette.ink)
       .background {
-        RoundedRectangle(cornerRadius: 7, style: .continuous)
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
           .fill(primary ? AnyShapeStyle(Palette.accent) : AnyShapeStyle(Palette.paper))
           .overlay {
             if !primary {
-              RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(Palette.border)
+              RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Palette.border)
             }
           }
       }
-      .shadow(color: .black.opacity(0.05), radius: 0.5, y: 0.5)
+      .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.05), radius: 0.5, y: 0.5)
       .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.45)
-      .contentShape(RoundedRectangle(cornerRadius: 7))
+      .contentShape(Rectangle())
   }
 }
 private struct PillLabelStyle: LabelStyle {
@@ -274,25 +304,30 @@ struct PillSegmented<Value: Hashable>: View {
   let options: [Value]
   let label: (Value) -> String
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.colorScheme) private var scheme
   var body: some View {
-    HStack(spacing: 0) {
+    let bauhaus = scheme == .dark
+    return HStack(spacing: 0) {
       ForEach(options, id: \.self) { option in
         let selected = option == selection
         Button { selection = option } label: {
           Text(label(option)).font(.ui.weight(selected ? .semibold : .regular))
-            .foregroundStyle(selected ? Palette.ink : Palette.secondary)
+            .foregroundStyle(selected ? (bauhaus ? Palette.onAccent : Palette.ink) : Palette.secondary)
             .padding(.horizontal, 14).frame(minHeight: 24)
             .background {
               if selected {
-                RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Palette.paper)
-                  .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
+                RoundedRectangle(cornerRadius: bauhaus ? 0 : 6, style: .continuous)
+                  .fill(bauhaus ? Palette.accent : Palette.paper)
+                  .shadow(color: .black.opacity(bauhaus ? 0 : 0.12), radius: 1, y: 0.5)
               }
             }
             .contentShape(Rectangle())
         }.buttonStyle(.plain)
           .accessibilityAddTraits(selected ? .isSelected : [])
       }
-    }.padding(2).background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Palette.border.opacity(0.8)))
+    }.padding(bauhaus ? 0 : 2)
+      .background(RoundedRectangle(cornerRadius: bauhaus ? 0 : 8, style: .continuous).fill(bauhaus ? Palette.paper : Palette.border.opacity(0.8)))
+      .overlay { if bauhaus { Rectangle().strokeBorder(Palette.border) } }
       .accessibilityElement(children: .contain).accessibilityLabel(title)
       .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: selection)
       .fixedSize()

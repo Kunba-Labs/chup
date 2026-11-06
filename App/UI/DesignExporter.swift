@@ -538,14 +538,16 @@ import ChupCore
       to: destination.appendingPathComponent("31-dynamic-island.png"))
     print("Island design board exported. Sample states only; no capture, no transcription.")
   }
+  /// CHUP_DARK=1 renders the main-window screens in the Bauhaus dark theme they ship in.
+  static let dark = ProcessInfo.processInfo.environment["CHUP_DARK"] == "1"
   private static func renderNative<V: View>(_ view: V, size: CGSize, to url: URL) throws {
     let host = NSHostingView(
-      rootView: view.environment(\.colorScheme, .light).tint(Palette.accent).frame(
+      rootView: view.environment(\.colorScheme, Self.dark ? .dark : .light).tint(Palette.accent).frame(
         width: size.width, height: size.height))
     let window = NSWindow(
       contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered,
       defer: false)
-    window.appearance = NSAppearance(named: .aqua)
+    window.appearance = NSAppearance(named: Self.dark ? .darkAqua : .aqua)
     window.contentView = host
     window.setContentSize(size)
     window.orderFront(nil)

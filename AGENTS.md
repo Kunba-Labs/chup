@@ -15,7 +15,7 @@ The user requires a fresh build installed in their Applications folder after eve
 - Treat local audio chunks, transcript revisions, speaker corrections, note versions, and resumable jobs as user data. Write durable state before cloud processing and never fabricate transcript, speaker, summary, or action-item evidence.
 - Use SwiftUI for management views and AppKit for global event monitoring, non-activating panels, text insertion, and audio integration. Preserve the shared `ChupCore` state model across the menu bar, hover rail, and management window.
 - Request microphone, Accessibility, input monitoring, and screen/system-audio permissions only when the associated feature is enabled. Keep secrets out of the repository; use Keychain or a trusted backend for credentials.
-- Keep the light editorial workspace and dark glass rail visually consistent, support VoiceOver and Reduce Motion, and prevent transient panels from intercepting unrelated clicks.
+- Keep the Bauhaus main window (dark, square, ruled; membox's theme, see `App/UI/Theme.swift`), the light floating notepad and the dark glass rail visually consistent, support VoiceOver and Reduce Motion, and prevent transient panels from intercepting unrelated clicks.
 - Validate risky behavior with the native/offline checks in `scripts/` and document any macOS-only checks that cannot run in a non-macOS environment. Do not replace real integrations with simulated success.
 
 ## Git and local files

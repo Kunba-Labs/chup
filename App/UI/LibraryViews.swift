@@ -157,7 +157,7 @@ struct DictationView: View {
               }.padding(22).workspaceSurface()
                 .overlay {
                   if state.dictationFocusID == entry.id {
-                    RoundedRectangle(cornerRadius: 16).strokeBorder(Palette.accent, lineWidth: 2)
+                    RoundedRectangle(cornerRadius: 0).strokeBorder(Palette.accent, lineWidth: 2)
                   }
                 }
                 .id(entry.id)
@@ -462,6 +462,6 @@ struct ListSearchField: View {
         Button { text = "" } label: { Image(systemName: "xmark.circle.fill") }
           .buttonStyle(.plain).foregroundStyle(Palette.secondary).accessibilityLabel("Clear search")
       }
-    }.padding(11).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
+    }.padding(11).background(Palette.paper, in: RoundedRectangle(cornerRadius: 0))
   }
 }

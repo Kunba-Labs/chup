@@ -62,7 +62,7 @@ struct GlassRail: View {
             state.searchOpen = true
           } label: {
             RailIcon(symbol: "magnifyingglass")
-              .frame(width: 36, height: 32).contentShape(RoundedRectangle(cornerRadius: 8))
+              .frame(width: 36, height: 32).contentShape(RoundedRectangle(cornerRadius: 0))
           }.buttonStyle(.plain).foregroundStyle(Palette.railIcon).help("Search  ⌘K")
             .accessibilityLabel("Search")
           Spacer()
@@ -81,12 +81,12 @@ struct GlassRail: View {
             }
           }
           .frame(width: 36, height: 32)
-          // Selection is a soft tint, like a Finder sidebar row, not a raised tile.
-          .background(active ? Palette.accent.opacity(0.13) : .clear,
-            in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-          .contentShape(RoundedRectangle(cornerRadius: 8))
+          // Bauhaus: blue selects, a full-strength block (membox --row-current-bg).
+          .background(active ? Palette.accent : .clear,
+            in: RoundedRectangle(cornerRadius: 0, style: .continuous))
+          .contentShape(RoundedRectangle(cornerRadius: 0))
         }
-        .buttonStyle(.plain).foregroundStyle(active ? Palette.accent : Palette.railIcon)
+        .buttonStyle(.plain).foregroundStyle(active ? Palette.onAccent : Palette.railIcon)
         .help("\(module.rawValue)  ⌘\(index + 1)")
         .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
         .accessibilityLabel(module.rawValue)
@@ -97,7 +97,7 @@ struct GlassRail: View {
       } label: {
         Image(systemName: state.meetingStatus == .recording ? "record.circle.fill" : "record.circle")
           .font(.heading).foregroundStyle(.white)
-          .frame(width: 40, height: 40).background(Palette.record, in: Circle())
+          .frame(width: 36, height: 36).background(Palette.record, in: Rectangle())
       }
       .buttonStyle(.plain).padding(.vertical, 14)
       .help(state.activeMeetingID == nil ? "Record a meeting" : "Show the recording meeting")
@@ -148,7 +148,7 @@ struct MeetingListColumn: View {
             // A selection never includes meetings the filter hides.
             .onChange(of: query) { _, _ in picked.formIntersection(meetings.map(\.id)) }
         }.font(.ui).padding(9)
-          .background(Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+          .background(Palette.paper, in: RoundedRectangle(cornerRadius: 0, style: .continuous))
         Button(selecting ? "Done" : "Select") {
           selecting.toggle()
           if !selecting { picked = [] }
@@ -158,7 +158,7 @@ struct MeetingListColumn: View {
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 2) {
           ForEach(MeetingDays.group(meetings), id: \.title) { day in
-            Text(day.title).font(.detail.weight(.semibold)).foregroundStyle(Palette.secondary)
+            Text(day.title).bauhausLabel()
               .padding(.horizontal, 10).padding(.top, 10).padding(.bottom, 2).accessibilityAddTraits(.isHeader)
             ForEach(day.meetings) { meeting in row(meeting) }
           }
@@ -190,21 +190,22 @@ struct MeetingListColumn: View {
           Image(systemName: isPicked ? "checkmark.circle.fill" : "circle")
             .foregroundStyle(isPicked ? Palette.accent : Palette.secondary).font(.reading)
         }
+        let current = isPicked || (selected && !selecting)
         VStack(alignment: .leading, spacing: 3) {
           HStack(spacing: 6) {
             MeetingSourceIcon(meeting: meeting, size: 14)
             Text(meeting.title).font(.ui.weight(.semibold)).lineLimit(1)
           }
           Text(meeting.created.formatted(date: .abbreviated, time: .shortened))
-            .font(.detail).foregroundStyle(Palette.secondary)
-        }
+            .font(.detail).foregroundStyle(current ? Palette.onAccent.opacity(0.8) : Palette.secondary)
+        }.foregroundStyle(current ? Palette.onAccent : Palette.ink)
       }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
         .padding(.horizontal, 10).contentShape(Rectangle())
-        // Source-list selection: accent tint while the list has focus, grey otherwise.
+        // Bauhaus: the current row is a blue block; grey while the list lacks focus.
         .background(
           isPicked || (selected && !selecting)
-            ? (listFocused ? Palette.accent.opacity(0.16) : Palette.border.opacity(0.9)) : .clear,
-          in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            ? (listFocused ? Palette.accent : Palette.paper) : .clear,
+          in: RoundedRectangle(cornerRadius: 0, style: .continuous))
     }.buttonStyle(.plain)
       .accessibilityAddTraits((selecting ? isPicked : selected || isPicked) ? .isSelected : [])
       .accessibilityHint(selecting ? "Selects this meeting" : "Opens this meeting")
@@ -242,7 +243,7 @@ struct MeetingListColumn: View {
         Button("Delete", role: .destructive) { deleteSelection() }
           .controlSize(.small).disabled(picked.isEmpty || !state.privacyWorkAllowed)
       }
-    }.padding(10).background(Palette.paper, in: RoundedRectangle(cornerRadius: 10))
+    }.padding(10).background(Palette.paper, in: RoundedRectangle(cornerRadius: 0))
   }
 }
 
@@ -299,8 +300,7 @@ struct TodayView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 28) {
         VStack(alignment: .leading, spacing: 8) {
-          Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased())
-            .font(.detail.weight(.semibold)).tracking(1.6).foregroundStyle(Palette.accent)
+          Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide))).bauhausLabel()
           Text(greeting).font(.pageTitle)
         }
         HStack(spacing: 12) {
@@ -386,7 +386,7 @@ struct TodayView: View {
         }
       }.padding(38).frame(maxWidth: 760, alignment: .leading)
         .frame(maxWidth: .infinity)  // Full-width scroll area: scrollbar at the window edge.
-    }.background(alignment: .bottom) { FujiLandscape().frame(height: 340) }
+    }
       .onAppear(perform: load).onChange(of: state.meetings) { _, _ in load() }
       .onChange(of: state.actions) { _, _ in load() }
   }
@@ -438,7 +438,11 @@ struct TodayView: View {
 /// lavender at the top left warming to peach at the bottom right, with soft violet and coral
 /// glows. Opaque, so nothing behind the window shows through (decided 2026-11-06).
 struct ShellBackdrop: View {
+  @Environment(\.colorScheme) private var scheme
   var body: some View {
+    if scheme == .dark { Palette.sidebar } else { gradient }  // Bauhaus: one flat ground.
+  }
+  private var gradient: some View {
     ZStack {
       LinearGradient(colors: [Palette.sidebar, Palette.backdrop], startPoint: .topLeading, endPoint: .bottomTrailing)
       RadialGradient(colors: [Palette.violet.opacity(0.16), .clear], center: .topLeading, startRadius: 0, endRadius: 520)

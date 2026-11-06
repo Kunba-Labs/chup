@@ -27,7 +27,7 @@ import ChupCore
     Window("Chup!", id: "workspace") {
       WorkspaceView().environmentObject(state).frame(minWidth: 900, minHeight: 650)
         .background(WorkspaceFrameRestorer())
-        .preferredColorScheme(.light)
+        .preferredColorScheme(.dark)  // Bauhaus window; floating panels set their own.
     }.defaultSize(width: 1240, height: 810)
       .windowStyle(.hiddenTitleBar)
       .commands {
@@ -39,7 +39,7 @@ import ChupCore
       }
     Settings {
       SettingsView().environmentObject(state).frame(width: 790, height: 640)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(.dark)  // Bauhaus window; floating panels set their own.
     }
     MenuBarExtra {
       Text(state.runningBuild.label)

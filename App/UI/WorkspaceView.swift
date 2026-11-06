@@ -56,14 +56,12 @@ struct WorkspaceShell: View {
           case .settings: SettingsView()
           }
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
-      }.background(Palette.workspace).clipShape(RoundedRectangle(cornerRadius: 18))
+      }.background(Palette.workspace).clipShape(RoundedRectangle(cornerRadius: 0))
         .overlay {
-          RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.border.opacity(0.8), lineWidth: 0.5)
+          Rectangle().strokeBorder(Palette.border, lineWidth: 1)
             .allowsHitTesting(false)
         }
-        .shadow(color: .black.opacity(0.07), radius: 14, y: 4)
-        // The title-bar safe area already clears the traffic lights; only a hairline gap on top.
-        .padding(.top, 4).padding(.bottom, 10).padding(.trailing, 10)
+        // Bauhaus: the panel sits flush on the ground, ruled apart, no shadow.
     }.overlay {
       if state.searchOpen {
         ZStack(alignment: .top) {
@@ -251,7 +249,7 @@ struct MeetingsView: View {
             .onChange(of: query) { _, _ in search() }.onAppear { search() }
           Spacer()
           Text("\(filtered.count) meetings").font(.detail).foregroundStyle(Palette.secondary)
-        }.padding(13).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
+        }.padding(13).background(Palette.paper, in: RoundedRectangle(cornerRadius: 0))
         filterBar
         if let searchError { Text(searchError).font(.detail).foregroundStyle(Palette.red) }
         if filtered.isEmpty {
@@ -501,7 +499,7 @@ struct MeetingDetailView: View {
           }.buttonStyle(.pillPrimary).disabled(state.activeMeetingID != nil)
         }
       }.font(.detail).padding(.vertical, 8).padding(.horizontal, 14).background(
-        Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        Palette.paper, in: RoundedRectangle(cornerRadius: 0, style: .continuous)
       ).padding(.top, 14).padding(.bottom, 16)
       tabBar
     }.background(Palette.workspace)
@@ -694,7 +692,7 @@ struct MeetingDetailView: View {
             .popover(isPresented: $replacing, arrowEdge: .bottom) { replacePopover }
         }
       }.font(.detail).padding(.horizontal, 10).padding(.vertical, 5).frame(width: findWidth)
-        .background(Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(Palette.paper, in: RoundedRectangle(cornerRadius: 0, style: .continuous))
       Menu {
         // Always a full pass: lines you edited come back for review instead of being skipped.
         Button("Transcribe again") { state.transcribeMeeting(reprocess: true) }.disabled(refineLocked)
@@ -774,7 +772,7 @@ struct MeetingDetailView: View {
             summaryFinding = false
           } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain)
             .foregroundStyle(Palette.secondary).accessibilityLabel("Close find")
-        }.font(.ui).padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
+        }.font(.ui).padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 0))
       }
       if outline.isEmpty && state.summaryEdits.isEmpty && (state.enhancedNotes?.blocks.isEmpty ?? true),
         let job = state.job(for: state.selectedMeetingID), job.step != .transcript
@@ -843,7 +841,7 @@ struct MeetingDetailView: View {
     HStack(spacing: 8) {
       TextField("Add a next step…", text: $newStep).textFieldStyle(.plain).onSubmit(addStep)
         .font(.ui).padding(.horizontal, 14).frame(height: 40)
-        .background(Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(Palette.paper, in: RoundedRectangle(cornerRadius: 0, style: .continuous))
       Button("Add", action: addStep).buttonStyle(.pill)
         .disabled(newStep.trimmingCharacters(in: .whitespaces).isEmpty)
       if template { NotesTemplateMenu() }
@@ -919,19 +917,21 @@ struct MeetingDetailView: View {
   private func readBar(_ blocks: [NoteBlock]) -> some View {
     let words = blocks.reduce(0) { $0 + $1.text.split(separator: " ").count }
     return HStack(spacing: 14) {
-      Label("\(max(1, Int((Double(words) / 200).rounded()))) MIN READ", systemImage: "lightbulb")
-        .font(.detail.weight(.semibold)).tracking(1).foregroundStyle(Palette.secondary)
+      Text("\(max(1, Int((Double(words) / 200).rounded()))) min read").bauhausLabel()
       Spacer()
       Button { summaryFinding = true; summaryFindFocused = true } label: { Image(systemName: "magnifyingglass") }
         .buttonStyle(.plain).accessibilityLabel("Find in summary")
       Button { state.copyNotesMarkdown() } label: { Image(systemName: "doc.on.doc") }
         .buttonStyle(.plain).accessibilityLabel("Copy summary as Markdown")
     }.foregroundStyle(Palette.secondary).padding(.horizontal, 14).frame(height: 40)
-      .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 10))
+      .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 0))
   }
   private func summarySection(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
     VStack(alignment: .leading, spacing: 8) {
+      // Bauhaus: a heading sits on a 1 pt rule (membox --heading-rule).
       Text(title).font(.heading).accessibilityAddTraits(.isHeader)
+        .padding(.bottom, 6).frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 1) }
       content()
     }
   }
@@ -1049,7 +1049,7 @@ struct MeetingDetailView: View {
             NSWorkspace.shared.open(state.root.appendingPathComponent("Recordings/\(state.selectedMeetingID ?? "")"))
           }
         }.font(.detail)
-      }.padding(12).background(Palette.paper.opacity(0.7), in: RoundedRectangle(cornerRadius: 14))
+      }.padding(12).background(Palette.paper.opacity(0.7), in: RoundedRectangle(cornerRadius: 0))
     }
   }
 
@@ -1069,9 +1069,9 @@ struct MeetingDetailView: View {
             Text("\(state.assistantHistory.count) earlier").font(.detail).foregroundStyle(Palette.secondary)
           }
         }.font(.ui).padding(.horizontal, 16).padding(.vertical, 12)
-          .background(Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-          .overlay { RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Palette.border) }
-          .contentShape(Capsule())
+          .background(Palette.paper, in: RoundedRectangle(cornerRadius: 0, style: .continuous))
+          .overlay { RoundedRectangle(cornerRadius: 0, style: .continuous).strokeBorder(Palette.border) }
+          .contentShape(Rectangle())
       }.buttonStyle(.plain).padding(.top, 12).accessibilityLabel("Ask anything about this meeting")
     }
   }
@@ -1167,7 +1167,7 @@ struct MeetingDetailView: View {
                       if let reason = state.inferredNameReason(segment.speakerID) {
                         Text("Inferred").font(.micro)
                           .foregroundStyle(Palette.secondary).padding(.horizontal, 6).padding(.vertical, 2)
-                          .overlay { Capsule().strokeBorder(Palette.border) }
+                          .overlay { Rectangle().strokeBorder(Palette.border) }
                           .help("Named from the transcript: " + reason)
                           .accessibilityLabel("Name inferred from the transcript: " + reason)
                       }
@@ -1177,7 +1177,7 @@ struct MeetingDetailView: View {
                           renaming = segment
                         }.buttonStyle(.plain).font(.detail.weight(.medium))
                           .padding(.horizontal, 8).padding(.vertical, 3)
-                          .background(Palette.speaker(segment.speakerID).opacity(0.14), in: Capsule())
+                          .background(Palette.speaker(segment.speakerID).opacity(0.14), in: Rectangle())
                           .accessibilityHint("Name this speaker everywhere in the meeting")
                       }
                     }
@@ -1220,7 +1220,7 @@ private struct TranscriptLine: View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
       Text(text).font(.reading).lineSpacing(5).textSelection(.enabled)
         .padding(.horizontal, 4).padding(.vertical, 1)
-        .background(highlight, in: RoundedRectangle(cornerRadius: 5))
+        .background(highlight, in: RoundedRectangle(cornerRadius: 0))
       Spacer(minLength: 0)
       // Shown on hover or keyboard focus; always reachable by keyboard and VoiceOver.
       HStack(spacing: 10) {
@@ -1571,7 +1571,7 @@ struct MeetingJobBadge: View {
       ProgressView().controlSize(.mini)
       Text(job.short).monospacedDigit()
     }.font(.detail.weight(.medium)).foregroundStyle(Palette.accent)
-      .padding(.horizontal, 9).padding(.vertical, 4).background(Palette.accent.opacity(0.10), in: Capsule())
+      .padding(.horizontal, 9).padding(.vertical, 4).background(Palette.accent.opacity(0.10), in: Rectangle())
       .accessibilityElement(children: .combine)
   }
 }
@@ -1632,7 +1632,7 @@ struct SummaryWritingPlaceholder: View {
         Text("step \(index) of \(job.steps.count) · \(job.title.lowercased())").monospacedDigit()
           .foregroundStyle(Palette.secondary)
       }.font(.detail).padding(.horizontal, 14).frame(height: 40)
-        .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 10))
+        .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 0))
       ForEach(0..<2, id: \.self) { _ in
         VStack(alignment: .leading, spacing: 10) {
           bar(0.38, height: 14).padding(.bottom, 4)
@@ -1645,7 +1645,7 @@ struct SummaryWritingPlaceholder: View {
   }
   private func bar(_ width: CGFloat, height: CGFloat = 10) -> some View {
     GeometryReader { geometry in
-      RoundedRectangle(cornerRadius: 4).fill(Palette.border.opacity(0.7))
+      RoundedRectangle(cornerRadius: 0).fill(Palette.border.opacity(0.7))
         .frame(width: geometry.size.width * width)
     }.frame(height: height)
   }

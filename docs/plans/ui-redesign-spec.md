@@ -145,7 +145,7 @@ approved before any build work starts.
 - **Cross-meeting AI Ask:** unpark after the per-meeting Ask history ships and the evidence checker covers multiple meetings.
 - **Folders and spaces:** unpark if a user has more than about 30 tags or asks for nesting.
 - **Custom template editor:** already deferred in increment 9.
-- **Dark-mode workspace:** PRODUCT.md requires the light workspace.
+- **Dark-mode workspace:** unparked and done 2026-11-06 — the main window uses membox's Bauhaus theme (see PLAN.md).
 - **An in-window live recording view:** decided 2026-10-30. The floating sidebar carries the live experience instead.
 
 ## F11. Wispr Flow realignment (decided 2026-10-30)

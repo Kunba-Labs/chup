@@ -111,7 +111,7 @@ struct SearchPalette: View {
                 }
                 Spacer()
               }.padding(.horizontal, 16).padding(.vertical, 8).contentShape(Rectangle())
-                .background(index == cursor ? Palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 8))
+                .background(index == cursor ? Palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 0))
             }.buttonStyle(.plain).padding(.horizontal, 6).id(result.id)
           }
         }.padding(.bottom, 10)
@@ -122,8 +122,8 @@ struct SearchPalette: View {
       }
       }
     }
-    .frame(width: 620).background(Palette.paper, in: RoundedRectangle(cornerRadius: 16))
-    .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Palette.border, lineWidth: 0.5) }
+    .frame(width: 620).background(Palette.paper, in: RoundedRectangle(cornerRadius: 0))
+    .overlay { RoundedRectangle(cornerRadius: 0).strokeBorder(Palette.border, lineWidth: 0.5) }
     .shadow(color: .black.opacity(0.2), radius: 30, y: 12)
     .onAppear { focused = true }
     .onExitCommand { state.searchOpen = false }

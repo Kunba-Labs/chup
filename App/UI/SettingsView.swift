@@ -39,12 +39,10 @@ struct SettingsView: View {
   private var advancedPage: String {
     Self.pages["Advanced"]!.contains(section) ? section : "Advanced"
   }
+  /// Bauhaus: a plain symbol in the row's own colour, no coloured iOS tile.
   static func tile(_ name: String, size: CGFloat = 22) -> some View {
-    let tile = tiles[name] ?? ("circle", .gray)
-    return Image(systemName: tile.icon).font(.system(size: size * 0.5, weight: .semibold))
-      .foregroundStyle(.white).frame(width: size, height: size)
-      .background(tile.color, in: RoundedRectangle(cornerRadius: size * 0.27))
-      .accessibilityHidden(true)
+    Image(systemName: (tiles[name] ?? ("circle", .gray)).icon).font(.system(size: size * 0.62))
+      .frame(width: size, height: size).accessibilityHidden(true)
   }
   var body: some View {
     HStack(spacing: 0) {
@@ -63,8 +61,8 @@ struct SettingsView: View {
                 Spacer(minLength: 0)
               }.padding(.horizontal, 10).padding(.vertical, 10).contentShape(Rectangle())
                 .background(
-                  home == name ? Palette.paper : .clear, in: RoundedRectangle(cornerRadius: 9))
-            }.buttonStyle(.plain).foregroundStyle(home == name ? Palette.ink : Palette.secondary)
+                  home == name ? Palette.accent : .clear, in: Rectangle())
+            }.buttonStyle(.plain).foregroundStyle(home == name ? Palette.onAccent : Palette.secondary)
               .accessibilityLabel(name).accessibilityAddTraits(home == name ? .isSelected : [])
           }
         }.padding(.horizontal, 12).padding(.vertical, 24)
@@ -246,10 +244,10 @@ struct SettingsView: View {
         icon: "paintpalette"
       ) {
         HStack(spacing: 16) {
-          RoundedRectangle(cornerRadius: 12).fill(Palette.workspace).overlay {
+          RoundedRectangle(cornerRadius: 0).fill(Palette.workspace).overlay {
             WaveMark().scaleEffect(0.7)
           }.frame(height: 78)
-          RoundedRectangle(cornerRadius: 12).fill(Color(white: 0.13)).overlay {
+          RoundedRectangle(cornerRadius: 0).fill(Color(white: 0.13)).overlay {
             WaveMark(color: .white).scaleEffect(0.7)
           }.frame(height: 78)
         }.accessibilityLabel("Light workspace and dark rail appearance samples")
@@ -415,7 +413,7 @@ struct ShortcutSettingsView: View {
           isOn: Binding(get: { registry.testing }, set: { registry.setTesting($0) }))
         Text(registry.lastTest).font(.system(.caption, design: .monospaced)).padding(12).frame(
           maxWidth: .infinity, alignment: .leading
-        ).background(Palette.paper, in: RoundedRectangle(cornerRadius: 7))
+        ).background(Palette.paper, in: RoundedRectangle(cornerRadius: 0))
         Text(
           "Chup! checks its own shortcuts. It can’t see every shortcut in other apps."
         ).font(.detail).foregroundStyle(Palette.secondary)
