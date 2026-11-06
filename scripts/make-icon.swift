@@ -1,13 +1,16 @@
-// Regenerates the app icon (concept A, pill bars; picked 2026-10-30).
+// Regenerates the app icon: the bar mark in membox's Bauhaus (2026-11-06) — square bars in the
+// three primaries on the ink ground, matching the main window (was gradient pills, 2026-10-30).
 // Usage: swift scripts/make-icon.swift   (from the repo root)
 // Writes the Icon Composer layer and the legacy appiconset PNGs.
 import AppKit
 
-let violet: [CGFloat] = [106, 76, 245], coral: [CGFloat] = [232, 115, 90]
-func gradient(_ t: CGFloat) -> CGColor {
-  let c = (0..<3).map { (violet[$0] + (coral[$0] - violet[$0]) * t) / 255 }
-  return CGColor(srgbRed: c[0], green: c[1], blue: c[2], alpha: 1)
+func rgb(_ hex: UInt32) -> CGColor {
+  CGColor(srgbRed: CGFloat((hex >> 16) & 255) / 255, green: CGFloat((hex >> 8) & 255) / 255,
+    blue: CGFloat(hex & 255) / 255, alpha: 1)
 }
+/// Blue selects, red files, yellow marks — the same order as `WaveMark` in the app.
+let bars = [rgb(0x2D51E0), rgb(0x2D51E0), rgb(0xD93B2B), rgb(0xF0B323), rgb(0xF2F1EE)]
+let ink = rgb(0x0D0D10)
 
 /// Five pill bars centred in `rect`, sized from the design board (220 pt tile).
 func drawBars(_ ctx: CGContext, in rect: CGRect) {
@@ -17,9 +20,8 @@ func drawBars(_ ctx: CGContext, in rect: CGRect) {
   for (index, h) in heights.enumerated() {
     let height = h * scale
     let bar = CGRect(x: x, y: rect.midY - height / 2, width: width, height: height)
-    ctx.setFillColor(gradient(CGFloat(index) / 4))
-    ctx.addPath(CGPath(roundedRect: bar, cornerWidth: width / 2, cornerHeight: width / 2, transform: nil))
-    ctx.fillPath()
+    ctx.setFillColor(bars[index])
+    ctx.fill(bar)  // Square, like everything Bauhaus.
     x += width + gap
   }
 }
@@ -38,7 +40,7 @@ png(1024, "App/Resources/ChupIcon.icon/Assets/Waveform.png") { ctx in
   drawBars(ctx, in: CGRect(x: 0, y: 0, width: 1024, height: 1024))
 }
 
-// Legacy appiconset: the macOS grid (824 pt tile in 1024, ~185 pt radius) on a light fill.
+// Legacy appiconset: the macOS grid (824 pt tile in 1024, ~185 pt radius) on the ink ground.
 let master = "App/Resources/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png"
 png(1024, master) { ctx in
   let tile = CGRect(x: 100, y: 100, width: 824, height: 824)
@@ -46,17 +48,9 @@ png(1024, master) { ctx in
   ctx.saveGState()
   ctx.setShadow(offset: CGSize(width: 0, height: -10), blur: 28, color: CGColor(gray: 0, alpha: 0.28))
   ctx.addPath(shape)
-  ctx.setFillColor(CGColor(srgbRed: 0.98, green: 0.98, blue: 0.99, alpha: 1))
+  ctx.setFillColor(ink)
   ctx.fillPath()
   ctx.restoreGState()
-  ctx.addPath(shape)
-  ctx.clip()
-  let fill = CGGradient(
-    colorsSpace: CGColorSpace(name: CGColorSpace.sRGB),
-    colors: [CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
-             CGColor(srgbRed: 0.957, green: 0.953, blue: 0.969, alpha: 1)] as CFArray,
-    locations: [0, 1])!
-  ctx.drawLinearGradient(fill, start: CGPoint(x: 0, y: 924), end: CGPoint(x: 0, y: 100), options: [])
   drawBars(ctx, in: tile)
 }
 for (name, size) in [

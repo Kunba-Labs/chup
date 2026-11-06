@@ -1,7 +1,7 @@
 {
   "fill-specializations": [
-    { "value": { "solid": "srgb:0.980,0.980,0.988,1.000" } },
-    { "appearance": "dark", "value": { "solid": "srgb:0.090,0.086,0.110,1.000" } }
+    { "value": { "solid": "srgb:0.051,0.051,0.063,1.000" } },
+    { "appearance": "dark", "value": { "solid": "srgb:0.051,0.051,0.063,1.000" } }
   ],
   "groups": [
     {
