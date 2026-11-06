@@ -492,9 +492,20 @@ struct SpaceBackdrop: View {
         ZStack {
           Image("SpaceBackdrop").resizable().scaledToFill()
             .frame(width: geometry.size.width, height: geometry.size.height)
-            // A slow drift: about one cycle a minute, a few points each way.
-            .scaleEffect(1.06)
-            .offset(x: 10 * sin(t / 9.5), y: 6 * cos(t / 11))
+            // The nebula drifts and breathes slowly: ~40–70 s cycles, visible but never busy.
+            .scaleEffect(1.16 + 0.04 * sin(t / 11))
+            .offset(x: 36 * sin(t / 7), y: 22 * cos(t / 8.5))
+          // Two soft hazes gliding over it, in the image's own blue and ember.
+          RadialGradient(colors: [Color(red: 0.18, green: 0.32, blue: 0.88).opacity(0.22), .clear],
+            center: .center, startRadius: 0, endRadius: geometry.size.width * 0.35)
+            .offset(x: geometry.size.width * (0.28 + 0.06 * sin(t / 9)),
+              y: geometry.size.height * (-0.30 + 0.05 * cos(t / 12)))
+            .blendMode(.screen)
+          RadialGradient(colors: [Color(red: 0.85, green: 0.28, blue: 0.17).opacity(0.14), .clear],
+            center: .center, startRadius: 0, endRadius: geometry.size.width * 0.3)
+            .offset(x: geometry.size.width * (-0.36 + 0.05 * cos(t / 10)),
+              y: geometry.size.height * (0.38 + 0.04 * sin(t / 13)))
+            .blendMode(.screen)
           Canvas { ctx, size in
             for (x, y, r, phase) in Self.stars {
               let glow = 0.25 + 0.35 * (1 + sin(t * 0.8 + phase)) / 2
