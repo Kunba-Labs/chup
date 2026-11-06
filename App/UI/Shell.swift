@@ -478,11 +478,37 @@ enum MeetingDays {
 /// slowly, with a few faint stars twinkling over it. Reduce Motion holds it still.
 struct SpaceBackdrop: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  /// Fixed star field: (x, y in 0...1, size, phase), so stars don't jump between launches.
-  private static let stars: [(CGFloat, CGFloat, CGFloat, Double)] = (0..<48).map { i in
+  /// A fixed star field (same every launch): position, size, twinkle phase and speed, tint.
+  private struct Star { var x, y, size: CGFloat; var phase, speed: Double; var tint: Color; var bright: Bool }
+  private static let stars: [Star] = (0..<70).map { i in
     let h = UInt64(i + 1) &* 0x9E37_79B9_7F4A_7C15
-    func unit(_ shift: UInt64) -> CGFloat { CGFloat((h >> shift) & 0xFFFF) / 65535 }
-    return (unit(0), unit(16), 0.8 + unit(32) * 1.4, Double(unit(48)) * 6.28)
+    func unit(_ shift: UInt64) -> CGFloat { CGFloat((h >> shift) & 0xFF) / 255 }
+    let bright = i % 6 == 0
+    let tints = [Color(red: 0.80, green: 0.87, blue: 1.0), .white, Color(red: 1.0, green: 0.92, blue: 0.80)]
+    return Star(x: unit(0), y: unit(8), size: bright ? 2.0 + unit(16) * 1.4 : 0.5 + unit(16) * unit(24) * 1.3,
+      phase: Double(unit(32)) * 6.28, speed: 0.4 + Double(unit(40)) * 1.2,
+      tint: tints[Int(unit(48) * 2.99)], bright: bright)
+  }
+  /// A star: soft halo, hot core, and on bright ones a faint four-point sparkle.
+  private static func draw(_ star: Star, at point: CGPoint, glow: Double, in ctx: inout GraphicsContext) {
+    let halo = star.size * (star.bright ? 5 : 3)
+    ctx.fill(Path(ellipseIn: CGRect(x: point.x - halo, y: point.y - halo, width: halo * 2, height: halo * 2)),
+      with: .radialGradient(Gradient(colors: [star.tint.opacity(0.35 * glow), .clear]),
+        center: point, startRadius: 0, endRadius: halo))
+    let core = star.size / 2
+    ctx.fill(Path(ellipseIn: CGRect(x: point.x - core, y: point.y - core, width: core * 2, height: core * 2)),
+      with: .color(.white.opacity(min(1, 0.5 + glow))))
+    guard star.bright else { return }
+    let spike = star.size * 7 * (0.7 + 0.3 * glow)
+    for (dx, dy) in [(spike, 0.0), (0.0, spike)] {
+      var line = Path()
+      line.move(to: CGPoint(x: point.x - dx, y: point.y - dy))
+      line.addLine(to: CGPoint(x: point.x + dx, y: point.y + dy))
+      ctx.stroke(line, with: .linearGradient(
+        Gradient(colors: [.clear, star.tint.opacity(0.8 * glow), .clear]),
+        startPoint: CGPoint(x: point.x - dx, y: point.y - dy), endPoint: CGPoint(x: point.x + dx, y: point.y + dy)),
+        lineWidth: 0.8)
+    }
   }
   var body: some View {
     // ponytail: 15 fps timeline only while Today is on screen; the GPU cost is one image and 48 dots.
@@ -507,10 +533,10 @@ struct SpaceBackdrop: View {
               y: geometry.size.height * (0.38 + 0.04 * sin(t / 13)))
             .blendMode(.screen)
           Canvas { ctx, size in
-            for (x, y, r, phase) in Self.stars {
-              let glow = 0.25 + 0.35 * (1 + sin(t * 0.8 + phase)) / 2
-              let dot = CGRect(x: x * size.width, y: y * size.height, width: r, height: r)
-              ctx.fill(Path(ellipseIn: dot), with: .color(.white.opacity(glow)))
+            for star in Self.stars {
+              // Each star twinkles at its own pace; dim ones never vanish entirely.
+              let glow = 0.35 + 0.65 * (1 + sin(t * star.speed + star.phase)) / 2
+              Self.draw(star, at: CGPoint(x: star.x * size.width, y: star.y * size.height), glow: glow, in: &ctx)
             }
           }
         }.clipped()

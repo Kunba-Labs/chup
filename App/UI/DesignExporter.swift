@@ -65,6 +65,8 @@ import ChupCore
         try renderNative(SummaryWritingPlaceholder(job: MeetingJob(step: .summary, steps: [.transcript, .summary, .notes]))
           .padding(24).background(Palette.workspace), size: CGSize(width: 820, height: 330),
           to: destination.appendingPathComponent("30-summary-writing.png"))
+        try renderNative(SpaceBackdrop(), size: CGSize(width: 600, height: 400),
+          to: destination.appendingPathComponent("30-space.png"))
         let detector = MeetingDetector(state: state)
         for (file, browser, ended) in [("zoom", false, false), ("browser", true, false), ("ended", false, true)] {
           detector.candidate = MeetingCandidate(pid: 1, name: browser ? "Chrome" : "Zoom", browser: browser)
