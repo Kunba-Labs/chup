@@ -204,6 +204,8 @@ struct EnhancedNotesView: View {
   var embedded = false
   /// The Summary tab puts the template picker beside its next-step field instead.
   var showsHeader = true
+  /// Inside the Summary tab's own surface: no card of its own.
+  var bare = false
   /// Find text from the Summary tab; matching lines are highlighted.
   var highlight = ""
   private func found(_ text: String) -> Bool {
@@ -230,11 +232,18 @@ struct EnhancedNotesView: View {
         }
       }.padding(.top, embedded ? 0 : 24) }
       if let notes = state.enhancedNotes, !notes.blocks.isEmpty {
+        let lead = notes.blocks.first.flatMap { $0.kind == "ai" ? $0.id : nil }
+        let names = speakerColors
         let document = VStack(alignment: .leading, spacing: 8) {
-          ForEach(notes.blocks) { block in row(block).id("note-" + block.id) }
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
+          ForEach(notes.blocks) { block in
+            NoteRow(block: block, lead: block.id == lead, names: names, highlight: highlight,
+              showTab: showTab).id("note-" + block.id)
+          }
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(bare ? 0 : 22)
           .help("Black is yours. Grey comes from the transcript.")
-        if embedded { document.workspaceSurface() } else { ScrollView { document }.workspaceSurface() }
+        if bare { document } else if embedded { document.workspaceSurface() } else {
+          ScrollView { document }.workspaceSurface()
+        }
       } else {
         QuietEmpty(
           icon: "doc.text", art: "VoxelNotebook",
@@ -255,36 +264,84 @@ struct EnhancedNotesView: View {
       && (state.notesMeetingID == state.selectedMeetingID
         || state.processingMeetingID == state.selectedMeetingID)
   }
-  @ViewBuilder private func row(_ block: NoteBlock) -> some View {
+  /// Each named speaker's colour, so the notes show who said what like the transcript does.
+  private var speakerColors: [(name: String, color: Color)] {
+    var seen = Set<String>()
+    return state.segments.compactMap { segment in
+      guard let raw = segment.speakerName else { return nil }
+      let name = raw.replacingOccurrences(of: " · voice match", with: "")
+      guard name.count > 1, seen.insert(name).inserted else { return nil }
+      return (name, Palette.speaker(segment.speakerID))
+    }
+  }
+}
+/// One line of the notes: heading, bullet or sub-bullet. The citation shows on hover or focus
+/// and stays a VoiceOver action, so the page reads clean without hiding where lines came from.
+private struct NoteRow: View {
+  @EnvironmentObject var state: WorkspaceState
+  let block: NoteBlock
+  let lead: Bool
+  let names: [(name: String, color: Color)]
+  let highlight: String
+  let showTab: (String) -> Void
+  @State private var hovering = false
+  @FocusState private var focused: Bool
+  private var found: Bool {
+    let query = highlight.trimmingCharacters(in: .whitespaces)
+    return !query.isEmpty && block.text.localizedCaseInsensitiveContains(query)
+  }
+  /// Names in their speaker colour; the rest keeps the line's own colour.
+  private var styled: AttributedString {
+    var text = AttributedString(block.isHeading ? block.plainText : block.text)
+    for (name, color) in names {
+      var searchRange = text.startIndex..<text.endIndex
+      while let range = text[searchRange].range(of: name) {
+        text[range].foregroundColor = color
+        searchRange = range.upperBound..<text.endIndex
+      }
+    }
+    return text
+  }
+  var body: some View {
     if block.isHeading {
-      Text(block.plainText).font(.system(size: 18, weight: .semibold)).padding(.top, 10)
-        .foregroundStyle(block.kind == "user" ? Palette.ink : Palette.secondary)
-        .background(found(block.text) ? Palette.accent.opacity(0.15) : .clear)
+      Text(block.plainText).font(.system(size: 16, weight: .semibold)).padding(.top, 14)
+        .foregroundStyle(Palette.ink)
+        .background(found ? Palette.accent.opacity(0.15) : .clear)
         .accessibilityAddTraits(.isHeader)
     } else {
+      let sub = block.level == 1
       HStack(alignment: .firstTextBaseline, spacing: 8) {
-        Text("•").foregroundStyle(Palette.secondary)
-        Text(block.text).font(.system(size: 16)).textSelection(.enabled)
-          .foregroundStyle(block.kind == "user" ? Palette.ink : Palette.secondary)
-          .background(found(block.text) ? Palette.accent.opacity(0.15) : .clear)
-          .accessibilityLabel((block.kind == "user" ? "Your note: " : "Added: ") + block.text)
-        if let source = block.sources.first {
-          if state.partial.transcript {
-            Image(systemName: "quote.bubble").font(.caption).foregroundStyle(Palette.secondary.opacity(0.5))
-              .help("Source deleted: the transcript of this meeting was deleted.")
-              .accessibilityLabel("Source deleted")
-          } else {
-            Button {
-              state.revealSource(source)
-              showTab("Transcript")
-            } label: {
-              Image(systemName: state.partial.audio ? "quote.bubble.fill" : "quote.bubble")
-            }.buttonStyle(.borderless).font(.caption)
-              .help(state.partial.audio ? source.quote + " (audio deleted)" : source.quote)
-              .accessibilityLabel(state.partial.audio ? "Show source in transcript, audio deleted" : "Show source in transcript")
-          }
+        if !lead {
+          Text(sub ? "▪" : "•").font(.system(size: sub ? 9 : 15)).foregroundStyle(Palette.secondary)
         }
-      }
+        Text(styled).font(.system(size: lead ? 17 : sub ? 14 : 15)).lineSpacing(5).textSelection(.enabled)
+          .foregroundStyle(block.kind == "user" || lead ? Palette.ink : Palette.ink.opacity(0.82))
+          .background(found ? Palette.accent.opacity(0.15) : .clear)
+          .accessibilityLabel((block.kind == "user" ? "Your note: " : "Added: ") + block.text)
+        Spacer(minLength: 0)
+        citation
+      }.padding(.leading, sub ? 22 : 0).padding(.bottom, lead ? 6 : 0).contentShape(Rectangle())
+        .onHover { hovering = $0 }
+    }
+  }
+  @ViewBuilder private var citation: some View {
+    if let source = block.sources.first {
+      Group {
+        if state.partial.transcript {
+          Image(systemName: "quote.bubble").font(.caption).foregroundStyle(Palette.secondary.opacity(0.5))
+            .help("Source deleted: the transcript of this meeting was deleted.")
+            .accessibilityLabel("Source deleted")
+        } else {
+          Button {
+            state.revealSource(source)
+            showTab("Transcript")
+          } label: {
+            Image(systemName: state.partial.audio ? "quote.bubble.fill" : "quote.bubble")
+          }.buttonStyle(.borderless).font(.caption).focused($focused)
+            .help(state.partial.audio ? source.quote + " (audio deleted)" : source.quote)
+            .accessibilityLabel(state.partial.audio ? "Show source in transcript, audio deleted" : "Show source in transcript")
+        }
+      }.opacity(hovering || focused ? 1 : 0)  // Still focusable and announced while hidden.
     }
   }
 }

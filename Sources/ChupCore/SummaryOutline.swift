@@ -61,6 +61,18 @@ public struct SummaryOutline: Equatable {
   }
 
   /// Markdown for Copy and Export: title, the user's own notes, then the summary.
+  /// "## Next steps" with owners and checkboxes; empty when there are none.
+  public func nextStepsMarkdown() -> String {
+    nextSteps.isEmpty ? "" : nextStepsLines.joined(separator: "\n") + "\n"
+  }
+  private var nextStepsLines: [String] {
+    var out = ["", "## Next steps"]
+    for group in nextSteps {
+      out.append("**\(group.owner)**")
+      out += group.steps.map { "- [\($0.done ? "x" : " ")] " + $0.text + ($0.dueDate.map { " (due \($0))" } ?? "") }
+    }
+    return out
+  }
   public func markdown(title: String, thoughts: String) -> String {
     var out = ["# " + title]
     let mine = thoughts.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -71,13 +83,7 @@ public struct SummaryOutline: Equatable {
     section("TL;DR", tldr.map(\.text))
     section("Key points", points.map { "- " + $0.text })
     section("Decisions made", decisions.map { "- " + $0.text })
-    if !nextSteps.isEmpty {
-      out += ["", "## Next steps"]
-      for group in nextSteps {
-        out.append("**\(group.owner)**")
-        out += group.steps.map { "- [\($0.done ? "x" : " ")] " + $0.text + ($0.dueDate.map { " (due \($0))" } ?? "") }
-      }
-    }
+    if !nextSteps.isEmpty { out += nextStepsLines }
     section("Open questions", questions.map { "- " + $0.text })
     return out.joined(separator: "\n") + "\n"
   }

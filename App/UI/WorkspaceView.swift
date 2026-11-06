@@ -519,7 +519,7 @@ struct MeetingDetailView: View {
           get: { titleEdit ?? state.selectedMeeting?.title ?? "" }, set: { titleEdit = $0 }))
           .textFieldStyle(.plain)
           .font(.system(size: 26, weight: .semibold)).focused($titleFocused).onSubmit(saveTitle)
-          .frame(minWidth: 140)
+          .frame(minWidth: 140, minHeight: 36)  // A 26 pt plain field otherwise clips its ascenders.
           .accessibilityLabel("Meeting title")
         Spacer(minLength: 12)
         tabActions
@@ -538,6 +538,15 @@ struct MeetingDetailView: View {
             callService = state.selectedMeeting?.callService
             editMetadata = true
           }
+          Picker("Notes language", selection: Binding(
+            get: { state.selectedMeeting?.notesLanguage ?? "" },
+            set: { state.setNotesLanguage($0.isEmpty ? nil : $0) })
+          ) {
+            Text("As spoken in the meeting").tag("")
+            Text("English").tag("English")
+            Text("Nederlands").tag("Nederlands")
+          }.disabled(state.processingMeeting || state.writingNotes
+            || state.activeMeetingID == state.selectedMeetingID)
           Divider()
           Button("Delete audio only…") { partialDelete = .audio }
             .disabled(!state.privacyWorkAllowed || state.partial.audio)
@@ -775,7 +784,11 @@ struct MeetingDetailView: View {
             .foregroundStyle(Palette.secondary).accessibilityLabel("Close find")
         }.font(.system(size: 13)).padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
       }
-      if outline.isEmpty && state.summaryEdits.isEmpty, state.enhancedNotes?.blocks.isEmpty == false {
+      if outline.isEmpty && state.summaryEdits.isEmpty && (state.enhancedNotes?.blocks.isEmpty ?? true),
+        let job = state.job(for: state.selectedMeetingID)
+      {
+        SummaryWritingPlaceholder(job: job)
+      } else if outline.isEmpty && state.summaryEdits.isEmpty, state.enhancedNotes?.blocks.isEmpty == false {
         // Notes written from the transcript when no summary was made still have a home.
         addStepField(template: true)
         EnhancedNotesView(
@@ -789,7 +802,9 @@ struct MeetingDetailView: View {
               ? "It’s written when the meeting ends." : "After the meeting, press Write summary.")
         addStepField(template: false)
       } else {
+          let notes = state.enhancedNotes?.blocks ?? []
           VStack(alignment: .leading, spacing: 22) {
+            if !notes.isEmpty { readBar(notes) }
             if !state.summaryEdits.isEmpty {
               summarySection("Your edits") {
                 ForEach(state.summaryEdits) { item in
@@ -797,28 +812,13 @@ struct MeetingDetailView: View {
                 }
               }
             }
-            if !outline.tldr.isEmpty {
-              summarySection("TL;DR") {
-                ForEach(outline.tldr) { item in
-                  HStack(alignment: .firstTextBaseline) {
-                    Text(item.text).font(.system(size: 17)).textSelection(.enabled)
-                      .background(found(item.text) ? Palette.accent.opacity(0.15) : .clear)
-                    sourceLinks(item.sources)
-                    Spacer(minLength: 0)
-                    editButton(item)
-                  }.id(item.id)
-                }
-              }
-            }
-            if !outline.points.isEmpty {
-              summarySection("Key points") {
-                ForEach(outline.points) { item in bullet(item.text, sources: item.sources, edit: item) }
-              }
-            }
-            if !outline.decisions.isEmpty {
-              summarySection("Decisions made") {
-                ForEach(outline.decisions) { item in bullet(item.text, sources: item.sources, edit: item) }
-              }
+            if notes.isEmpty {
+              outlineSections(outline)
+            } else {
+              // Wispr-style: the topic-led notes are the summary (decided 2026-11-06, spec F12).
+              EnhancedNotesView(
+                showTab: { tab = Self.tabName($0) }, embedded: true, showsHeader: false,
+                bare: true, highlight: summaryQuery)
             }
             summarySection("Next steps") {
               if outline.nextSteps.isEmpty {
@@ -829,26 +829,16 @@ struct MeetingDetailView: View {
                   .padding(.top, 4)
                 ForEach(group.steps) { step in nextStep(step) }
               }
-              addStepField(template: false).padding(.top, 4)
+              addStepField(template: !notes.isEmpty).padding(.top, 4)
               if state.lastActionReceipt != nil {
                 Button("Undo last change") { state.undoAction() }.controlSize(.small)
               }
             }
-            if !outline.questions.isEmpty {
-              summarySection("Open questions") {
-                ForEach(outline.questions) { item in bullet(item.text, sources: item.sources, edit: item) }
-              }
-            }
-            if state.enhancedNotes?.blocks.isEmpty == false {
+            if !notes.isEmpty && !outline.isEmpty {
               DisclosureGroup(isExpanded: $notesExpanded) {
-                VStack(alignment: .leading, spacing: 10) {
-                  NotesTemplateMenu()
-                  EnhancedNotesView(
-                    showTab: { tab = Self.tabName($0) }, embedded: true, showsHeader: false,
-                    highlight: summaryQuery)
-                }.padding(.top, 8)
+                VStack(alignment: .leading, spacing: 22) { outlineSections(outline) }.padding(.top, 8)
               } label: {
-                Text("Notes filled in from the transcript").font(.system(size: 15, weight: .semibold))
+                Text("Summary points with sources").font(.system(size: 15, weight: .semibold))
               }
             }
           }.frame(maxWidth: .infinity, alignment: .leading).padding(22).workspaceSurface()
@@ -895,6 +885,51 @@ struct MeetingDetailView: View {
     guard !text.isEmpty else { return }
     state.addAction(text)
     newStep = ""
+  }
+  /// TL;DR, key points, decisions and open questions, each line editable and cited.
+  @ViewBuilder private func outlineSections(_ outline: SummaryOutline) -> some View {
+    if !outline.tldr.isEmpty {
+      summarySection("TL;DR") {
+        ForEach(outline.tldr) { item in
+          HStack(alignment: .firstTextBaseline) {
+            Text(item.text).font(.system(size: 17)).textSelection(.enabled)
+              .background(found(item.text) ? Palette.accent.opacity(0.15) : .clear)
+            sourceLinks(item.sources)
+            Spacer(minLength: 0)
+            editButton(item)
+          }.id(item.id)
+        }
+      }
+    }
+    if !outline.points.isEmpty {
+      summarySection("Key points") {
+        ForEach(outline.points) { item in bullet(item.text, sources: item.sources, edit: item) }
+      }
+    }
+    if !outline.decisions.isEmpty {
+      summarySection("Decisions made") {
+        ForEach(outline.decisions) { item in bullet(item.text, sources: item.sources, edit: item) }
+      }
+    }
+    if !outline.questions.isEmpty {
+      summarySection("Open questions") {
+        ForEach(outline.questions) { item in bullet(item.text, sources: item.sources, edit: item) }
+      }
+    }
+  }
+  /// "2 MIN READ" with find and copy, like a reading app's header.
+  private func readBar(_ blocks: [NoteBlock]) -> some View {
+    let words = blocks.reduce(0) { $0 + $1.text.split(separator: " ").count }
+    return HStack(spacing: 14) {
+      Label("\(max(1, Int((Double(words) / 200).rounded()))) MIN READ", systemImage: "lightbulb")
+        .font(.system(size: 11, weight: .semibold)).tracking(1).foregroundStyle(Palette.secondary)
+      Spacer()
+      Button { summaryFinding = true; summaryFindFocused = true } label: { Image(systemName: "magnifyingglass") }
+        .buttonStyle(.plain).accessibilityLabel("Find in summary")
+      Button { state.copyNotesMarkdown() } label: { Image(systemName: "doc.on.doc") }
+        .buttonStyle(.plain).accessibilityLabel("Copy summary as Markdown")
+    }.foregroundStyle(Palette.secondary).padding(.horizontal, 14).frame(height: 40)
+      .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 10))
   }
   private func summarySection(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -1058,7 +1093,13 @@ struct MeetingDetailView: View {
   }
   private func speakerMenu(_ segment: TranscriptSegment) -> some View {
     let label = state.speakerLabel(segment.speakerID)
+    let inferred = state.inferredNameReason(segment.speakerID)
     return Menu(label) {
+      if inferred != nil {
+        Button("Confirm \(label)") { state.renameSpeaker(segment.speakerID, name: label) }
+        Button("Undo names from the transcript") { state.undoInferredNames() }
+        Divider()
+      }
       Button("Rename \(label) everywhere…") {
         newSpeakerName = segment.speakerName ?? ""
         renaming = segment
@@ -1125,6 +1166,13 @@ struct MeetingDetailView: View {
                       Circle().fill(Palette.speaker(segment.speakerID)).frame(width: 8, height: 8)
                         .accessibilityHidden(true)
                       speakerMenu(segment)
+                      if let reason = state.inferredNameReason(segment.speakerID) {
+                        Text("Inferred").font(.system(size: 10, weight: .medium))
+                          .foregroundStyle(Palette.secondary).padding(.horizontal, 6).padding(.vertical, 2)
+                          .overlay { Capsule().strokeBorder(Palette.border) }
+                          .help("Named from the transcript: " + reason)
+                          .accessibilityLabel("Name inferred from the transcript: " + reason)
+                      }
                       if segment.speakerName == nil && state.activeMeetingID != state.selectedMeetingID {
                         Button("Who is this?") {
                           newSpeakerName = ""
@@ -1558,5 +1606,49 @@ struct MeetingSourceIcon: View {
       Image(systemName: "person.2.fill").font(.system(size: size / 2)).foregroundStyle(Palette.secondary)
         .frame(width: size, height: size).background(Palette.sidebar, in: Circle()).accessibilityHidden(true)
     }
+  }
+}
+
+/// While the summary is being written: the real step (never a timer), a friendly line and grey
+/// lines in the summary's shape. Static under Reduce Motion (spec F12).
+struct SummaryWritingPlaceholder: View {
+  let job: MeetingJob
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  private static let lines = [
+    "You can stop holding it all in your head.",
+    "Every point is checked against what was said.",
+    "People are named from how they introduced themselves.",
+    "Long calls take a little longer.",
+  ]
+  var body: some View {
+    let index = (job.steps.firstIndex(of: job.step) ?? 0) + 1
+    VStack(alignment: .leading, spacing: 26) {
+      HStack(spacing: 10) {
+        Image(systemName: "sparkle").foregroundStyle(Palette.accent)
+        TimelineView(.periodic(from: .now, by: 5)) { context in
+          let line = Self.lines[Int(context.date.timeIntervalSinceReferenceDate / 5) % Self.lines.count]
+          Text(line).transition(.opacity).id(reduceMotion ? Self.lines[0] : line)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.4), value: line)
+        }
+        Spacer()
+        Text("step \(index) of \(job.steps.count) · \(job.title.lowercased())").monospacedDigit()
+          .foregroundStyle(Palette.secondary)
+      }.font(.system(size: 12)).padding(.horizontal, 14).frame(height: 40)
+        .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 10))
+      ForEach(0..<2, id: \.self) { _ in
+        VStack(alignment: .leading, spacing: 10) {
+          bar(0.38, height: 14).padding(.bottom, 4)
+          bar(1); bar(0.92); bar(0.64)
+        }
+      }
+    }.padding(22).frame(maxWidth: .infinity, alignment: .leading).workspaceSurface()
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel("Writing your summary, step \(index) of \(job.steps.count): \(job.title)")
+  }
+  private func bar(_ width: CGFloat, height: CGFloat = 10) -> some View {
+    GeometryReader { geometry in
+      RoundedRectangle(cornerRadius: 4).fill(Palette.border.opacity(0.7))
+        .frame(width: geometry.size.width * width)
+    }.frame(height: height)
   }
 }

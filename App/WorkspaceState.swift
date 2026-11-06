@@ -170,6 +170,9 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var noteSaveFailed = false
   /// The recording meeting's newest live captions, whichever meeting is open.
   @Published var liveLines: [TranscriptSegment] = []
+  /// The live notepad's last question and answer; answer nil while it is being written.
+  @Published var liveAnswer: (meetingID: String, question: String, answer: String?)?
+  var liveAskTask: Task<Void, Never>?
   /// Meeting ID → bundle ID of the app its call audio came from.
   @Published var meetingApps: [String: String] = [:]
   /// A ⌘K result hands its text to the list it opens, which filters to it.
@@ -1701,6 +1704,11 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
         // refine, and neither blocks the other.
         var problems: [String] = []
         var failures: [String] = []
+        // Names first, so the summary, title and owners use them. Optional: Speaker N stays.
+        do {
+          try await nameSpeakersFromTranscript(meetingID: id)
+          if selectedMeetingID == id { try refreshDetail() }
+        } catch { failures.append("speaker names " + Self.errorCategory(error)) }
         if autoSummaryEnabled {
           refinePhase = .summary
           do { try await finalizeSummary(meetingID: id) } catch {

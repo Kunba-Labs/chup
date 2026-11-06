@@ -62,6 +62,9 @@ import ChupCore
         return
       }
       if ProcessInfo.processInfo.environment["CHUP_MEETING_PROMPT_PREVIEW"] == "1" {
+        try renderNative(SummaryWritingPlaceholder(job: MeetingJob(step: .summary, steps: [.transcript, .summary, .notes]))
+          .padding(24).background(Palette.workspace), size: CGSize(width: 820, height: 330),
+          to: destination.appendingPathComponent("30-summary-writing.png"))
         let detector = MeetingDetector(state: state)
         for (file, browser, ended) in [("zoom", false, false), ("browser", true, false), ("ended", false, true)] {
           detector.candidate = MeetingCandidate(pid: 1, name: browser ? "Chrome" : "Zoom", browser: browser)
@@ -118,6 +121,14 @@ import ChupCore
         try renderNative(
           MeetingSidebarView(sidebar: sidebar).environmentObject(state),
           size: CGSize(width: MeetingSidebar.width, height: 640), to: destination.appendingPathComponent("33-notes-sidebar.png"))
+        state.cloudEnabled = true
+        state.backendToken = "preview"
+        state.liveAnswer = ("preview-notes", "What did I miss in the last five minutes?", "Some backend tests failed last night, campaign assets are due Monday, and final copy needs approval before launch.")
+        try renderNative(
+          MeetingSidebarView(sidebar: sidebar).environmentObject(state),
+          size: CGSize(width: MeetingSidebar.width, height: 640), to: destination.appendingPathComponent("33c-sidebar-ask.png"))
+        state.liveAnswer = nil
+        state.backendToken = ""
         state.meetingStatus = .paused
         state.currentGapReason = "Microphone packets stopped. Recording paused; source-loss gap marked."
         try renderNative(
@@ -231,6 +242,32 @@ import ChupCore
           }
         }, size: CGSize(width: 1360, height: 1050),
         to: destination.appendingPathComponent("02-meeting.png"))
+      // The same meeting once its topic-led notes exist (spec F12): lead, topics, sub-bullets.
+      let e1 = Evidence(segmentID: "s1", quote: "the Netherlands first")
+      let e2 = Evidence(segmentID: "s2", quote: "I’ll run the USB microphone tests.")
+      let e3 = Evidence(segmentID: "s3", quote: "We haven’t agreed on a public launch date yet.")
+      state.enhancedNotes = EnhancedNotes(meetingID: "preview-launch", template: "general", blocks: [
+        NoteBlock(id: "lead", kind: "ai", text: "The autumn launch starts in the Netherlands; the public date waits for the audio tests.", sources: [e1, e3]),
+        NoteBlock(id: "h1", kind: "heading", text: "Launch scope"),
+        NoteBlock(id: "a1", kind: "ai", text: "Mara de Vries wants the Netherlands first.", sources: [e1], level: 0),
+        NoteBlock(id: "a2", kind: "ai", text: "Dutch dictation should feel as natural as English before expanding.", sources: [e1], level: 1),
+        NoteBlock(id: "h2", kind: "heading", text: "Audio testing"),
+        NoteBlock(id: "a3", kind: "ai", text: "Oliver Chen runs the USB microphone tests.", sources: [e2], level: 0),
+        NoteBlock(id: "a4", kind: "ai", text: "Including reconnecting during an active call.", sources: [e2], level: 1),
+        NoteBlock(id: "a5", kind: "ai", text: "No public launch date has been agreed.", sources: [e3], level: 0),
+      ])
+      try renderNative(
+        DesignFrame(
+          title: "02b / TOPIC-LED SUMMARY", subtitle: "Sample notes · no real recording"
+        ) {
+          HStack(spacing: 0) {
+            DesignSidebar()
+            MeetingDetailView(initialTab: "Summary").environmentObject(state).background(
+              Palette.workspace)
+          }
+        }, size: CGSize(width: 1360, height: 1050),
+        to: destination.appendingPathComponent("02b-topic-summary.png"))
+      state.enhancedNotes = nil
       var exchange = AssistantExchange(
         meetingID: "preview-launch", question: "What did we decide about the launch?",
         noteVersion: 0)

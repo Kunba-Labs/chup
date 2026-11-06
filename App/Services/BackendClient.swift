@@ -112,19 +112,34 @@ struct AssistantReply: Decodable {
       "dictation", body: JSONSerialization.data(withJSONObject: body))
     return result.text
   }
+  struct SpeakerName: Decodable {
+    struct Quote: Decodable { var segmentID: String; var quote: String }
+    var speakerID: String
+    var name: String
+    var sources: [Quote]
+  }
+  func speakers(_ segments: [TranscriptSegment]) async throws -> [SpeakerName] {
+    struct Result: Decodable { var names: [SpeakerName] }
+    let body = ["segments": try JSONSerialization.jsonObject(with: JSONEncoder().encode(segments))]
+    let result: Result = try await request(
+      "speakers", body: JSONSerialization.data(withJSONObject: body))
+    return result.names
+  }
   func outline(_ segments: [TranscriptSegment]) async throws -> MeetingSummary {
     try await request("outline", body: JSONEncoder().encode(segments))
   }
-  func summarize(_ segments: [TranscriptSegment]) async throws -> MeetingSummary {
-    try await request("summary", body: JSONEncoder().encode(segments))
+  func summarize(_ segments: [TranscriptSegment], language: String?) async throws -> MeetingSummary {
+    var body: [String: Any] = ["segments": try JSONSerialization.jsonObject(with: JSONEncoder().encode(segments))]
+    body["language"] = language
+    return try await request("summary", body: JSONSerialization.data(withJSONObject: body))
   }
-  func enhance(_ segments: [TranscriptSegment], note: String, template: String) async throws
+  func enhance(_ segments: [TranscriptSegment], note: String, template: String, language: String?) async throws
     -> [NoteBlock]
   {
     struct Result: Decodable { var blocks: [NoteBlock] }
     let body: [String: Any] = [
       "segments": try JSONSerialization.jsonObject(with: JSONEncoder().encode(segments)),
-      "note": note, "template": template,
+      "note": note, "template": template, "language": language ?? NSNull(),
     ]
     let result: Result = try await request(
       "enhance", body: JSONSerialization.data(withJSONObject: body))

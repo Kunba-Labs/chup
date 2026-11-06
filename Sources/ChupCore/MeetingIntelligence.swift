@@ -93,11 +93,14 @@ public struct NoteBlock: Codable, Identifiable, Equatable {
   public var kind: String  // "heading", "user" or "ai"
   public var text: String
   public var sources: [Evidence]
-  public init(id: String, kind: String, text: String, sources: [Evidence] = []) {
+  /// 1 for a detail under the AI line before it; nil (older notes) or 0 for a top-level line.
+  public var level: Int?
+  public init(id: String, kind: String, text: String, sources: [Evidence] = [], level: Int? = nil) {
     self.id = id
     self.kind = kind
     self.text = text
     self.sources = sources
+    self.level = level
   }
   public var isHeading: Bool { kind == "heading" || (kind == "user" && text.hasPrefix("#")) }
   public var plainText: String {
@@ -119,7 +122,9 @@ public struct EnhancedNotes: Codable, Equatable {
     ("standup", "Standup"), ("interview", "Interview"),
   ]
   public func markdown(title: String) -> String {
-    (["# " + title] + blocks.map { $0.isHeading ? "\n## " + $0.plainText : "- " + $0.text })
+    (["# " + title] + blocks.map {
+      $0.isHeading ? "\n## " + $0.plainText : ($0.level == 1 ? "  - " : "- ") + $0.text
+    })
       .joined(separator: "\n") + "\n"
   }
 }

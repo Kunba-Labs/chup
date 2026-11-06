@@ -43,7 +43,8 @@ extension WorkspaceState {
     let fingerprint = TranscriptScope.fingerprint(source)
     let usageID = startUsage(category: "backend.summary", meetingID: meetingID)
     do {
-      let result = try await backend(scope: meetingID).summarize(source)
+      let result = try await backend(scope: meetingID).summarize(
+        source, language: meetings.first { $0.id == meetingID }?.notesLanguage)
       let current = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID).filter
       { !$0.provisional }
       guard TranscriptScope.fingerprint(current) == fingerprint else {
@@ -59,6 +60,103 @@ extension WorkspaceState {
     } catch {
       finishUsage(usageID, status: "failed")
       throw error
+    }
+  }
+  static let inferredNamePrefix = "Named from the transcript: "
+  /// Names speakers nobody named yet: a lone voice on your microphone as this Mac's user, the
+  /// rest from introductions and being addressed by name (decided 2026-11-06, spec F12). Typed
+  /// names and voice matches are never replaced; each name keeps the quote it came from.
+  func nameSpeakersFromTranscript(meetingID: String) async throws {
+    let source = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID)
+      .filter { !$0.provisional }
+    let unnamed = Set(source.filter { $0.speakerName == nil && $0.track != .assistant }.map(\.speakerID))
+    guard !unnamed.isEmpty else { return }
+    var names: [String: (name: String, why: String)] = [:]
+    let mic = Set(source.filter { $0.track == .microphone }.map(\.speakerID))
+    if mic.count == 1, let me = mic.first, unnamed.contains(me), !NSFullUserName().isEmpty {
+      names[me] = (NSFullUserName(), "this Mac's user, the only voice on your microphone")
+    }
+    if cloudEnabled && !backendToken.isEmpty {
+      let taken = Set(source.compactMap(\.speakerName).map { $0.lowercased() })
+      for found in try await backend(scope: meetingID).speakers(source)
+      where unnamed.contains(found.speakerID) && names[found.speakerID] == nil
+        && !taken.contains(found.name.lowercased())
+      {
+        names[found.speakerID] = (found.name, found.sources.map { "“\($0.quote)”" }.joined(separator: " "))
+      }
+    }
+    // Re-read after the backend call: a rename or text fix made meanwhile is never overwritten.
+    // ponytail: one put per line, not one transaction; a crash mid-way leaves some lines named.
+    let current = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID)
+    for var segment in current
+    where !segment.provisional && segment.speakerName == nil && segment.nameCorrected != true {
+      guard let found = names[segment.speakerID] else { continue }
+      segment.speakerName = found.name
+      segment.attribution = Self.inferredNamePrefix + found.why
+      try db().put(segment, kind: "segment", id: segment.id, parent: meetingID, searchable: segment.text)
+    }
+  }
+  /// The quote behind a name Chup! inferred and nobody has confirmed yet.
+  func inferredNameReason(_ speakerID: String) -> String? {
+    segments.first {
+      $0.speakerID == speakerID && $0.nameCorrected != true
+        && $0.attribution?.hasPrefix(Self.inferredNamePrefix) == true
+    }?.attribution.map { String($0.dropFirst(Self.inferredNamePrefix.count)) }
+  }
+  /// Undo: every unconfirmed inferred name in this meeting goes back to "Speaker N".
+  func undoInferredNames() {
+    do {
+      for var segment in segments
+      where segment.nameCorrected != true && segment.attribution?.hasPrefix(Self.inferredNamePrefix) == true {
+        segment.speakerName = nil
+        segment.attribution = "request-local acoustic group"
+        try db().put(segment, kind: "segment", id: segment.id, parent: segment.meetingID, searchable: segment.text)
+      }
+      try refreshDetail()
+    } catch { notice = error.localizedDescription }
+  }
+  /// Ask during the call, over the live captions (decided 2026-11-06, spec F12). Captions are
+  /// sent as evidence copies, like the live outline; the answer joins the meeting's Ask history.
+  func askLive(_ question: String, lastSeconds: Double? = nil) {
+    guard liveAskTask == nil, let id = activeMeetingID, cloudEnabled, !backendToken.isEmpty,
+      !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else { return }
+    let all = liveLines.filter { $0.meetingID == id }.map { line -> TranscriptSegment in
+      var line = line
+      line.provisional = false
+      return line
+    }
+    // A recap covers only its window, by caption time, so an hour-long call can't answer it.
+    let lines = lastSeconds.map { TranscriptScope.recent(all, seconds: $0) } ?? all
+    guard !lines.isEmpty else {
+      liveAnswer = (id, question, "Nothing has been transcribed yet.")
+      return
+    }
+    liveAnswer = (id, question, nil)
+    liveAskTask = Task {
+      defer { liveAskTask = nil }
+      var exchange = AssistantExchange(meetingID: id, question: question, noteVersion: 0)
+      do {
+        let note = try db().note(id)
+        let answer = try await backend(scope: id, associationID: exchange.id)
+          .ask(question, segments: lines, note: note)
+        if !answer.sources.isEmpty {
+          try EvidenceValidator.validate(
+            MeetingSummary(items: [SummaryItem(category: "overview", text: answer.text, sources: answer.sources)]),
+            meetingID: id, segments: lines)
+        }
+        // Caption lines are replaced after Stop, so history keeps the quotes as text instead of
+        // links that would stop resolving.
+        let quotes = answer.sources.map { "“\($0.quote)”" }.joined(separator: " ")
+        exchange.answer = answer.text + (quotes.isEmpty ? "" : "\n\nFrom the live captions: " + quotes)
+        exchange.status = "completed"
+        try db().put(exchange, kind: "assistantExchange", id: exchange.id, parent: id)
+        guard activeMeetingID == id else { return }  // A newer call's notepad never shows it.
+        liveAnswer = (id, question, answer.text)
+      } catch {
+        guard activeMeetingID == id else { return }
+        liveAnswer = (id, question, "Couldn't answer that: " + error.localizedDescription)
+      }
     }
   }
   /// Gives a still-untitled meeting a topic title from its summary, "with" the people named on
@@ -98,7 +196,9 @@ extension WorkspaceState {
     defer { notesMeetingID = nil }
     let usageID = startUsage(category: "backend.notes", meetingID: meetingID)
     do {
-      let blocks = try await backend(scope: meetingID).enhance(source, note: note, template: chosen)
+      let blocks = try await backend(scope: meetingID).enhance(
+        source, note: note, template: chosen,
+        language: meetings.first { $0.id == meetingID }?.notesLanguage)
       let current = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID)
         .filter { !$0.provisional }
       guard TranscriptScope.fingerprint(current) == TranscriptScope.fingerprint(source),
@@ -117,6 +217,14 @@ extension WorkspaceState {
       throw error
     }
   }
+  /// Per-meeting override (nil = the meeting's spoken language); rewrites summary and notes.
+  func setNotesLanguage(_ language: String?) {
+    guard var meeting = selectedMeeting, meeting.notesLanguage != language else { return }
+    meeting.notesLanguage = language
+    do { try saveMeeting(meeting) } catch { notice = error.localizedDescription; return }
+    generateSummary()
+    regenerateNotes(template: enhancedNotes?.template ?? "general")
+  }
   func regenerateNotes(template: String) {
     guard let id = selectedMeetingID, !writingNotes else { return }
     notesTask = Task {
@@ -129,9 +237,13 @@ extension WorkspaceState {
   }
   func copyNotesMarkdown() {
     let outline = SummaryOutline(summary: summary, actions: actions)
+    let title = selectedMeeting?.title ?? "Meeting"
+    // With topic-led notes, copy what the Summary tab shows: the notes, then next steps.
+    let text = enhancedNotes.flatMap { $0.blocks.isEmpty ? nil : $0 }.map {
+      $0.markdown(title: title) + outline.nextStepsMarkdown()
+    } ?? outline.markdown(title: title, thoughts: noteDraft)
     NSPasteboard.general.clearContents()
-    NSPasteboard.general.setString(
-      outline.markdown(title: selectedMeeting?.title ?? "Meeting", thoughts: noteDraft), forType: .string)
+    NSPasteboard.general.setString(text, forType: .string)
     notice = "Copied as Markdown."
   }
   func draftFollowup() {

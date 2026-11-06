@@ -70,8 +70,8 @@ export function validateHistory(history = []) {
 
 export const noteBlockSchema = {
   type: 'object', additionalProperties: false,
-  properties: { id: { type: 'string' }, kind: { type: 'string', enum: ['heading','user','ai'] }, text: { type: 'string' }, sources: { type: 'array', items: evidenceSchema } },
-  required: ['id','kind','text','sources']
+  properties: { id: { type: 'string' }, kind: { type: 'string', enum: ['heading','user','ai'] }, text: { type: 'string' }, level: { type: 'integer', enum: [0,1] }, sources: { type: 'array', items: evidenceSchema } },
+  required: ['id','kind','text','level','sources']
 };
 export const enhancedSchema = { type: 'object', additionalProperties: false, properties: { blocks: { type: 'array', items: noteBlockSchema } }, required: ['blocks'] };
 export const followupSchema = { type: 'object', additionalProperties: false, properties: { subject: { type: 'string' }, body: { type: 'string' } }, required: ['subject','body'] };
@@ -93,12 +93,15 @@ export function validItems(items, segments) {
 }
 /// The user's own lines come back verbatim (original spacing, every occurrence); anything the
 /// model dropped is appended so no note is lost. Headings must be the user's or the template's.
-export function validateEnhanced(result, note, segments, sections = []) {
+export function validateEnhanced(result, note, segments) {
   if (!Array.isArray(result?.blocks)) throw new Error('Invalid notes.');
-  const lines = noteLines(note), remaining = lines.map((text, index) => ({text, index})), allowedHeadings = new Set(sections.map(s => s.toLowerCase())), ids = new Set();
+  const lines = noteLines(note), remaining = lines.map((text, index) => ({text, index})), ids = new Set();
   const kept = [];
+  let orphan = false;  // The last top-level AI line was invalid: its sub-bullets go with it.
   for (const raw of result.blocks) {
     const text = String(raw?.text ?? '').trim();
+    if (raw?.kind === 'ai' && raw.level === 1 && orphan) continue;
+    if (raw?.kind !== 'ai' || raw.level !== 1) orphan = raw?.kind === 'ai';
     if (!text || ids.has(raw.id) || !Array.isArray(raw.sources)) continue;
     if (raw.kind === 'user') {
       const index = remaining.findIndex(line => line.text.trim() === text);
@@ -106,11 +109,13 @@ export function validateEnhanced(result, note, segments, sections = []) {
       const line = remaining.splice(index, 1)[0];
       kept.push({id: raw.id, kind: 'user', text: line.text, index: line.index, sources: []});
     } else if (raw.kind === 'heading') {
-      if (raw.sources.length || !allowedHeadings.has(text.toLowerCase())) continue;
-      kept.push({id: raw.id, kind: 'heading', text, sources: []});
+      // Topic headings are free text in the meeting's language; the evidence check vets them.
+      if (raw.sources.length || text.length > 60 || text.includes('\n')) continue;
+      kept.push({id: raw.id, kind: 'heading', text: text.replace(/^#+\s*/, ''), sources: []});
     } else if (raw.kind === 'ai') {
-      const block = {id: raw.id, kind: 'ai', text: text.replace(/^[-•*]\s+/, ''), sources: raw.sources};
+      const block = {id: raw.id, kind: 'ai', text: text.replace(/^[-•*]\s+/, ''), level: raw.level === 1 ? 1 : 0, sources: raw.sources};
       try { if (!block.sources.length) continue; validateSources(block.sources, segments); } catch { continue; }
+      if (block.level === 0) orphan = false;
       kept.push(block);
     } else continue;
     ids.add(raw.id);
@@ -122,8 +127,28 @@ export function validateEnhanced(result, note, segments, sections = []) {
   slots.forEach((slot, n) => { kept[slot] = ordered[n]; });
   for (const block of kept) delete block.index;
   const fresh = base => { let id = base, n = 1; while (ids.has(id)) id = `${base}-${n++}`; ids.add(id); return id; };
-  if (remaining.length) kept.push({id:fresh('chup-from-your-notes'),kind:'heading',text:'From your notes',sources:[]}, ...remaining.map(({text})=>({id:fresh('chup-note'),kind:'user',text,sources:[]})));
+  if (remaining.length) kept.push({id:fresh('chup-from-your-notes'),kind:'heading',text:'From your notes',sources:[],own:true}, ...remaining.map(({text})=>({id:fresh('chup-note'),kind:'user',text,sources:[]})));
   return {blocks: kept};
+}
+/// A sub-bullet without a kept level-0 parent in its section goes too; a heading lends its
+/// lines' sources so the evidence check can vet it, and a heading with no lines is dropped.
+export function nestNotes(blocks, kept = () => true) {
+  const out = []; let parent = false;
+  for (const block of blocks) {
+    if (block.kind !== 'ai') { parent = false; if (kept(block)) out.push(block); continue; }
+    if (block.level !== 1) parent = kept(block);
+    if (kept(block) && (block.level !== 1 || parent)) out.push(block);
+  }
+  // A heading with nothing under it (its lines were all dropped) goes too.
+  return out.filter((block, i) => block.kind !== 'heading' || (out[i + 1] && out[i + 1].kind !== 'heading'));
+}
+export function headingSources(blocks, index) {
+  const sources = [];
+  for (const block of blocks.slice(index + 1)) {
+    if (block.kind === 'heading' || block.text?.startsWith('#')) break;
+    if (block.kind === 'ai') sources.push(...block.sources);
+  }
+  return sources;
 }
 
 // Local meaning check for dictation cleanup (replaces a second model round trip). Light cleanup may

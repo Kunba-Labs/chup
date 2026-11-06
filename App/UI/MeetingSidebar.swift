@@ -100,6 +100,7 @@ struct MeetingSidebarView: View {
   /// The meeting a Discard confirmation is open for; a later meeting never inherits it.
   @State private var discardFor: String?
   @State private var tab = "Transcript"
+  @State private var question = ""
   private var confirmDiscard: Bool { discardFor != nil && discardFor == state.activeMeetingID }
   private var onMeeting: Bool { state.selectedMeetingID == state.activeMeetingID }
   private var paused: Bool { state.meetingStatus == .paused }
@@ -264,6 +265,7 @@ struct MeetingSidebarView: View {
           }
         }.padding(10).workspaceSurface()
       }
+      if state.cloudEnabled && !state.backendToken.isEmpty { askRow }
       HStack(spacing: 8) {
         VoiceWaveform(samples: paused ? [] : state.micWaveform, width: 44, height: 22, barCount: 7)
           .accessibilityHidden(true)
@@ -291,5 +293,40 @@ struct MeetingSidebarView: View {
         }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("More recording actions")
       }
     }.padding(.top, 4)
+  }
+  /// Ask during the call, or catch up on the last few minutes. Sends caption text to AI.
+  private var askRow: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      if let live = state.liveAnswer, live.meetingID == state.activeMeetingID {
+        VStack(alignment: .leading, spacing: 4) {
+          HStack(alignment: .firstTextBaseline) {
+            Text(live.question).font(.system(size: 12, weight: .semibold)).lineLimit(2)
+            Spacer()
+            Button { state.liveAnswer = nil } label: { Image(systemName: "xmark") }
+              .buttonStyle(.plain).foregroundStyle(Palette.secondary).accessibilityLabel("Close answer")
+          }
+          if let answer = live.answer {
+            Text(answer).font(.system(size: 12)).textSelection(.enabled).lineLimit(9)
+              .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+              .help(answer)
+          } else {
+            ProgressView().controlSize(.small).accessibilityLabel("Writing the answer")
+          }
+        }.padding(10).workspaceSurface()
+      }
+      HStack(spacing: 6) {
+        TextField("Ask anything", text: $question).textFieldStyle(.plain).font(.system(size: 13))
+          .onSubmit(send).padding(.horizontal, 12).frame(height: 32)
+          .background(Palette.paper, in: Capsule())
+        Button("What did I miss?") {
+          state.askLive("What did I miss in the last five minutes?", lastSeconds: 300)
+        }.buttonStyle(.pill).controlSize(.small).fixedSize()
+      }.disabled(state.liveAnswer.map { $0.meetingID == state.activeMeetingID && $0.answer == nil } ?? false)
+      Text("Sends the call's text so far to AI.").font(.system(size: 10)).foregroundStyle(Palette.secondary)
+    }.onChange(of: state.activeMeetingID) { _, _ in state.liveAnswer = nil }
+  }
+  private func send() {
+    state.askLive(question)
+    question = ""
   }
 }

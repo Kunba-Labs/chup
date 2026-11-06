@@ -35,6 +35,8 @@ public struct Meeting: Identifiable, Codable, Equatable {
   public var tags: String
   /// The call service seen in a recorded browser tab ("Google Meet"); nil for apps and in person.
   public var callService: String?
+  /// Language the summary and notes are written in; nil follows the meeting's spoken language.
+  public var notesLanguage: String?
   public init(
     id: String = UUID().uuidString, title: String, created: Date = Date(), status: String = "Ready",
     participants: String = "", tags: String = "", callService: String? = nil
