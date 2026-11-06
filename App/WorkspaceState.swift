@@ -148,7 +148,10 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   /// the app restarts and recovery closes them, so nothing is deleted while files may be open.
   var recorderCloseFailed: String?
   @Published var remoteLastPacket: Date?
-  @Published var activeMeetingID: String?
+  @Published var activeMeetingID: String? {
+    // A live Ask belongs to its call: stopping, discarding or switching calls cancels it.
+    didSet { if activeMeetingID != oldValue { liveAskTask?.cancel(); liveAskTask = nil } }
+  }
   @Published var elapsed: Double = 0
   @Published var processingMeeting = false
   /// The meeting `processingMeeting` refers to, so other meetings don't show its progress.

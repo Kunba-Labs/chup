@@ -257,7 +257,13 @@ struct MeetingSidebarView: View {
           }
         }.padding(10).workspaceSurface()
       }
-      if state.cloudEnabled && !state.backendToken.isEmpty { askRow }
+      if state.cloudEnabled && !state.backendToken.isEmpty {
+        // Asking reads the live captions; without them there is nothing to answer from.
+        if state.liveCaptionsEnabled { askRow } else {
+          Text("Turn on Live captions in Settings → Meetings to ask about the call.")
+            .font(.detail).foregroundStyle(Palette.secondary)
+        }
+      }
       HStack(spacing: 8) {
         VoiceWaveform(samples: paused ? [] : state.micWaveform, width: 44, height: 22, barCount: 7)
           .accessibilityHidden(true)
@@ -307,7 +313,7 @@ struct MeetingSidebarView: View {
         }.padding(10).workspaceSurface()
       }
       HStack(spacing: 6) {
-        TextField("Ask anything", text: $question).textFieldStyle(.plain).font(.ui)
+        TextField("Ask about the call", text: $question).textFieldStyle(.plain).font(.ui)
           .onSubmit(send).padding(.horizontal, 12).frame(height: 32)
           .background(Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         Button("What did I miss?") {

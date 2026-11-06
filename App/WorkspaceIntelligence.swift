@@ -148,7 +148,7 @@ extension WorkspaceState {
     }
     liveAnswer = (id, question, nil)
     liveAskTask = Task {
-      defer { liveAskTask = nil }
+      defer { if activeMeetingID == id { liveAskTask = nil } }  // A newer call's task is not ours to clear.
       var exchange = AssistantExchange(meetingID: id, question: question, noteVersion: 0)
       do {
         // Captions only, as the notepad says: your notes are not sent from here.
