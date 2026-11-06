@@ -30,8 +30,8 @@ struct MicrophonePicker: View {
               || state.voiceScope != nil)
         HStack(alignment: .top, spacing: 12) {
           VStack(alignment: .leading, spacing: 6) {
-            Text("Current input").font(.caption).foregroundStyle(Palette.secondary)
-            Text(state.microphoneLabel).font(.system(size: 14, weight: .medium)).fixedSize(
+            Text("Current input").font(.detail).foregroundStyle(Palette.secondary)
+            Text(state.microphoneLabel).font(.ui.weight(.medium)).fixedSize(
               horizontal: false, vertical: true)
           }
           Spacer(minLength: 0)
@@ -45,10 +45,10 @@ struct MicrophonePicker: View {
         }.insetSurface()
         if (try? devices.selection(state.microphoneUID)) == nil {
           Label("Choose an available microphone above.", systemImage: "exclamationmark.circle")
-            .font(.callout).foregroundStyle(Palette.red)
+            .font(.detail).foregroundStyle(Palette.red)
         } else if devices.lidClosed == true {
           Label("Lid closed · using an external microphone", systemImage: "laptopcomputer.slash")
-            .font(.caption).foregroundStyle(Palette.secondary)
+            .font(.detail).foregroundStyle(Palette.secondary)
         }
         DetailDisclosure(
           title: "Automatic selection & device changes",
@@ -82,13 +82,13 @@ struct MicrophonePicker: View {
                 height: 32, barCount: 15)
             }
           }
-          Text(state.microphonePreviewMessage).font(.callout).foregroundStyle(Palette.secondary)
+          Text(state.microphonePreviewMessage).font(.detail).foregroundStyle(Palette.secondary)
             .fixedSize(horizontal: false, vertical: true)
           if !state.isPreview && !state.microphonePreviewBusy && !state.canPreviewMicrophone {
             InlineStatus(text: "Finish active capture before testing your microphone.")
           }
           Label("The test lasts 30 seconds. Nothing is saved.", systemImage: "lock")
-            .font(.caption).foregroundStyle(Palette.secondary).fixedSize(
+            .font(.detail).foregroundStyle(Palette.secondary).fixedSize(
               horizontal: false, vertical: true)
         }
       }
@@ -134,7 +134,7 @@ struct VoiceEnrollmentSettings: View {
           HStack {
             Text(
               "\(Int(profile.duration)) second reference · \(profile.created.formatted(date: .abbreviated, time: .omitted))"
-            ).font(.caption)
+            ).font(.detail)
             Spacer()
             Button("Forget voice", role: .destructive) { state.deleteEnrollment(profile) }
           }
@@ -157,7 +157,7 @@ struct TranscriptReviewGroup: View {
         HStack(spacing: 10) {
           Label(
             "\(reviews.count) parts have your edits and a new version", systemImage: "pencil.and.list.clipboard"
-          ).font(.system(size: 13, weight: .semibold))
+          ).font(.ui.weight(.semibold))
           Spacer()
           Button("Keep all my edits") { for review in reviews { state.resolveTranscriptReview(review, accept: false) } }
           Button("Use all new versions", role: .destructive) {
@@ -165,10 +165,10 @@ struct TranscriptReviewGroup: View {
           }
         }.controlSize(.small)
         Text("A refine never overwrites lines you fixed or speakers you renamed without asking.")
-          .font(.caption).foregroundStyle(Palette.secondary)
+          .font(.detail).foregroundStyle(Palette.secondary)
         DisclosureGroup("Compare each part", isExpanded: $expanded) {
           VStack(spacing: 8) { ForEach(reviews) { TranscriptReviewView(review: $0) } }.padding(.top, 8)
-        }.font(.caption)
+        }.font(.detail)
       }.padding(16).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
     }
   }
@@ -181,11 +181,11 @@ struct TranscriptReviewView: View {
     DisclosureGroup(isExpanded: $expanded) {
       HStack(alignment: .top, spacing: 24) {
         VStack(alignment: .leading) {
-          Text("Your current transcript").font(.headline)
+          Text("Your current transcript").font(.ui.weight(.semibold))
           ForEach(review.current) { Text($0.text).textSelection(.enabled) }
         }.frame(maxWidth: .infinity, alignment: .leading)
         VStack(alignment: .leading) {
-          Text("New version").font(.headline)
+          Text("New version").font(.ui.weight(.semibold))
           ForEach(review.incoming) { Text($0.text).textSelection(.enabled) }
         }.frame(maxWidth: .infinity, alignment: .leading)
       }.padding(.vertical, 12)

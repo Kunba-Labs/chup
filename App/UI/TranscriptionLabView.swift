@@ -32,7 +32,7 @@ struct TranscriptionLabView: View {
         Text(
           "Whisper uses your Dictation settings. Parakeet picks the language by itself."
         )
-        .font(.callout).foregroundStyle(Palette.secondary)
+        .font(.detail).foregroundStyle(Palette.secondary)
         HStack {
           Button(
             lab.parakeetInstalled ? "Repair Parakeet" : "Download Parakeet · \(lab.downloadSize)"
@@ -42,7 +42,7 @@ struct TranscriptionLabView: View {
           }
         }.disabled(lab.busy || captureBusy)
         Text("Models download once. Comparisons run locally; audio is never sent to a provider.")
-          .font(.caption).foregroundStyle(Palette.secondary)
+          .font(.detail).foregroundStyle(Palette.secondary)
       }
       WorkspaceCard("Run a comparison", icon: "play.circle") {
         HStack {
@@ -66,8 +66,8 @@ struct TranscriptionLabView: View {
           }
         }
         if let progress = lab.progress { ProgressView(value: progress) }
-        Text(lab.status).font(.callout).foregroundStyle(Palette.secondary).textSelection(.enabled)
-        if captureBusy { Text("Finish active capture before running a comparison.").font(.caption) }
+        Text(lab.status).font(.detail).foregroundStyle(Palette.secondary).textSelection(.enabled)
+        if captureBusy { Text("Finish active capture before running a comparison.").font(.detail) }
       }
       if !lab.baseline.isEmpty {
         DisclosureGroup("Original raw transcript") {
@@ -76,16 +76,16 @@ struct TranscriptionLabView: View {
       }
       ForEach(lab.results) { result in
         VStack(alignment: .leading, spacing: 10) {
-          Text(result.model).font(.headline)
+          Text(result.model).font(.ui.weight(.semibold))
           Text(
             "Prepare \(result.preparationSeconds, specifier: "%.2f") s · Transcribe \(result.transcriptionSeconds, specifier: "%.2f") s"
           )
-          .font(.caption).monospacedDigit().foregroundStyle(Palette.secondary)
+          .font(.detail).monospacedDigit().foregroundStyle(Palette.secondary)
           if let error = result.error {
-            Label(error, systemImage: "exclamationmark.circle").font(.callout)
+            Label(error, systemImage: "exclamationmark.circle").font(.detail)
           }
           if !result.text.isEmpty {
-            Text(result.text).font(.system(size: 16)).textSelection(.enabled)
+            Text(result.text).font(.reading).textSelection(.enabled)
               .fixedSize(horizontal: false, vertical: true)
             Button("Copy result") {
               NSPasteboard.general.clearContents()

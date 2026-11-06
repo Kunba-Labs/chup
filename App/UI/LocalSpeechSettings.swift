@@ -13,7 +13,7 @@ struct LocalSpeechSettings: View {
       Divider()
       HStack {
         Label("Local speech model", systemImage: "internaldrive")
-          .font(.headline)
+          .font(.ui.weight(.semibold))
         Spacer()
         if service.ready {
           Label("Offline ready", systemImage: "checkmark.circle.fill").foregroundStyle(
@@ -21,8 +21,8 @@ struct LocalSpeechSettings: View {
         }
       }
       Text("Whisper large-v3-turbo · English and Dutch · 630 MB download")
-        .font(.callout).foregroundStyle(Palette.secondary)
-      if !service.ready { Text(service.status).font(.callout).textSelection(.enabled) }
+        .font(.detail).foregroundStyle(Palette.secondary)
+      if !service.ready { Text(service.status).font(.detail).textSelection(.enabled) }
       if let progress = service.progress {
         ProgressView(value: progress)
         Text(progress.formatted(.percent.precision(.fractionLength(0)))).monospacedDigit().font(

@@ -9,7 +9,7 @@ struct MeetingActionsView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: embedded ? 10 : 18) {
       Text(embedded ? "Action items" : "What happens next")
-        .font(.system(size: embedded ? 17 : 25, weight: .semibold)).padding(.top, embedded ? 0 : 24)
+        .font(embedded ? .heading : .pageTitle).padding(.top, embedded ? 0 : 24)
       HStack {
         TextField("Add an action…", text: $title).onSubmit(add)
         Button("Add", action: add).disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -29,7 +29,7 @@ struct MeetingActionsView: View {
                     state.saveAction(copy)
                   })
               ).labelsHidden().accessibilityLabel("Complete " + action.title)
-              Text(action.title).font(.system(size: 17)).strikethrough(action.status == "done")
+              Text(action.title).font(.reading).strikethrough(action.status == "done")
               Spacer()
             }
             HStack {
@@ -76,7 +76,7 @@ struct MeetingActionsView: View {
             state.saveAction(copy)
           })
       ).labelsHidden().accessibilityLabel("Complete " + action.title)
-      Text(action.title).font(.system(size: 14)).strikethrough(action.status == "done")
+      Text(action.title).font(.ui).strikethrough(action.status == "done")
         .foregroundStyle(action.status == "done" ? Palette.secondary : Palette.ink)
       Spacer(minLength: 8)
       TextField(
@@ -88,7 +88,7 @@ struct MeetingActionsView: View {
             copy.owner = value.isEmpty ? nil : value
             state.saveAction(copy)
           })
-      ).textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary).frame(width: 96)
+      ).textFieldStyle(.plain).font(.detail).foregroundStyle(Palette.secondary).frame(width: 96)
       TextField(
         "Due",
         text: Binding(
@@ -98,7 +98,7 @@ struct MeetingActionsView: View {
             copy.dueDate = value.isEmpty ? nil : value
             state.saveAction(copy)
           })
-      ).textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary).frame(width: 90)
+      ).textFieldStyle(.plain).font(.detail).foregroundStyle(Palette.secondary).frame(width: 90)
       if let source = action.sources.first { SourceLink(source: source) }
     }.padding(.vertical, 8).padding(.horizontal, 12).workspaceSurface()
   }
@@ -117,16 +117,16 @@ struct PrivateThoughtsView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       if !embedded {
-        Text("Just for you").font(.system(size: 25, weight: .semibold)).padding(.top, 24)
+        Text("Just for you").font(.pageTitle).padding(.top, 24)
       }
       Label("Only you see these. They never go to AI.", systemImage: "lock")
-        .font(.caption).foregroundStyle(Palette.secondary)
-      TextEditor(text: $state.thoughtsDraft).font(.system(size: 17)).scrollContentBackground(
+        .font(.detail).foregroundStyle(Palette.secondary)
+      TextEditor(text: $state.thoughtsDraft).font(.reading).scrollContentBackground(
         .hidden
       )
       .padding(16).frame(minHeight: embedded ? 140 : nil).workspaceSurface()
       .onChange(of: state.thoughtsDraft) { _, text in state.saveThoughts(text) }
-      Text("Saved locally · version \(state.thoughts.version)").font(.caption).foregroundStyle(
+      Text("Saved locally · version \(state.thoughts.version)").font(.detail).foregroundStyle(
         Palette.secondary)
     }
   }
@@ -140,16 +140,16 @@ struct LiveOutlineView: View {
   }
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Label("Live notes", systemImage: "sparkle").font(.system(size: 22, weight: .semibold))
+      Label("Live notes", systemImage: "sparkle").font(.sectionTitle)
       Text(
         "Written from live text. It can change after the meeting."
-      ).font(.caption).foregroundStyle(Palette.secondary)
+      ).font(.detail).foregroundStyle(Palette.secondary)
       ForEach(LiveOutlineView.items(outlines), id: \.key) { key, item in
         VStack(alignment: .leading, spacing: 6) {
           Text(item.text)
           ForEach(item.sources.indices, id: \.self) { i in
             Button("Show in transcript") { state.revealSource(item.sources[i]) }.buttonStyle(.borderless)
-              .font(.caption)
+              .font(.detail)
           }
         }
       }
@@ -162,11 +162,11 @@ struct SummaryEditView: View {
   @State var item: SummaryItem
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      Text("Your version").font(.system(size: 25, weight: .semibold))
+      Text("Your version").font(.pageTitle)
       Text(
         "Your edit stays when the summary is written again."
       ).foregroundStyle(Palette.secondary)
-      TextEditor(text: $item.text).font(.system(size: 16)).scrollContentBackground(.hidden).padding(
+      TextEditor(text: $item.text).font(.reading).scrollContentBackground(.hidden).padding(
         16
       ).frame(height: 180).workspaceSurface()
       HStack {
@@ -217,11 +217,11 @@ struct EnhancedNotesView: View {
       if busy {
         HStack(spacing: 6) {
           ProgressView().controlSize(.small)
-          Text("Writing your notes…").font(.caption).foregroundStyle(Palette.secondary)
+          Text("Writing your notes…").font(.detail).foregroundStyle(Palette.secondary)
         }
       }
       if showsHeader { HStack {
-        Text("Your notes, filled in").font(.system(size: embedded ? 17 : 22, weight: .semibold))
+        Text("Your notes, filled in").font(embedded ? .heading : .sectionTitle)
         Spacer()
         NotesTemplateMenu()
         if !embedded {
@@ -246,7 +246,7 @@ struct EnhancedNotesView: View {
         }
       } else {
         QuietEmpty(
-          icon: "doc.text", art: "VoxelNotebook",
+          icon: "doc.text",
           title: state.activeMeetingID == state.selectedMeetingID
             ? "Notes come when the meeting ends" : "No notes yet",
           subtitle:
@@ -304,7 +304,7 @@ private struct NoteRow: View {
   }
   var body: some View {
     if block.isHeading {
-      Text(block.plainText).font(.system(size: 16, weight: .semibold)).padding(.top, 14)
+      Text(block.plainText).font(.heading).padding(.top, 14)
         .foregroundStyle(Palette.ink)
         .background(found ? Palette.accent.opacity(0.15) : .clear)
         .accessibilityAddTraits(.isHeader)
@@ -312,9 +312,9 @@ private struct NoteRow: View {
       let sub = block.level == 1
       HStack(alignment: .firstTextBaseline, spacing: 8) {
         if !lead {
-          Text(sub ? "▪" : "•").font(.system(size: sub ? 9 : 15)).foregroundStyle(Palette.secondary)
+          Text(sub ? "▪" : "•").font(sub ? .micro : .reading).foregroundStyle(Palette.secondary)
         }
-        Text(styled).font(.system(size: lead ? 17 : sub ? 14 : 15)).lineSpacing(5).textSelection(.enabled)
+        Text(styled).font(lead ? .reading.weight(.medium) : .reading).lineSpacing(5).textSelection(.enabled)
           .foregroundStyle(block.kind == "user" || lead ? Palette.ink : Palette.ink.opacity(0.82))
           .background(found ? Palette.accent.opacity(0.15) : .clear)
           .accessibilityLabel((block.kind == "user" ? "Your note: " : "Added: ") + block.text)
@@ -337,7 +337,7 @@ private struct NoteRow: View {
             showTab("Transcript")
           } label: {
             Image(systemName: state.partial.audio ? "quote.bubble.fill" : "quote.bubble")
-          }.buttonStyle(.borderless).font(.caption).focused($focused)
+          }.buttonStyle(.borderless).font(.detail).focused($focused)
             .help(state.partial.audio ? source.quote + " (audio deleted)" : source.quote)
             .accessibilityLabel(state.partial.audio ? "Show source in transcript, audio deleted" : "Show source in transcript")
         }
@@ -361,7 +361,7 @@ struct SourceLink: View {
         if let label { Label("Source deleted · " + label, systemImage: "quote.bubble") } else {
           Image(systemName: "quote.bubble")
         }
-      }.font(.caption).foregroundStyle(Palette.secondary.opacity(0.6))
+      }.font(.detail).foregroundStyle(Palette.secondary.opacity(0.6))
         .help("Source deleted: the transcript of this meeting was deleted.")
         .accessibilityLabel(name + " deleted")
     } else {
@@ -371,7 +371,7 @@ struct SourceLink: View {
         if let label { Text(state.partial.audio ? label + " · no audio" : label) } else {
           Image(systemName: state.partial.audio ? "quote.bubble.fill" : "quote.bubble")
         }
-      }.buttonStyle(.borderless).font(.caption)
+      }.buttonStyle(.borderless).font(.detail)
         .help(state.partial.audio ? source.quote + " (audio deleted)" : source.quote)
         .accessibilityLabel(state.partial.audio ? "Show \(name.lowercased()) in transcript, audio deleted" : "Show \(name.lowercased()) in transcript")
         .accessibilityHint(source.quote)

@@ -36,7 +36,7 @@ struct DictationView: View {
           }
           if state.history.contains(where: { $0.status == "ignored" }) {
             Toggle("Show ignored clips", isOn: $showIgnored).toggleStyle(.checkbox)
-              .font(.caption).foregroundStyle(Palette.secondary)
+              .font(.detail).foregroundStyle(Palette.secondary)
           }
         }
       }.sheet(isPresented: $showTrash) { TrashView().environmentObject(state) }
@@ -52,7 +52,7 @@ struct DictationView: View {
             Text(
               state.dictationStatus == .listening ? "Listening to you…" : "Hold your shortcut to talk"
             )
-            .font(.system(size: 23, weight: .semibold))
+            .font(.sectionTitle)
             Text("Use your shortcut in the app you’re typing in.")
               .font(
                 .caption
@@ -67,14 +67,14 @@ struct DictationView: View {
         Divider()
         HStack {
           Label("Input: " + state.microphoneLabel, systemImage: "mic")
-            .font(.callout).foregroundStyle(Palette.secondary)
+            .font(.detail).foregroundStyle(Palette.secondary)
           Button("Change microphone") { state.openMicrophoneSettings() }.buttonStyle(.plain)
           Spacer()
         }
       }
       if state.history.isEmpty {
         QuietEmpty(
-          icon: "text.cursor", art: "VoxelDictation", title: "No dictations yet",
+          icon: "text.cursor", title: "No dictations yet",
           subtitle:
             "Your dictations show here. Copy or retry any of them."
         )
@@ -95,26 +95,26 @@ struct DictationView: View {
                     MiniWaveform(source: .dictation(id: entry.id, directory: entry.audioDirectory), width: 60, height: 16)
                   }
                   Text(entry.application)
-                }.font(.caption).foregroundStyle(Palette.secondary)
+                }.font(.detail).foregroundStyle(Palette.secondary)
                 Text(
                   entry.status == "ignored"
                     ? "No speech heard"
                     : (entry.text.isEmpty ? "Audio saved · not transcribed yet" : entry.text)
                 ).font(
-                  .system(size: 16)
+                  .reading
                 ).lineSpacing(5).textSelection(.enabled)
                 if let microphone = entry.microphoneName {
-                  Label(microphone, systemImage: "mic").font(.caption).foregroundStyle(
+                  Label(microphone, systemImage: "mic").font(.detail).foregroundStyle(
                     Palette.secondary)
                 }
                 if let provider = entry.transcriptionProvider {
                   Label(
                     provider, systemImage: provider.hasPrefix("Local") ? "internaldrive" : "cloud"
                   )
-                  .font(.caption).foregroundStyle(Palette.secondary)
+                  .font(.detail).foregroundStyle(Palette.secondary)
                 }
                 if let note = entry.processingNote {
-                  Text(note).font(.caption).foregroundStyle(Palette.secondary)
+                  Text(note).font(.detail).foregroundStyle(Palette.secondary)
                 }
                 HStack {
                   Button {
@@ -140,7 +140,7 @@ struct DictationView: View {
                   HStack(spacing: 12) {
                     if state.dictationPlaybackLoading && state.dictationPlaybackDuration == 0 {
                       ProgressView().controlSize(.small)
-                      Text("Opening recording…").font(.caption)
+                      Text("Opening recording…").font(.detail)
                     } else {
                       Text(WorkspaceState.time(state.dictationPlaybackTime)).monospacedDigit()
                       Slider(
@@ -152,7 +152,7 @@ struct DictationView: View {
                       .accessibilityLabel("Dictation playback position")
                       Text(WorkspaceState.time(state.dictationPlaybackDuration)).monospacedDigit()
                     }
-                  }.font(.caption).foregroundStyle(Palette.secondary)
+                  }.font(.detail).foregroundStyle(Palette.secondary)
                 }
               }.padding(22).workspaceSurface()
                 .overlay {
@@ -195,7 +195,7 @@ struct NotebookView: View {
       ListSearchField(placeholder: "Search notebook", text: $query)
       if state.meetings.isEmpty {
         QuietEmpty(
-          icon: "book.closed", art: "VoxelNotebook", title: "No notes yet",
+          icon: "book.closed", title: "No notes yet",
           subtitle:
             "Press New note to start one.")
       } else {
@@ -213,8 +213,8 @@ struct NotebookView: View {
                 state.page = .meetings
               } label: {
                 VStack(alignment: .leading, spacing: 8) {
-                  Text(meeting.title).font(.system(size: 21, weight: .semibold))
-                  Text(meeting.created.formatted(date: .abbreviated, time: .omitted)).font(.caption)
+                  Text(meeting.title).font(.sectionTitle)
+                  Text(meeting.created.formatted(date: .abbreviated, time: .omitted)).font(.detail)
                     .foregroundStyle(Palette.secondary)
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(22).workspaceSurface()
               }.buttonStyle(.plain)
@@ -260,14 +260,14 @@ struct PersonalizationView: View {
           Text(
             page == .styles
               ? "Application" : page == .dictionary ? "Spoken alias" : "Spoken trigger"
-          ).font(.caption).foregroundStyle(Palette.secondary)
+          ).font(.detail).foregroundStyle(Palette.secondary)
           TextField(page == .styles ? "e.g. com.apple.mail" : "What you say", text: $trigger)
         }
         VStack(alignment: .leading, spacing: 7) {
           Text(
             page == .styles
               ? "Writing style" : page == .dictionary ? "Preferred spelling" : "Expanded text"
-          ).font(.caption).foregroundStyle(Palette.secondary)
+          ).font(.detail).foregroundStyle(Palette.secondary)
           TextField(
             page == .styles ? "How you want to sound" : "What Chup! should write",
             text: $replacement, axis: .vertical
@@ -297,7 +297,7 @@ struct PersonalizationView: View {
         .onAppear(perform: takeListQuery).onChange(of: state.listQuery) { _, _ in takeListQuery() }
       if !state.personalization.contains(where: { $0.kind == kind }) {
         QuietEmpty(
-          icon: page.icon, art: "VoxelPersonal", title: "Nothing here yet",
+          icon: page.icon, title: "Nothing here yet",
           subtitle: "Add your first entry above.")
       } else {
           LazyVStack(spacing: 12) {
@@ -312,11 +312,11 @@ struct PersonalizationView: View {
             }) { item in
               HStack {
                 VStack(alignment: .leading, spacing: 8) {
-                  Text(item.trigger).font(.headline)
+                  Text(item.trigger).font(.ui.weight(.semibold))
                   Text(item.replacement).foregroundStyle(Palette.secondary)
                 }
                 Spacer()
-                Text(item.language.uppercased()).font(.caption)
+                Text(item.language.uppercased()).font(.detail)
                 Button("Edit") {
                   trigger = item.trigger
                   replacement = item.replacement
@@ -346,7 +346,7 @@ struct AssistantView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {
       HStack {
-        Text("Ask about this meeting").font(.system(size: 29, weight: .semibold))
+        Text("Ask about this meeting").font(.pageTitle)
         Spacer()
         Button {
           dismiss()
@@ -362,7 +362,7 @@ struct AssistantView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
           if let notice = state.notice {
-            Label(notice, systemImage: "info.circle").font(.caption).foregroundStyle(
+            Label(notice, systemImage: "info.circle").font(.detail).foregroundStyle(
               Palette.secondary
             ).textSelection(.enabled)
           }
@@ -371,23 +371,23 @@ struct AssistantView: View {
           }
           if state.assistantHistory.isEmpty {
             Text("What did we decide?\nWhat should happen next?").font(
-              .system(size: 25, weight: .semibold)
+              .pageTitle
             )
             .foregroundStyle(Palette.secondary)
             Text(
               "Ask a question, or ask Chup! to add to your notes."
             )
-            .font(.callout).foregroundStyle(Palette.secondary)
+            .font(.detail).foregroundStyle(Palette.secondary)
           }
           ForEach(state.assistantHistory) { exchange in
             VStack(alignment: .leading, spacing: 12) {
-              Text(exchange.question).font(.system(size: 19, weight: .semibold)).textSelection(
+              Text(exchange.question).font(.sectionTitle).textSelection(
                 .enabled)
               if exchange.status == "pending" {
                 Label("Searching the meeting…", systemImage: "ellipsis").foregroundStyle(
                   Palette.secondary)
               } else {
-                Text(exchange.answer).font(.system(size: 15)).lineSpacing(4).textSelection(.enabled)
+                Text(exchange.answer).font(.reading).lineSpacing(4).textSelection(.enabled)
                   .foregroundStyle(exchange.status == "failed" ? Palette.red : Palette.ink)
               }
               ForEach(exchange.sources.indices, id: \.self) { index in
@@ -399,19 +399,19 @@ struct AssistantView: View {
                 } label: {
                   Label(source.quote, systemImage: "quote.bubble")
                 }
-                .buttonStyle(.borderless).font(.caption)
+                .buttonStyle(.borderless).font(.detail)
               }
               if exchange.status == "committed" {
                 Label(
                   exchange.write?.operation == "create_action_item"
                     ? "Action saved" : "Saved to My notes", systemImage: "checkmark.circle"
-                ).font(.caption)
+                ).font(.detail)
                   .foregroundStyle(Palette.accent)
               } else if exchange.write != nil && exchange.status == "completed" {
                 Button(
                   exchange.write?.operation == "create_action_item"
                     ? "Review action" : "Review note change"
-                ) { state.reviewAssistantWrite(exchange) }.font(.caption)
+                ) { state.reviewAssistantWrite(exchange) }.font(.detail)
               }
             }.padding(20).workspaceSurface()
           }
@@ -419,7 +419,7 @@ struct AssistantView: View {
             VStack(alignment: .leading, spacing: 12) {
               Text(
                 write.operation == "create_action_item" ? "Proposed action" : "Proposed note change"
-              ).font(.headline)
+              ).font(.ui.weight(.semibold))
               Text(write.text).textSelection(.enabled)
               Button(write.operation == "create_action_item" ? "Save action" : "Save to My notes") {
                 state.applyAssistantWrite()
@@ -440,7 +440,7 @@ struct AssistantView: View {
           state.assistantBusy || question.isEmpty || mode != .privateText)
       }
       Label("Only this meeting goes to AI.", systemImage: "lock")
-        .font(.caption).foregroundStyle(Palette.secondary)
+        .font(.detail).foregroundStyle(Palette.secondary)
     }.padding(30).background(Palette.workspace).foregroundStyle(Palette.ink).tint(Palette.accent)
   }
   func send() {

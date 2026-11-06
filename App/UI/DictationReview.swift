@@ -43,11 +43,11 @@ struct DictationReviewView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       Text("DICTATION REVIEW")
-        .font(.system(size: 11, weight: .semibold))
+        .font(.detail.weight(.semibold))
         .tracking(1.4)
         .foregroundStyle(Palette.secondary)
       Text("Review before pasting")
-        .font(.system(size: 20, weight: .semibold))
+        .font(.sectionTitle)
       ReviewTextEditor(state: state)
         .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.black.opacity(0.12)) }

@@ -12,14 +12,14 @@ struct AssistantVoiceControls: View {
       HStack {
         Image(systemName: mode == .broadcast ? "dot.radiowaves.left.and.right" : "headphones")
         Text(mode == .broadcast ? "Speak in this meeting" : "A private voice conversation").font(
-          .system(size: 22, weight: .semibold))
+          .sectionTitle)
       }
       Text(
         mode == .broadcast
           ? "Only this meeting’s transcript goes to AI. Your notes and private thoughts stay out."
           : "Hold to talk to the assistant. In a call, private voice needs the Chup! Mic."
       )
-      .font(.callout).foregroundStyle(Palette.secondary)
+      .font(.detail).foregroundStyle(Palette.secondary)
       Picker("Headphone output", selection: $router.monitorUID) {
         Text("Select headphones").tag("")
         ForEach(router.outputs) { output in
@@ -38,10 +38,10 @@ struct AssistantVoiceControls: View {
             }
             Button("Refresh devices") { router.refresh() }
           }
-          Text(router.message).font(.caption)
+          Text(router.message).font(.detail)
           Text(
             "Pick Chup! Mic as the mic in your call app. Use headphones."
-          ).font(.caption).foregroundStyle(Palette.secondary)
+          ).font(.detail).foregroundStyle(Palette.secondary)
         }.insetSurface()
       }
       Divider()
@@ -63,7 +63,7 @@ struct AssistantVoiceControls: View {
           Button("Stop voice") { state.endVoice() }
         }
         Spacer()
-        Text(voice.status).font(.caption)
+        Text(voice.status).font(.detail)
       }
       if router.privateInput {
         Label("Call microphone is muted by Chup!", systemImage: "mic.slash.fill")
@@ -74,11 +74,11 @@ struct AssistantVoiceControls: View {
         }
       }
       if !voice.inputTranscript.isEmpty {
-        Text(voice.inputTranscript).font(.system(size: 16)).textSelection(.enabled)
+        Text(voice.inputTranscript).font(.reading).textSelection(.enabled)
       }
       if !voice.outputTranscript.isEmpty {
         Text(voice.outputTranscript).foregroundStyle(Palette.secondary).textSelection(.enabled)
-        Text("Generated voice transcript · playback may be gated or interrupted").font(.caption)
+        Text("Generated voice transcript · playback may be gated or interrupted").font(.detail)
           .foregroundStyle(Palette.secondary)
       }
       TimelineView(.animation(minimumInterval: 1.0 / 24, paused: router.level == 0 || reduceMotion))

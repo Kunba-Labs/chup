@@ -205,8 +205,8 @@ struct DictationIndicatorView: View {
       if let message = microphoneMessage {
         Image(systemName: "mic.slash.fill").frame(width: 18).foregroundStyle(RailPalette.red)
         VStack(alignment: .leading, spacing: 3) {
-          Text("Check microphone").font(.system(size: 12, weight: .semibold))
-          Text(message).font(.system(size: 11)).foregroundStyle(RailPalette.secondary)
+          Text("Check microphone").font(.detail.weight(.semibold))
+          Text(message).font(.detail).foregroundStyle(RailPalette.secondary)
             .fixedSize(horizontal: false, vertical: true)
         }.frame(maxWidth: .infinity, alignment: .leading)
         control("gearshape", label: "Choose microphone") { state.openMicrophoneSettings() }
@@ -214,9 +214,9 @@ struct DictationIndicatorView: View {
       } else if recovery, let feedback {
         Image(systemName: feedback.icon).font(.system(size: 17))
         VStack(alignment: .leading, spacing: 2) {
-          Text(feedback.title).font(.system(size: 12, weight: .medium))
+          Text(feedback.title).font(.detail.weight(.medium))
             .fixedSize(horizontal: false, vertical: true)
-          Text(feedback.detail).font(.system(size: 11)).foregroundStyle(RailPalette.secondary)
+          Text(feedback.detail).font(.detail).foregroundStyle(RailPalette.secondary)
             .fixedSize(horizontal: false, vertical: true)
         }.frame(maxWidth: .infinity, alignment: .leading)
         control("xmark", label: "Dismiss message") { state.clearDictationFeedback() }
@@ -229,7 +229,7 @@ struct DictationIndicatorView: View {
     return layout {
       if let feedback, feedback.isCompactCompletion {
         Image(systemName: feedback.icon).foregroundStyle(RailPalette.accent)
-        if !vertical { Text(feedback.title).font(.system(size: 12, weight: .medium)) }
+        if !vertical { Text(feedback.title).font(.detail.weight(.medium)) }
       } else {
         control("xmark", label: "Cancel dictation") { state.cancelDictation(reason: "indicator cancel button") }
         ZStack {

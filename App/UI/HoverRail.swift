@@ -391,7 +391,7 @@ struct RailContent: View {
       } else if let drawer = presentation.drawer {
         VStack(alignment: .leading, spacing: 12) {
           HStack {
-            Text(drawer).font(.system(size: 17, weight: .semibold))
+            Text(drawer).font(.heading)
             Spacer()
             Button {
               action("back")
@@ -412,7 +412,7 @@ struct RailContent: View {
               }.buttonStyle(.pill)
             }
           } else {
-            Label("Private text · this meeting", systemImage: "lock").font(.caption)
+            Label("Private text · this meeting", systemImage: "lock").font(.detail)
               .foregroundStyle(RailPalette.secondary)
             row("Ask assistant", "sparkle", "ask")
           }
@@ -520,7 +520,7 @@ struct RailContent: View {
           .animation(reduceMotion ? nil : .easeOut(duration: 0.09), value: voiceLevel)
           .accessibilityHidden(true)
       }
-    }.font(.system(size: 11, weight: .medium)).foregroundStyle(statusColor)
+    }.font(.detail.weight(.medium)).foregroundStyle(statusColor)
   }
   private func icon(_ title: String, _ symbol: String, _ key: String) -> some View {
     RailIconButton(
@@ -537,7 +537,7 @@ struct RailContent: View {
         Image(systemName: icon).frame(width: 19).foregroundStyle(RailPalette.secondary)
         Text(title)
         Spacer(minLength: 0)
-      }.font(.system(size: 13, weight: .medium)).padding(.horizontal, 9).padding(.vertical, 10)
+      }.font(.ui.weight(.medium)).padding(.horizontal, 9).padding(.vertical, 10)
         .contentShape(Rectangle())
     }.buttonStyle(RailButtonStyle())
   }
@@ -569,7 +569,7 @@ struct RailButtonStyle: ButtonStyle {
 struct RailOverlayLabel: View {
   let title: String
   var body: some View {
-    Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(RailPalette.ink)
+    Text(title).font(.detail.weight(.medium)).foregroundStyle(RailPalette.ink)
       .padding(.horizontal, 10).padding(.vertical, 6)
       .background { RailSurface(cornerRadius: 12) }
       .fixedSize().environment(\.colorScheme, .dark)

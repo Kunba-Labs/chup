@@ -139,9 +139,9 @@ struct MeetingSidebarView: View {
       Circle().fill(state.meetingStatus == .recording || failed ? Palette.red : Palette.secondary)
         .frame(width: 8, height: 8).accessibilityHidden(true)
       Text(failed ? "ERROR" : paused ? "PAUSED" : state.meetingStatus == .recording ? "REC" : "STARTING")
-        .font(.system(size: 10, weight: .semibold)).tracking(1.4).foregroundStyle(Palette.secondary)
-      Text(WorkspaceState.time(state.elapsed)).font(.system(size: 13, weight: .semibold).monospacedDigit())
-      Text(state.activeMeeting?.title ?? "Meeting").font(.system(size: 13, weight: .medium)).lineLimit(1)
+        .font(.micro.weight(.semibold)).tracking(1.4).foregroundStyle(Palette.secondary)
+      Text(WorkspaceState.time(state.elapsed)).font(.ui.weight(.semibold).monospacedDigit())
+      Text(state.activeMeeting?.title ?? "Meeting").font(.ui.weight(.medium)).lineLimit(1)
       Spacer()
       Button(action: sidebar.toggle) {
         Image(systemName: sidebar.collapsed ? "chevron.down" : "chevron.up")
@@ -154,18 +154,10 @@ struct MeetingSidebarView: View {
   }
 
   private var tabBar: some View {
-    HStack(spacing: 18) {
-      ForEach(["Transcript", "My thoughts"], id: \.self) { name in
-        Button { tab = name } label: {
-          VStack(spacing: 6) {
-            Text(name).font(.system(size: 13, weight: tab == name ? .semibold : .regular))
-              .foregroundStyle(tab == name ? Palette.ink : Palette.secondary)
-            Capsule().fill(tab == name ? Palette.accent : .clear).frame(height: 2)
-          }.fixedSize()
-        }.buttonStyle(.plain).accessibilityAddTraits(tab == name ? .isSelected : [])
-      }
+    HStack {
+      PillSegmented(title: "Notepad view", selection: $tab, options: ["Transcript", "My thoughts"]) { $0 }
       Spacer()
-    }.overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 1) }
+    }
   }
 
   /// Live lines as speaker bubbles: yours on the right, everyone else on the left.
@@ -178,14 +170,14 @@ struct MeetingSidebarView: View {
             Text(state.liveCaptionsEnabled && state.cloudEnabled
               ? "Listening… Text shows a few seconds after someone speaks."
               : "Turn on Live captions in Settings → Meetings to see text here.")
-              .font(.system(size: 13)).foregroundStyle(Palette.secondary).padding(.top, 8)
+              .font(.ui).foregroundStyle(Palette.secondary).padding(.top, 8)
           }
           ForEach(lines) { segment in
             let mine = segment.speakerID.hasSuffix("microphone")
             VStack(alignment: mine ? .trailing : .leading, spacing: 3) {
-              Text(mine ? "You" : "Others").font(.system(size: 10, weight: .semibold))
+              Text(mine ? "You" : "Others").font(.micro.weight(.semibold))
                 .foregroundStyle(Palette.secondary)
-              Text(segment.text).font(.system(size: 14)).textSelection(.enabled)
+              Text(segment.text).font(.ui).textSelection(.enabled)
                 .padding(.horizontal, 12).padding(.vertical, 8)
                 .background(mine ? Palette.accent.opacity(0.12) : Palette.paper, in: RoundedRectangle(cornerRadius: 14))
             }.frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading)
@@ -212,7 +204,7 @@ struct MeetingSidebarView: View {
         TextEditor(text: $state.noteDraft).scrollContentBackground(.hidden)
           .onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
           .accessibilityLabel("My thoughts")
-      }.font(.system(size: 14)).padding(10).workspaceSurface().padding(.top, 8)
+      }.font(.ui).padding(10).workspaceSurface().padding(.top, 8)
     } else {
       Button("Show this meeting’s notes") {
         if let id = state.activeMeetingID { state.selectMeeting(id) }
@@ -222,9 +214,9 @@ struct MeetingSidebarView: View {
 
   private var errorBanner: some View {
     VStack(alignment: .leading, spacing: 4) {
-      Text("Recording stopped with an error").font(.system(size: 13, weight: .semibold))
+      Text("Recording stopped with an error").font(.ui.weight(.semibold))
       Text("Your audio so far is safe. Press Stop and save, then record again.")
-        .font(.system(size: 12)).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
+        .font(.detail).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
     }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
       .background(Palette.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
       .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.red.opacity(0.35)) }
@@ -235,9 +227,9 @@ struct MeetingSidebarView: View {
     HStack(spacing: 10) {
       VStack(alignment: .leading, spacing: 2) {
         Text(state.inputLost ? "Microphone stopped" : "Microphone sending only silence for \(state.micSilentSeconds ?? 20) s")
-          .font(.system(size: 13, weight: .semibold))
+          .font(.ui.weight(.semibold))
         Text("Check your mic is connected, or pick another in Settings → Dictation.")
-          .font(.system(size: 12)).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
+          .font(.detail).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
       }
       Spacer(minLength: 4)
       Button("Restart input") { state.restartInput() }.buttonStyle(.pillPrimary).controlSize(.small)
@@ -253,7 +245,7 @@ struct MeetingSidebarView: View {
         VStack(alignment: .leading, spacing: 8) {
           // Discard removes the whole meeting, including anything saved before this recording.
           Text("Delete the whole meeting “\(state.activeMeeting?.title ?? "Meeting")”? Its recordings, transcript and notes are removed, including anything saved before this recording.")
-            .font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
+            .font(.detail).fixedSize(horizontal: false, vertical: true)
           HStack(spacing: 8) {
             Spacer()
             Button("Keep") { discardFor = nil }.controlSize(.small)
@@ -281,8 +273,8 @@ struct MeetingSidebarView: View {
         } label: {
           // Notes are written on stop only when cloud processing can run; otherwise audio is saved.
           Label(state.cloudEnabled && !state.backendToken.isEmpty ? "Stop and write notes" : "Stop and save",
-            systemImage: "stop.fill").font(.system(size: 13, weight: .semibold))
-            .frame(maxWidth: .infinity).frame(height: 34).background(Palette.gradient, in: Capsule())
+            systemImage: "stop.fill").font(.ui.weight(.semibold))
+            .frame(maxWidth: .infinity).frame(height: 34).background(Palette.red, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .foregroundStyle(.white)
         }.buttonStyle(.plain)
         Menu {
@@ -300,13 +292,13 @@ struct MeetingSidebarView: View {
       if let live = state.liveAnswer, live.meetingID == state.activeMeetingID {
         VStack(alignment: .leading, spacing: 4) {
           HStack(alignment: .firstTextBaseline) {
-            Text(live.question).font(.system(size: 12, weight: .semibold)).lineLimit(2)
+            Text(live.question).font(.detail.weight(.semibold)).lineLimit(2)
             Spacer()
             Button { state.liveAnswer = nil } label: { Image(systemName: "xmark") }
               .buttonStyle(.plain).foregroundStyle(Palette.secondary).accessibilityLabel("Close answer")
           }
           if let answer = live.answer {
-            Text(answer).font(.system(size: 12)).textSelection(.enabled).lineLimit(9)
+            Text(answer).font(.detail).textSelection(.enabled).lineLimit(9)
               .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
               .help(answer)
           } else {
@@ -315,14 +307,14 @@ struct MeetingSidebarView: View {
         }.padding(10).workspaceSurface()
       }
       HStack(spacing: 6) {
-        TextField("Ask anything", text: $question).textFieldStyle(.plain).font(.system(size: 13))
+        TextField("Ask anything", text: $question).textFieldStyle(.plain).font(.ui)
           .onSubmit(send).padding(.horizontal, 12).frame(height: 32)
-          .background(Palette.paper, in: Capsule())
+          .background(Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         Button("What did I miss?") {
           state.askLive("What did I miss in the last five minutes?", lastSeconds: 300)
         }.buttonStyle(.pill).controlSize(.small).fixedSize()
       }.disabled(state.liveAnswer.map { $0.meetingID == state.activeMeetingID && $0.answer == nil } ?? false)
-      Text("Sends the call's text so far to AI.").font(.system(size: 10)).foregroundStyle(Palette.secondary)
+      Text("Sends the call's text so far to AI.").font(.micro).foregroundStyle(Palette.secondary)
     }.onChange(of: state.activeMeetingID) { _, _ in state.liveAnswer = nil }
   }
   private func send() {

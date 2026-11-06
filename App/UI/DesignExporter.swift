@@ -350,14 +350,14 @@ import ChupCore
             "Native idle controls · actual device availability, no voice session or simulated success"
         ) {
           VStack(alignment: .leading, spacing: 24) {
-            Text("A moment to think aloud.").font(.system(size: 32, weight: .semibold))
+            Text("A moment to think aloud.").font(.pageTitle)
             AssistantVoiceControls(
               voice: state.voice, router: state.voiceRouter, mode: .privateVoice
             ).environmentObject(state)
             Label(
               "Meeting voice requires a controlled microphone route. Private text is always available.",
               systemImage: "lock.shield"
-            ).font(.callout).foregroundStyle(Palette.secondary)
+            ).font(.detail).foregroundStyle(Palette.secondary)
           }.padding(36).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Palette.workspace)
         }, size: CGSize(width: 1000, height: 820),
@@ -622,9 +622,9 @@ struct DesignFrame<Content: View>: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {
       HStack {
-        Text("CHUP!").font(.system(size: 11, weight: .semibold)).tracking(2)
+        Text("CHUP!").font(.detail.weight(.semibold)).tracking(2)
         Spacer()
-        Text(title).font(.system(size: 10, weight: .semibold)).tracking(1.6)
+        Text(title).font(.micro.weight(.semibold)).tracking(1.6)
       }.foregroundStyle(Palette.secondary)
       VStack(spacing: 0) {
         HStack(spacing: 8) {
@@ -632,16 +632,16 @@ struct DesignFrame<Content: View>: View {
           Circle().fill(Color(red: 0.93, green: 0.74, blue: 0.35)).frame(width: 11, height: 11)
           Circle().fill(Color(red: 0.48, green: 0.69, blue: 0.42)).frame(width: 11, height: 11)
           Spacer()
-          Text("Chup!").font(.system(size: 11)).foregroundStyle(Palette.secondary)
+          Text("Chup!").font(.detail).foregroundStyle(Palette.secondary)
           Spacer()
-          Text("DESIGN PREVIEW").font(.system(size: 8, weight: .semibold)).tracking(1)
+          Text("DESIGN PREVIEW").font(.micro.weight(.semibold)).tracking(1)
             .foregroundStyle(Palette.secondary)
         }.padding(.horizontal, 20).frame(height: 38).background(Palette.sidebar)
         content()
       }.clipShape(RoundedRectangle(cornerRadius: 13)).overlay {
         RoundedRectangle(cornerRadius: 13).stroke(Palette.border, lineWidth: 1)
       }.shadow(color: .black.opacity(0.09), radius: 24, x: 0, y: 12)
-      Text(subtitle).font(.system(size: 10)).foregroundStyle(Palette.secondary)
+      Text(subtitle).font(.micro).foregroundStyle(Palette.secondary)
     }.padding(40).background(Palette.workspace)
   }
 }
@@ -650,11 +650,11 @@ struct DesignSidebar: View {
     VStack(alignment: .leading, spacing: 30) {
       HStack(spacing: 12) {
         WaveMark().scaleEffect(0.75).frame(width: 32)
-        Text("Chup!").font(.system(size: 19, weight: .semibold))
+        Text("Chup!").font(.sectionTitle)
       }
       VStack(alignment: .leading, spacing: 5) {
         ForEach(WorkspacePage.allCases, id: \.self) { page in
-          Label(page.rawValue, systemImage: page.icon).font(.system(size: 13)).padding(12).frame(
+          Label(page.rawValue, systemImage: page.icon).font(.ui).padding(12).frame(
             maxWidth: .infinity, alignment: .leading
           ).background(
             page == .meetings ? Palette.paper : .clear, in: RoundedRectangle(cornerRadius: 8)
@@ -662,7 +662,7 @@ struct DesignSidebar: View {
         }
       }
       Spacer()
-      Label("Saved on this Mac", systemImage: "lock.shield").font(.caption).foregroundStyle(
+      Label("Saved on this Mac", systemImage: "lock.shield").font(.detail).foregroundStyle(
         Palette.secondary)
     }.padding(22).frame(width: 218).background(Palette.sidebar)
   }
@@ -678,15 +678,15 @@ struct PanelBoard: View {
       HStack {
         WaveMark()
         VStack(alignment: .leading, spacing: 6) {
-          Text("Small moments. Thoughtfully handled.").font(.system(size: 34, weight: .semibold))
+          Text("Small moments. Thoughtfully handled.").font(.pageTitle)
           Text("CHUP! / NOTIFICATIONS & FLOATING CONTROLS").font(
-            .system(size: 10, weight: .semibold)
+            .micro.weight(.semibold)
           ).tracking(1.8).foregroundStyle(Palette.secondary)
         }
         Spacer()
       }
       Text("Quiet by default. Clear when it matters. Every microphone action is yours.").font(
-        .system(size: 15)
+        .reading
       ).foregroundStyle(Palette.secondary)
       LazyVGrid(columns: columns, alignment: .leading, spacing: 28) {
         panel(
@@ -701,7 +701,7 @@ struct PanelBoard: View {
           "Private text, with a visible retrieval scope.")
         panel(.routeBlocked, "08  VOICE PRIVACY", "Explains the route problem and offers text.")
         VStack(alignment: .leading, spacing: 15) {
-          Text("09  THE HOVER RAIL").font(.system(size: 9, weight: .semibold)).tracking(1.4)
+          Text("09  THE HOVER RAIL").font(.micro.weight(.semibold)).tracking(1.4)
             .foregroundStyle(Palette.secondary)
           HStack(spacing: 20) {
             RailContent(
@@ -715,7 +715,7 @@ struct PanelBoard: View {
             ).frame(width: 56, height: 238)
           }
           Text("160 ms to expand · 450 ms to close\nHover never activates the microphone.").font(
-            .system(size: 10)
+            .micro
           ).foregroundStyle(Palette.secondary).lineSpacing(3)
         }.frame(maxHeight: .infinity, alignment: .top)
       }
@@ -724,19 +724,19 @@ struct PanelBoard: View {
         Text("NATIVE SWIFTUI RENDERS · SAMPLE STATES, NOT LIVE ACTIVITY")
         Spacer()
         Text("CREAM / INK / OLIVE / SCANNER RED")
-      }.font(.system(size: 9, weight: .medium)).tracking(1).foregroundStyle(Palette.secondary)
+      }.font(.micro).tracking(1).foregroundStyle(Palette.secondary)
     }.padding(52).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
       .background(Palette.workspace).foregroundStyle(Palette.ink)
   }
   func panel(_ kind: NotificationCard.Kind, _ label: String, _ caption: String) -> some View {
     VStack(alignment: .leading, spacing: 13) {
-      Text(label).font(.system(size: 9, weight: .semibold)).tracking(1.4).foregroundStyle(
+      Text(label).font(.micro.weight(.semibold)).tracking(1.4).foregroundStyle(
         Palette.secondary)
       NotificationCard(
         kind: kind, appName: kind == .browserDetected ? "Chrome" : "Zoom",
         countdown: kind == .browserDetected ? 7 : 10, elapsed: "12:48"
       ).shadow(color: .black.opacity(0.045), radius: 9, x: 0, y: 5)
-      Text(caption).font(.system(size: 10)).foregroundStyle(Palette.secondary)
+      Text(caption).font(.micro).foregroundStyle(Palette.secondary)
     }.frame(maxHeight: .infinity, alignment: .top)
   }
 }
@@ -745,9 +745,9 @@ struct RailDesignBoard: View {
   @ObservedObject var state: WorkspaceState
   var body: some View {
     VStack(alignment: .leading, spacing: 24) {
-      Text("CHUP! / DARK GLASS CONTROLS").font(.system(size: 10, weight: .semibold))
+      Text("CHUP! / DARK GLASS CONTROLS").font(.micro.weight(.semibold))
         .tracking(1.8).foregroundStyle(Palette.secondary)
-      Text("Warm paper. A darker edge.").font(.system(size: 38, weight: .semibold))
+      Text("Warm paper. A darker edge.").font(.pageTitle)
       Text("The workspace stays light. The independent rail and its drawers stay dark.")
         .foregroundStyle(Palette.secondary)
       HStack(alignment: .center, spacing: 56) {
@@ -756,7 +756,7 @@ struct RailDesignBoard: View {
             state: state, presentation: RailPresentation(), liveGlass: false,
             action: { _ in }, drag: {}
           ).frame(width: 30, height: 96)
-          Text("AT REST").font(.system(size: 9, weight: .semibold)).tracking(1.5)
+          Text("AT REST").font(.micro.weight(.semibold)).tracking(1.5)
         }.frame(width: 110)
         VStack(spacing: 22) {
           RailContent(
@@ -766,28 +766,28 @@ struct RailDesignBoard: View {
             .overlay(alignment: .trailing) {
               RailOverlayLabel(title: "Assistant").offset(x: -65, y: 34)
             }
-          Text("ICONS / HOVER LABELS").font(.system(size: 9, weight: .semibold)).tracking(1.5)
+          Text("ICONS / HOVER LABELS").font(.micro.weight(.semibold)).tracking(1.5)
         }
         VStack(spacing: 22) {
           RailContent(
             state: state, presentation: RailPresentation(expanded: true, drawer: "Meeting"),
             liveGlass: false, action: { _ in }, drag: {}
           ).frame(width: 300, height: 230)
-          Text("MEETING DRAWER").font(.system(size: 9, weight: .semibold)).tracking(1.5)
+          Text("MEETING DRAWER").font(.micro.weight(.semibold)).tracking(1.5)
         }
         VStack(alignment: .leading, spacing: 18) {
-          Text("A little life.").font(.system(size: 23, weight: .semibold))
+          Text("A little life.").font(.sectionTitle)
           Text("240 ms expansion\n180 ms collapse\n120 ms hover feedback\n450 ms exit delay")
-            .font(.system(size: 12)).lineSpacing(10)
+            .font(.detail).lineSpacing(10)
           Text("Reduce Motion removes movement. Reduce Transparency uses solid charcoal.")
-            .font(.system(size: 11)).lineSpacing(5)
+            .font(.detail).lineSpacing(5)
         }.frame(width: 195).foregroundStyle(Palette.secondary)
       }.frame(maxWidth: .infinity, minHeight: 390)
       Divider()
       Text("NATIVE SWIFTUI · STATIC MATERIAL FALLBACK SHOWN · LIVE BACKDROP DEPENDS ON THE DESKTOP")
-        .font(.system(size: 9, weight: .medium)).tracking(1).foregroundStyle(Palette.secondary)
+        .font(.micro).tracking(1).foregroundStyle(Palette.secondary)
       Text("Open motion.html to try the animated speaking and interruption study.")
-        .font(.system(size: 12)).foregroundStyle(Palette.secondary)
+        .font(.detail).foregroundStyle(Palette.secondary)
     }.padding(48).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
       .background(Palette.workspace).foregroundStyle(Palette.ink).environment(\.colorScheme, .light)
   }
@@ -803,12 +803,12 @@ struct IslandDesignBoard: View {
   @ObservedObject var recording: WorkspaceState
   var body: some View {
     VStack(alignment: .leading, spacing: 26) {
-      Text("CHUP! / DYNAMIC ISLAND · PROPOSAL").font(.system(size: 10, weight: .semibold))
+      Text("CHUP! / DYNAMIC ISLAND · PROPOSAL").font(.micro.weight(.semibold))
         .tracking(1.8).foregroundStyle(Palette.secondary)
-      Text("One surface at the top, instead of two.").font(.system(size: 36, weight: .semibold))
+      Text("One surface at the top, instead of two.").font(.pageTitle)
       Text(
         "When the island is on, the edge rail stays hidden. Its voice animation, dictate, meeting, assistant and settings controls move under the notch."
-      ).font(.system(size: 14)).foregroundStyle(Palette.secondary)
+      ).font(.ui).foregroundStyle(Palette.secondary)
         .fixedSize(horizontal: false, vertical: true).frame(width: 760, alignment: .leading)
       row("01  COMPACT · LISTENING", "Glyph and live input level flank the notch. Nothing else is shown while you talk.") {
         IslandStage {
@@ -836,9 +836,9 @@ struct IslandDesignBoard: View {
       Divider()
       Text(
         "TRADE-OFF · FULLY IDLE, NOTHING IS SHOWN. THE MENU BAR ITEM AND SHORTCUTS STAY THE IDLE ENTRY POINTS."
-      ).font(.system(size: 9, weight: .medium)).tracking(1).foregroundStyle(Palette.secondary)
+      ).font(.micro).tracking(1).foregroundStyle(Palette.secondary)
       Text("NATIVE SWIFTUI · MOCKED DESKTOP BAND · SAMPLE LEVELS AND TEXT, NO CAPTURE")
-        .font(.system(size: 9, weight: .medium)).tracking(1).foregroundStyle(Palette.secondary)
+        .font(.micro).tracking(1).foregroundStyle(Palette.secondary)
     }.padding(48).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
       .background(Palette.workspace).foregroundStyle(Palette.ink).environment(\.colorScheme, .light)
   }
@@ -848,9 +848,9 @@ struct IslandDesignBoard: View {
     HStack(alignment: .center, spacing: 30) {
       content()
       VStack(alignment: .leading, spacing: 8) {
-        Text(label).font(.system(size: 9, weight: .semibold)).tracking(1.4)
+        Text(label).font(.micro.weight(.semibold)).tracking(1.4)
           .foregroundStyle(Palette.secondary)
-        Text(caption).font(.system(size: 13)).lineSpacing(4)
+        Text(caption).font(.ui).lineSpacing(4)
           .fixedSize(horizontal: false, vertical: true).frame(width: 300, alignment: .leading)
       }
     }
@@ -891,7 +891,7 @@ private struct CompactMotionPreview: View {
   @ObservedObject var state: WorkspaceState
   var body: some View {
     VStack(spacing: 26) {
-      Text("CHUP!  /  QUIETER VOICE CONTROLS").font(.system(size: 11, weight: .semibold)).tracking(1.8)
+      Text("CHUP!  /  QUIETER VOICE CONTROLS").font(.detail.weight(.semibold)).tracking(1.8)
       ZStack {
         if state.compactDictationVisible {
           DictationIndicatorView(state: state).scaleEffect(2)
@@ -901,7 +901,7 @@ private struct CompactMotionPreview: View {
         }
       }.frame(height: 310)
       Text("2× detail · native controls · illustrative microphone levels")
-        .font(.system(size: 11)).foregroundStyle(RailPalette.secondary)
+        .font(.detail).foregroundStyle(RailPalette.secondary)
     }.frame(maxWidth: .infinity, maxHeight: .infinity)
       .foregroundStyle(RailPalette.ink).background(Color(red: 0.06, green: 0.065, blue: 0.07))
   }
@@ -911,12 +911,12 @@ private struct PopupStylePreview: View {
   @ObservedObject var state: WorkspaceState
   var body: some View {
     VStack(alignment: .leading, spacing: 28) {
-      Text("CHUP! / ONE QUIET VOICE").font(.system(size: 12, weight: .semibold)).tracking(2)
+      Text("CHUP! / ONE QUIET VOICE").font(.detail.weight(.semibold)).tracking(2)
       Text("Charcoal glass. Cream controls. Smaller, calmer popups.")
-        .font(.system(size: 25, weight: .semibold))
+        .font(.pageTitle)
       HStack(alignment: .top, spacing: 28) {
         VStack(alignment: .leading, spacing: 16) {
-          Text("HOVER CONTROLS").font(.system(size: 10, weight: .semibold)).tracking(1)
+          Text("HOVER CONTROLS").font(.micro.weight(.semibold)).tracking(1)
           HStack(alignment: .top, spacing: 10) {
             RailContent(state: state, presentation: RailPresentation(expanded: true), liveGlass: false,
               action: { _ in }, drag: {}).frame(width: 44, height: 188)
@@ -935,7 +935,7 @@ private struct PopupStylePreview: View {
         }
       }
       Text("Native views · illustrative notifications · no capture or actions")
-        .font(.system(size: 11)).foregroundStyle(Palette.secondary)
+        .font(.detail).foregroundStyle(Palette.secondary)
     }.padding(36).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
       .foregroundStyle(Palette.ink).background(Palette.workspace)
   }

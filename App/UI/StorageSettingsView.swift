@@ -13,7 +13,7 @@ struct StorageSettingsView: View {
         Label(
           state.store?.encrypted == true ? "Encrypted on this Mac" : "Workspace unavailable",
           systemImage: "lock.shield"
-        ).font(.callout.weight(.medium)).foregroundStyle(Palette.accent)
+        ).font(.detail.weight(.medium)).foregroundStyle(Palette.accent)
         DetailDisclosure(
           title: "Encryption & backups",
           text:
@@ -29,7 +29,7 @@ struct StorageSettingsView: View {
         period("Private question audio", value: $draft.questionDays)
         Text(
           "Cleanup runs every hour while Chup! is open and idle."
-        ).font(.caption).foregroundStyle(Palette.secondary)
+        ).font(.detail).foregroundStyle(Palette.secondary)
         HStack {
           Button("Save retention schedule") { confirmRetention = true }.disabled(
             !state.privacyWorkAllowed)
@@ -55,7 +55,7 @@ struct StorageSettingsView: View {
         }
         Text(
           "Exports aren’t encrypted. Deleting here doesn’t remove copies you exported or backed up."
-        ).font(.caption).foregroundStyle(Palette.secondary)
+        ).font(.detail).foregroundStyle(Palette.secondary)
       }
       WorkspaceCard(
         "Delete a meeting", subtitle: "Moves it to the Trash.",
@@ -114,7 +114,7 @@ struct BackupSettingsView: View {
   @State private var confirmation = ""
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
-      Text("Backups").font(.system(size: 30, weight: .semibold))
+      Text("Backups").font(.pageTitle)
       Text(
         "A backup holds your recordings, notes and keys. Use a password of 12 or more characters and keep it safe."
       ).foregroundStyle(Palette.secondary)
@@ -135,11 +135,11 @@ struct BackupSettingsView: View {
             }.disabled(!state.privacyWorkAllowed || password.count < 12)
             Text(
               "Restoring keeps your current data. Quit and reopen Chup! to use the restored copy."
-            ).font(.caption).foregroundStyle(Palette.secondary)
+            ).font(.detail).foregroundStyle(Palette.secondary)
           }
           if state.storageBusy { ProgressView() }
           if let message = state.storageMessage {
-            Text(message).font(.callout).textSelection(.enabled)
+            Text(message).font(.detail).textSelection(.enabled)
           }
         }
       }
@@ -164,7 +164,7 @@ struct RequestRecoveryView: View {
       WorkspaceCard("Interrupted work", icon: "arrow.counterclockwise") {
         Text(
           "Resume picks up where the request stopped. Chup! asks before anything could cost twice."
-        ).font(.callout).foregroundStyle(Palette.secondary)
+        ).font(.detail).foregroundStyle(Palette.secondary)
       }
       if state.durableRequests.isEmpty {
         WorkspaceCard {
@@ -176,11 +176,11 @@ struct RequestRecoveryView: View {
       ForEach(state.durableRequests.prefix(30)) { job in
         VStack(alignment: .leading, spacing: 8) {
           HStack {
-            Text(job.route.capitalized).font(.headline)
+            Text(job.route.capitalized).font(.ui.weight(.semibold))
             Spacer()
-            Text(job.status).font(.caption)
+            Text(job.status).font(.detail)
           }
-          if let error = job.error { Text(error).font(.caption).foregroundStyle(Palette.secondary) }
+          if let error = job.error { Text(error).font(.detail).foregroundStyle(Palette.secondary) }
           HStack {
             Button(job.status == "completed" ? "Use saved response" : "Resume") {
               state.resumeRequest(job)
@@ -226,7 +226,7 @@ struct UsageSettingsView: View {
       ) {
         Text(
           "Costs are estimates from the rates you enter. They aren’t an invoice."
-        ).font(.callout).foregroundStyle(Palette.secondary)
+        ).font(.detail).foregroundStyle(Palette.secondary)
         Picker("Model", selection: $model) {
           ForEach(
             Array(
@@ -271,12 +271,12 @@ struct UsageSettingsView: View {
       WorkspaceCard("Provider activity", icon: "clock") {
         ForEach(state.providerUsage.filter { $0.model == model }.prefix(30)) { item in
           VStack(alignment: .leading, spacing: 5) {
-            Text(item.category).font(.headline)
+            Text(item.category).font(.ui.weight(.semibold))
             Text(item.confirmed ? "Provider usage received" : "Final usage unconfirmed").font(
               .caption
             ).foregroundStyle(Palette.secondary)
             if let seconds = item.seconds {
-              Text("\(seconds, specifier: "%.1f") seconds").font(.caption)
+              Text("\(seconds, specifier: "%.1f") seconds").font(.detail)
             }
             if let input = item.inputTokens {
               Text(
@@ -285,7 +285,7 @@ struct UsageSettingsView: View {
                 .caption)
             }
             if let cost = rate.estimate(item) {
-              Text("Estimated $\(cost, specifier: "%.4f")").font(.caption)
+              Text("Estimated $\(cost, specifier: "%.4f")").font(.detail)
             }
           }
         }

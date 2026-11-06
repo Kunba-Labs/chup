@@ -237,7 +237,7 @@ struct DynamicIslandContent: View {
       if transcribing {
         // Up to two large lines; the oldest words drop off the top-left and fade.
         Text(tail)
-          .font(.system(size: twoLines ? 17 : 18, weight: .semibold))
+          .font(.heading)
           .foregroundStyle(.white)
           .lineLimit(2)
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -253,7 +253,7 @@ struct DynamicIslandContent: View {
         }
       } else {
         Text(state.statusText)
-          .font(.system(size: 14, weight: .medium))
+          .font(.ui.weight(.medium))
           .foregroundStyle(.white.opacity(0.85))
           .lineLimit(1)
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -305,7 +305,7 @@ struct DynamicIslandContent: View {
   {
     Button(action: action) {
       Image(systemName: symbol)
-        .font(.system(size: 13, weight: .medium))
+        .font(.ui.weight(.medium))
         .foregroundStyle(.white)
         .frame(width: 26, height: 26)
         .background(.white.opacity(0.16), in: Circle())

@@ -63,19 +63,15 @@ extension WorkspaceState {
     }
   }
   static let inferredNamePrefix = "Named from the transcript: "
-  /// Names speakers nobody named yet: a lone voice on your microphone as this Mac's user, the
-  /// rest from introductions and being addressed by name (decided 2026-11-06, spec F12). Typed
+  /// Names speakers nobody named yet from introductions and being addressed by name (decided 2026-11-06, spec F12). Typed
   /// names and voice matches are never replaced; each name keeps the quote it came from.
   func nameSpeakersFromTranscript(meetingID: String) async throws {
     let source = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID)
       .filter { !$0.provisional }
     let unnamed = Set(source.filter { $0.speakerName == nil && $0.track != .assistant }.map(\.speakerID))
     guard !unnamed.isEmpty else { return }
+    // Only what was said names anyone: a shared microphone proves nothing about who spoke.
     var names: [String: (name: String, why: String)] = [:]
-    let mic = Set(source.filter { $0.track == .microphone }.map(\.speakerID))
-    if mic.count == 1, let me = mic.first, unnamed.contains(me), !NSFullUserName().isEmpty {
-      names[me] = (NSFullUserName(), "this Mac's user, the only voice on your microphone")
-    }
     if cloudEnabled && !backendToken.isEmpty {
       let taken = Set(source.compactMap(\.speakerName).map { $0.lowercased() })
       for found in try await backend(scope: meetingID).speakers(source)
@@ -127,7 +123,9 @@ extension WorkspaceState {
       return line
     }
     // A recap covers only its window, by caption time, so an hour-long call can't answer it.
-    let lines = lastSeconds.map { TranscriptScope.recent(all, seconds: $0) } ?? all
+    // Measured from now, not the newest caption: after a long silence there is nothing to recap.
+    let now = ProcessInfo.processInfo.systemUptime - hostOrigin  // The captions' own clock.
+    let lines = lastSeconds.map { window in all.filter { $0.end > now - window } } ?? all
     guard !lines.isEmpty else {
       liveAnswer = (id, question, "Nothing has been transcribed yet.")
       return
@@ -151,6 +149,7 @@ extension WorkspaceState {
         exchange.answer = answer.text + (quotes.isEmpty ? "" : "\n\nFrom the live captions: " + quotes)
         exchange.status = "completed"
         try db().put(exchange, kind: "assistantExchange", id: exchange.id, parent: id)
+        if selectedMeetingID == id { try refreshDetail() }  // Shows in Ask history right away.
         guard activeMeetingID == id else { return }  // A newer call's notepad never shows it.
         liveAnswer = (id, question, answer.text)
       } catch {

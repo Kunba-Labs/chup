@@ -259,20 +259,20 @@ struct MeetingPrompt: View {
   var body: some View {
     HStack(spacing: 14) {
       Image(systemName: detector.ended ? "phone.down" : "video")
-        .font(.system(size: 19, weight: .regular)).foregroundStyle(RailPalette.secondary)
+        .font(.sectionTitle).foregroundStyle(RailPalette.secondary)
         .frame(width: 26)
       VStack(alignment: .leading, spacing: 3) {
         Text(detector.ended ? "Did the call end?" : "Meeting detected")
-          .font(.system(size: 15, weight: .semibold))
+          .font(.heading)
         HStack(spacing: 6) {
           Circle().fill(detector.ended ? RailPalette.red : Color.green).frame(width: 6, height: 6)
           Text(subtitle).lineLimit(1)
-        }.font(.system(size: 11)).foregroundStyle(RailPalette.secondary)
+        }.font(.detail).foregroundStyle(RailPalette.secondary)
       }
       Spacer(minLength: 8)
       if detector.ended {
         Button("Keep recording") { detector.keepRecording() }.buttonStyle(.plain)
-          .font(.system(size: 12)).foregroundStyle(RailPalette.secondary)
+          .font(.detail).foregroundStyle(RailPalette.secondary)
         action("Stop and save", symbol: "stop.fill") { detector.stopEndedMeeting() }
       } else {
         HStack(spacing: 0) {
@@ -308,7 +308,7 @@ struct MeetingPrompt: View {
         Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
           .foregroundStyle(RailPalette.ink).frame(width: 24, height: 24)
           .background(RailPalette.base, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-        Text(title).font(.system(size: 13, weight: .medium))
+        Text(title).font(.ui.weight(.medium))
       }.padding(.leading, 6).padding(.trailing, 12).frame(height: 36)
         .foregroundStyle(RailPalette.base)
         .background(RailPalette.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))

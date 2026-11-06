@@ -13,7 +13,7 @@ struct UndoToastView: View {
         .buttonStyle(.plain).fontWeight(.semibold).foregroundStyle(RailPalette.accent)
         .keyboardShortcut("z", modifiers: .command)
     }
-    .font(.system(size: 13)).foregroundStyle(.white).padding(.horizontal, 18).padding(.vertical, 11)
+    .font(.ui).foregroundStyle(.white).padding(.horizontal, 18).padding(.vertical, 11)
     .background(RailPalette.base.opacity(0.94), in: Capsule())
     .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
   }
@@ -26,13 +26,13 @@ struct TrashView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       HStack {
-        Text("Trash").font(.system(size: 24, weight: .semibold))
+        Text("Trash").font(.pageTitle)
         Spacer()
         Button("Empty Trash…") { confirmEmpty = true }.disabled(state.trash.isEmpty)
         Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
       }
       Text("Deleted meetings and dictations stay here for \(TrashEntry.retentionDays) days, then are removed for good.")
-        .font(.callout).foregroundStyle(Palette.secondary)
+        .font(.detail).foregroundStyle(Palette.secondary)
       if state.trash.isEmpty {
         QuietEmpty(icon: "trash", title: "Trash is empty", subtitle: "Deleted meetings and dictations show here.")
       } else {
@@ -45,7 +45,7 @@ struct TrashView: View {
                 VStack(alignment: .leading, spacing: 3) {
                   Text(entry.title.isEmpty ? "Untitled" : entry.title).lineLimit(1)
                   Text("Deleted \(entry.trashedAt.formatted(.relative(presentation: .named)))")
-                    .font(.caption).foregroundStyle(Palette.secondary)
+                    .font(.detail).foregroundStyle(Palette.secondary)
                 }
                 Spacer()
                 Button("Restore") { state.restoreFromTrash([entry.id]) }
@@ -89,13 +89,13 @@ struct TagEditor: View {
             Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
           }.buttonStyle(.plain).accessibilityLabel("Remove tag \(tag)")
         }
-        .font(.system(size: 11, weight: .medium)).padding(.horizontal, 8).padding(.vertical, 3)
+        .font(.detail.weight(.medium)).padding(.horizontal, 8).padding(.vertical, 3)
         .background(Palette.accent.opacity(0.12), in: Capsule()).foregroundStyle(Palette.accent)
       }
       Button {
         adding = true
       } label: {
-        Label("Tag", systemImage: "plus").font(.system(size: 11, weight: .medium))
+        Label("Tag", systemImage: "plus").font(.detail.weight(.medium))
       }.buttonStyle(.plain).foregroundStyle(Palette.secondary).accessibilityLabel("Add tag")
         .popover(isPresented: $adding, arrowEdge: .bottom) {
           VStack(alignment: .leading, spacing: 8) {
@@ -126,7 +126,7 @@ struct TagManagerView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack {
-        Text("Tags").font(.system(size: 24, weight: .semibold))
+        Text("Tags").font(.pageTitle)
         Spacer()
         Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
       }
@@ -139,7 +139,7 @@ struct TagManagerView: View {
             HStack {
               Text(tag)
               Text("\(state.meetings.filter { Meeting.tagList($0.tags).contains(tag) }.count)")
-                .font(.caption).foregroundStyle(Palette.secondary)
+                .font(.detail).foregroundStyle(Palette.secondary)
               Spacer()
               Button("Rename…") {
                 newName = tag

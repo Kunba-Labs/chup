@@ -12,12 +12,12 @@ struct PermissionCards: View {
         VStack(alignment: .leading, spacing: 10) {
           HStack {
             HStack(spacing: 5) {
-              Text(permission.title).font(.headline)
+              Text(permission.title).font(.ui.weight(.semibold))
               Button {
                 setup.openPrivacy(permission)
               } label: {
                 Image(systemName: "arrow.up.right")
-                  .font(.system(size: 13, weight: .semibold))
+                  .font(.ui.weight(.semibold))
                   .foregroundStyle(Palette.accent)
                   .frame(width: 26, height: 26).contentShape(Rectangle())
               }
@@ -28,7 +28,7 @@ struct PermissionCards: View {
             Spacer()
             PermissionStatusBadge(status: setup.permissions[permission])
           }
-          Text(permission.purpose).font(.callout).foregroundStyle(Palette.secondary).fixedSize(
+          Text(permission.purpose).font(.detail).foregroundStyle(Palette.secondary).fixedSize(
             horizontal: false, vertical: true)
           if permission == .systemAudio || setup.permissions[permission] != .allowed {
             HStack {
@@ -40,14 +40,14 @@ struct PermissionCards: View {
                   setup.requesting != nil)
               }
               Spacer()
-            }.font(.caption)
+            }.font(.detail)
           }
           if permission == .systemAudio {
             Text(
               setup.lastAudioCapture.map { "Last successful capture: " + $0.formatted() }
                 ?? "Start your first recording to give Chup! access to call audio."
             )
-            .font(.caption).foregroundStyle(Palette.secondary)
+            .font(.detail).foregroundStyle(Palette.secondary)
           }
         }.padding(22).workspaceSurface()
       }
@@ -56,7 +56,7 @@ struct PermissionCards: View {
         Spacer()
       }
       if let message = setup.message {
-        Text(message).font(.callout).foregroundStyle(Palette.secondary).textSelection(.enabled)
+        Text(message).font(.detail).foregroundStyle(Palette.secondary).textSelection(.enabled)
       }
     }.sheet(isPresented: $meetingSetup) {
       CaptureSetupView(permissionSetup: true).environmentObject(state)
@@ -113,12 +113,12 @@ struct PermissionRefreshButton: View {
             }
           } else {
             Image(systemName: resultIcon)
-              .font(.system(size: 17, weight: .semibold))
+              .font(.heading)
               .foregroundStyle(confirmed ? Color.white : Palette.accent)
           }
         }.frame(width: 40, height: 40)
         Text(checking ? "Checking access…" : "Check access again")
-          .font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.accent)
+          .font(.ui.weight(.medium)).foregroundStyle(Palette.accent)
       }.contentShape(Rectangle())
     }
     .buttonStyle(.plain).disabled(checking || setup.requesting != nil)
@@ -150,7 +150,7 @@ struct PermissionStatusBadge: View {
       enabled ? "Access enabled" : (status?.rawValue ?? "Check access"),
       systemImage: enabled ? "checkmark.circle.fill" : "circle.dashed"
     )
-    .font(.system(size: 15, weight: .semibold))
+    .font(.heading)
     .foregroundStyle(enabled ? Color.white : Palette.ink)
     .padding(.horizontal, 13).padding(.vertical, 9)
     .background(enabled ? Palette.accent : Palette.sidebar, in: Capsule())
@@ -167,10 +167,10 @@ struct LoginSettings: View {
         isOn: Binding(
           get: { setup.loginStatus == .enabled || setup.loginStatus == .requiresApproval },
           set: setup.setLaunchAtLogin)).toggleStyle(.switch)
-      Text(setup.loginDescription).font(.callout).foregroundStyle(Palette.secondary)
+      Text(setup.loginDescription).font(.detail).foregroundStyle(Palette.secondary)
       Button("Open macOS Login Items") { setup.openLoginItems() }
       if let message = setup.message {
-        Text(message).font(.caption).foregroundStyle(Palette.secondary)
+        Text(message).font(.detail).foregroundStyle(Palette.secondary)
       }
     }
   }
@@ -186,9 +186,9 @@ struct OnboardingView: View {
       VStack(alignment: .leading, spacing: 28) {
         HStack {
           WaveMark()
-          Text("Chup!").font(.system(size: 30, weight: .semibold))
+          Text("Chup!").font(.pageTitle)
         }
-        Text("Set up Chup!\nin five steps.").font(.system(size: 23, weight: .semibold))
+        Text("Set up Chup!\nin five steps.").font(.sectionTitle)
           .lineSpacing(5)
         ForEach(steps.indices, id: \.self) { index in
           HStack(spacing: 12) {
@@ -198,17 +198,17 @@ struct OnboardingView: View {
             .accessibilityLabel("Step \(index + 1): \(steps[index])")
         }
         Spacer()
-        Text("Change any of this later\nin Settings.").font(.caption)
+        Text("Change any of this later\nin Settings.").font(.detail)
           .foregroundStyle(Palette.secondary)
       }.padding(28).frame(width: 265).background(Palette.sidebar)
       VStack(alignment: .leading, spacing: 20) {
         ScrollView {
           VStack(alignment: .leading, spacing: 22) {
-            Text(title).font(.system(size: 33, weight: .semibold))
+            Text(title).font(.pageTitle)
             switch step {
             case 0:
               Text("Dictate anywhere. Record meetings. Find what was said.").font(
-                .system(size: 19)
+                .sectionTitle
               ).foregroundStyle(Palette.secondary)
               feature(
                 "waveform", "Dictate anywhere",
@@ -221,7 +221,7 @@ struct OnboardingView: View {
                 "Ask questions. You approve any change to your notes.")
               Text(
                 "Chup! records only when you press Record or hold your shortcut."
-              ).font(.callout).foregroundStyle(Palette.secondary)
+              ).font(.detail).foregroundStyle(Palette.secondary)
             case 1:
               WorkspaceCard("Turn on", icon: "waveform") {
                 SettingSwitch(title: "Dictation and voice shortcuts", isOn: $choices.dictation)
@@ -234,7 +234,7 @@ struct OnboardingView: View {
                     title: "Also set up the other audio option", isOn: $choices.screenFallback)
                   Text(
                     "Only needed if call audio doesn’t record. It asks for Screen & System Audio Recording access."
-                  ).font(.callout).foregroundStyle(Palette.secondary)
+                  ).font(.detail).foregroundStyle(Palette.secondary)
                 }
               }
               Text("You can start with typed notes and add voice later.").foregroundStyle(
@@ -249,7 +249,7 @@ struct OnboardingView: View {
                   state.store?.encrypted == true
                     ? "Your audio and notes are encrypted on this Mac"
                     : "Workspace encryption needs attention", systemImage: "lock.shield"
-                ).font(.headline)
+                ).font(.ui.weight(.semibold))
                 Text(
                   "The keys are in this Mac’s Keychain. Make a backup before you change Macs."
                 ).foregroundStyle(Palette.secondary)
@@ -258,18 +258,18 @@ struct OnboardingView: View {
                 SettingSwitch(title: "Allow cloud AI processing", isOn: $state.cloudEnabled)
                 Text(
                   "Transcripts, summaries and questions send content to OpenAI. Private thoughts never go. Set up the server in Settings → Advanced."
-                ).font(.callout).foregroundStyle(Palette.secondary)
+                ).font(.detail).foregroundStyle(Palette.secondary)
               }
               WorkspaceCard("Open at login", icon: "sun.max") {
                 LoginSettings(setup: state.setup)
               }
               Text(
                 "Chup! keeps everything until you delete it. Change this in Settings → Privacy & Data."
-              ).font(.caption)
+              ).font(.detail)
             default:
               Text(
                 "You’re set. Turn on anything you skipped in Settings."
-              ).font(.system(size: 18)).foregroundStyle(Palette.secondary)
+              ).font(.reading).foregroundStyle(Palette.secondary)
               feature(
                 "keyboard", "Try a short dictation",
                 "Hold Fn and talk. No Fn key? Pick another shortcut in Settings."
@@ -312,8 +312,8 @@ struct OnboardingView: View {
       Image(systemName: icon).font(.system(size: 22)).foregroundStyle(Palette.accent).frame(
         width: 30)
       VStack(alignment: .leading, spacing: 7) {
-        Text(title).font(.system(size: 21, weight: .semibold))
-        Text(detail).font(.callout).foregroundStyle(Palette.secondary)
+        Text(title).font(.sectionTitle)
+        Text(detail).font(.detail).foregroundStyle(Palette.secondary)
       }
     }.padding(20).workspaceSurface()
   }

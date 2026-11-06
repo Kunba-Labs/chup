@@ -73,7 +73,7 @@ struct SearchPalette: View {
       HStack(spacing: 10) {
         Image(systemName: "magnifyingglass").foregroundStyle(Palette.secondary)
         TextField("Search everything", text: $query)
-          .textFieldStyle(.plain).font(.system(size: 17)).focused($focused)
+          .textFieldStyle(.plain).font(.reading).focused($focused)
           .onSubmit { if list.indices.contains(cursor) { choose(list[cursor]) } }
           // Arrows move through results from the field itself, where focus stays.
           .onKeyPress(.downArrow) { cursor = min(cursor + 1, max(0, list.count - 1)); return .handled }
@@ -83,14 +83,14 @@ struct SearchPalette: View {
             hits = (try? state.store?.searchMeetings(new)) ?? []
             lines = (try? state.store?.searchTranscriptLines(new)) ?? []
           }
-        Text("esc").font(.caption).foregroundStyle(Palette.secondary)
+        Text("esc").font(.detail).foregroundStyle(Palette.secondary)
       }.padding(16)
       Divider()
       if list.isEmpty {
         Text(query.isEmpty
           ? "Searches meetings, transcripts, dictations and Personal. Private thoughts stay out."
           : "Nothing matches “\(query)”. Try fewer words.")
-          .font(.callout).foregroundStyle(Palette.secondary).padding(16)
+          .font(.detail).foregroundStyle(Palette.secondary).padding(16)
           .frame(maxWidth: .infinity, alignment: .leading)
       } else {
       ScrollViewReader { proxy in
@@ -98,7 +98,7 @@ struct SearchPalette: View {
         LazyVStack(alignment: .leading, spacing: 2) {
           ForEach(Array(list.enumerated()), id: \.element.id) { index, result in
             if index == 0 || list[index - 1].group != result.group {
-              Text(result.group.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(1.2)
+              Text(result.group.uppercased()).font(.micro.weight(.semibold)).tracking(1.2)
                 .foregroundStyle(Palette.secondary).padding(.horizontal, 16).padding(.top, 12)
                 .accessibilityAddTraits(.isHeader)
             }
@@ -106,8 +106,8 @@ struct SearchPalette: View {
               HStack(alignment: .top, spacing: 12) {
                 Image(systemName: result.icon).foregroundStyle(Palette.accent).frame(width: 18)
                 VStack(alignment: .leading, spacing: 3) {
-                  Text(result.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                  Text(result.detail).font(.system(size: 12)).foregroundStyle(Palette.secondary).lineLimit(2)
+                  Text(result.title).font(.ui.weight(.semibold)).lineLimit(1)
+                  Text(result.detail).font(.detail).foregroundStyle(Palette.secondary).lineLimit(2)
                 }
                 Spacer()
               }.padding(.horizontal, 16).padding(.vertical, 8).contentShape(Rectangle())

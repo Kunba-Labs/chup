@@ -50,7 +50,7 @@ struct SettingsView: View {
     HStack(spacing: 0) {
       ScrollView {
         VStack(alignment: .leading, spacing: 4) {
-          Text("Settings").font(.system(size: 25, weight: .semibold)).padding(.horizontal, 10).padding(
+          Text("Settings").font(.pageTitle).padding(.horizontal, 10).padding(
             .bottom, 20)
           ForEach(sections, id: \.self) { name in
             if name == "Advanced" { Divider().padding(.vertical, 8) }
@@ -59,7 +59,7 @@ struct SettingsView: View {
             } label: {
               HStack(spacing: 10) {
                 Self.tile(name)
-                Text(name).font(.system(size: 13))
+                Text(name).font(.ui)
                 Spacer(minLength: 0)
               }.padding(.horizontal, 10).padding(.vertical, 10).contentShape(Rectangle())
                 .background(
@@ -75,9 +75,9 @@ struct SettingsView: View {
           VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
               Self.tile(home, size: 34)
-              Text(home).font(Palette.title).accessibilityAddTraits(.isHeader)
+              Text(home).font(.pageTitle).accessibilityAddTraits(.isHeader)
             }
-            Text(descriptions[home] ?? "").font(.system(size: 14)).foregroundStyle(
+            Text(descriptions[home] ?? "").font(.ui).foregroundStyle(
               Palette.secondary)
           }.padding(.bottom, 8)
           if home == "Advanced" {
@@ -88,7 +88,7 @@ struct SettingsView: View {
           } else {
             ForEach(Self.pages[home] ?? [], id: \.self) { name in
               if (Self.pages[home]?.count ?? 0) > 1 {
-                Text(name).font(.system(size: 18, weight: .semibold)).padding(.top, 10)
+                Text(name).font(.heading).padding(.top, 10)
                   .accessibilityAddTraits(.isHeader).id(name)
               }
               page(name)
@@ -138,10 +138,10 @@ struct SettingsView: View {
       }
       DisclosureGroup("About this installation") {
         VStack(alignment: .leading, spacing: 8) {
-          Text(state.runningBuild.label).font(.headline)
-          Text(state.runningBuild.appPath).font(.caption).foregroundStyle(Palette.secondary)
+          Text(state.runningBuild.label).font(.ui.weight(.semibold))
+          Text(state.runningBuild.appPath).font(.detail).foregroundStyle(Palette.secondary)
         }.textSelection(.enabled).padding(.top, 8)
-      }.font(.callout).foregroundStyle(Palette.secondary)
+      }.font(.detail).foregroundStyle(Palette.secondary)
     case "Shortcuts": ShortcutSettingsView(registry: state.shortcuts)
     case "Audio":
       MicrophonePicker(devices: state.devices)
@@ -174,7 +174,7 @@ struct SettingsView: View {
           Text("Nederlands").tag("nl")
         }
         Text("Chup! doesn’t translate. Automatic picks English or Dutch for each recording.")
-          .font(.callout).foregroundStyle(Palette.secondary)
+          .font(.detail).foregroundStyle(Palette.secondary)
       }
     case "Meetings":
       WorkspaceCard("Call alerts", icon: "bell") {
@@ -227,9 +227,9 @@ struct SettingsView: View {
         ForEach(state.usageRecords.prefix(12)) { item in
           VStack(alignment: .leading, spacing: 6) {
             HStack {
-              Text(item.category).font(.headline)
+              Text(item.category).font(.ui.weight(.semibold))
               Spacer()
-              Text(item.status).font(.caption).foregroundStyle(Palette.secondary)
+              Text(item.status).font(.detail).foregroundStyle(Palette.secondary)
             }
             if let end = item.ended {
               Text("\(Int(end.timeIntervalSince(item.started))) seconds · measured locally").font(
@@ -265,7 +265,7 @@ struct SettingsView: View {
           Spacer()
           PillSegmented(title: "Dock at", selection: $state.railDock, options: ["left", "right", "bottom"]) { $0.capitalized }
         }
-        Text("Drag the handle to move the rail.").font(.callout).foregroundStyle(
+        Text("Drag the handle to move the rail.").font(.detail).foregroundStyle(
           Palette.secondary)
         DetailDisclosure(
           title: "Accessibility & motion",
@@ -289,7 +289,7 @@ struct SettingsView: View {
           isOn: $state.mcpEnabled)
         if state.mcpEnabled {
           Text("Add to your MCP client: command \"\(Bundle.main.executablePath ?? "/Applications/Chup!.app/Contents/MacOS/Chup!")\" with argument --mcp")
-            .font(.caption).textSelection(.enabled).foregroundStyle(Palette.secondary)
+            .font(.detail).textSelection(.enabled).foregroundStyle(Palette.secondary)
         }
       }
       StorageSettingsView()
@@ -302,12 +302,12 @@ struct SettingsView: View {
       WorkspaceCard("AI connection", subtitle: "Your Chup! server.", icon: "network")
       {
         VStack(alignment: .leading, spacing: 6) {
-          Text("Backend URL").font(.caption)
+          Text("Backend URL").font(.detail)
           TextField("https://your-backend.example", text: $state.backendURL).accessibilityLabel(
             "Backend URL")
         }
         VStack(alignment: .leading, spacing: 6) {
-          Text("App authentication token").font(.caption)
+          Text("App authentication token").font(.detail)
           SecureField("Stored in Keychain", text: $state.backendToken).accessibilityLabel(
             "App authentication token")
         }
@@ -319,12 +319,12 @@ struct SettingsView: View {
         )
       }
       WorkspaceCard("Troubleshooting", icon: "stethoscope") {
-        Text("\(state.runningBuild.label) · macOS 15+ · Apple silicon").font(.callout)
+        Text("\(state.runningBuild.label) · macOS 15+ · Apple silicon").font(.detail)
           .foregroundStyle(Palette.secondary)
         Button("Export diagnostics…") { state.exportDiagnostics() }
         Text(
           "Includes versions, permissions and counts. No recordings, text or passwords."
-        ).font(.caption).foregroundStyle(Palette.secondary)
+        ).font(.detail).foregroundStyle(Palette.secondary)
       }
     }
   }
@@ -338,13 +338,13 @@ struct ShortcutSettingsView: View {
           Button("Default preset") { registry.preset(false) }
           Button("No-Fn preset") { registry.preset(true) }
         }
-        Text(registry.registrationStatus).font(.caption).foregroundStyle(Palette.secondary)
+        Text(registry.registrationStatus).font(.detail).foregroundStyle(Palette.secondary)
         Button("Enable / retry registration") { registry.enable() }
         Divider()
         Text(
           "Keep Fn on your Mac keyboard. Add Control–Shift for an external keyboard."
         )
-        .font(.callout).foregroundStyle(Palette.secondary)
+        .font(.detail).foregroundStyle(Palette.secondary)
         if !registry.bindings.contains(where: {
           $0.action == .holdDictation && $0.modifiers == [.control, .shift] && $0.modifierOnly
         }) {
@@ -355,7 +355,7 @@ struct ShortcutSettingsView: View {
       ForEach(ShortcutAction.allCases) { action in
         VStack(alignment: .leading, spacing: 12) {
           HStack {
-            Text(action.title).font(.headline)
+            Text(action.title).font(.ui.weight(.semibold))
             Spacer()
             Button {
               registry.beginRebind(action)
@@ -375,7 +375,7 @@ struct ShortcutSettingsView: View {
                 }.font(.system(.body, design: .monospaced))
                   .disabled(registry.rebinding != nil && registry.rebindingID != binding.id)
                   .accessibilityLabel("Edit \(binding.label) for \(action.title)")
-                Text(binding.hold ? "Hold" : "Press").font(.caption).foregroundStyle(
+                Text(binding.hold ? "Hold" : "Press").font(.detail).foregroundStyle(
                   Palette.secondary)
                 Spacer()
                 Button {
@@ -387,7 +387,7 @@ struct ShortcutSettingsView: View {
                   .help("Remove only this shortcut")
               }
               if let error = registry.registrationFailures[binding.id] {
-                Label(error, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(
+                Label(error, systemImage: "exclamationmark.circle").font(.detail).foregroundStyle(
                   Palette.red)
               }
             }
@@ -396,7 +396,7 @@ struct ShortcutSettingsView: View {
             Label("Press keys, then release…", systemImage: "keyboard")
               .font(.system(.callout, design: .monospaced)).foregroundStyle(Palette.accent)
           } else if assigned.isEmpty {
-            Text("No shortcut assigned").font(.caption).foregroundStyle(Palette.secondary)
+            Text("No shortcut assigned").font(.detail).foregroundStyle(Palette.secondary)
           }
         }.padding(20).workspaceSurface()
       }
@@ -418,7 +418,7 @@ struct ShortcutSettingsView: View {
         ).background(Palette.paper, in: RoundedRectangle(cornerRadius: 7))
         Text(
           "Chup! checks its own shortcuts. It can’t see every shortcut in other apps."
-        ).font(.caption).foregroundStyle(Palette.secondary)
+        ).font(.detail).foregroundStyle(Palette.secondary)
       }
     }.onDisappear {
       registry.setTesting(false)

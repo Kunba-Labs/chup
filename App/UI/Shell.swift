@@ -82,7 +82,7 @@ struct GlassRail: View {
           .shadow(color: .black.opacity(active ? 0.08 : 0), radius: 4, y: 1)
           .contentShape(RoundedRectangle(cornerRadius: 12))
         }
-        .buttonStyle(.plain).foregroundStyle(active ? AnyShapeStyle(Palette.gradient) : AnyShapeStyle(Palette.secondary))
+        .buttonStyle(.plain).foregroundStyle(active ? Palette.accent : Palette.secondary)
         .help("\(module.rawValue)  ⌘\(index + 1)")
         .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
         .accessibilityLabel(module.rawValue)
@@ -92,8 +92,8 @@ struct GlassRail: View {
         state.handle(.init(action: .meeting, began: true))
       } label: {
         Image(systemName: state.meetingStatus == .recording ? "record.circle.fill" : "record.circle")
-          .font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
-          .frame(width: 40, height: 40).background(Palette.gradient, in: Circle())
+          .font(.heading).foregroundStyle(.white)
+          .frame(width: 40, height: 40).background(Palette.red, in: Circle())
       }
       .buttonStyle(.plain).padding(.vertical, 14)
       .help(state.activeMeetingID == nil ? "Record a meeting" : "Show the recording meeting")
@@ -143,18 +143,18 @@ struct MeetingListColumn: View {
           TextField("Filter meetings", text: $query).textFieldStyle(.plain)
             // A selection never includes meetings the filter hides.
             .onChange(of: query) { _, _ in picked.formIntersection(meetings.map(\.id)) }
-        }.font(.system(size: 13)).padding(9)
-          .background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
+        }.font(.ui).padding(9)
+          .background(Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         Button(selecting ? "Done" : "Select") {
           selecting.toggle()
           if !selecting { picked = [] }
-        }.buttonStyle(.plain).font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.accent)
+        }.buttonStyle(.plain).font(.detail.weight(.medium)).foregroundStyle(Palette.accent)
           .help("Select several meetings to delete or tag")
       }
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 2) {
           ForEach(MeetingDays.group(meetings), id: \.title) { day in
-            Text(day.title).font(.system(size: 11, weight: .semibold)).foregroundStyle(Palette.secondary)
+            Text(day.title).font(.detail.weight(.semibold)).foregroundStyle(Palette.secondary)
               .padding(.horizontal, 10).padding(.top, 10).padding(.bottom, 2).accessibilityAddTraits(.isHeader)
             ForEach(day.meetings) { meeting in row(meeting) }
           }
@@ -168,7 +168,7 @@ struct MeetingListColumn: View {
         return .handled
       }
       if meetings.isEmpty {
-        Text("No meetings match.").font(.caption).foregroundStyle(Palette.secondary)
+        Text("No meetings match.").font(.detail).foregroundStyle(Palette.secondary)
       }
       if selecting || picked.count > 1 { bulkBar }
     }.padding(14).frame(width: 236).background(Palette.sidebar.opacity(0.5))
@@ -184,25 +184,23 @@ struct MeetingListColumn: View {
       HStack(spacing: 8) {
         if selecting {
           Image(systemName: isPicked ? "checkmark.circle.fill" : "circle")
-            .foregroundStyle(isPicked ? Palette.accent : Palette.secondary).font(.system(size: 15))
+            .foregroundStyle(isPicked ? Palette.accent : Palette.secondary).font(.reading)
         }
         VStack(alignment: .leading, spacing: 3) {
           HStack(spacing: 6) {
             MeetingSourceIcon(meeting: meeting, size: 14)
-            Text(meeting.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+            Text(meeting.title).font(.ui.weight(.semibold)).lineLimit(1)
           }
           Text(meeting.created.formatted(date: .abbreviated, time: .shortened))
-            .font(.system(size: 11)).foregroundStyle(Palette.secondary)
+            .font(.detail).foregroundStyle(Palette.secondary)
         }
       }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
         .padding(.horizontal, 10).contentShape(Rectangle())
+        // Source-list selection: accent tint while the list has focus, grey otherwise.
         .background(
-          isPicked ? Palette.accent.opacity(0.14) : selected && !selecting ? Palette.paper : .clear,
-          in: RoundedRectangle(cornerRadius: 9))
-        .overlay {
-          RoundedRectangle(cornerRadius: 9)
-            .strokeBorder(Palette.accent.opacity(listFocused && (selected || isPicked) ? 0.45 : 0), lineWidth: 1)
-        }
+          isPicked || (selected && !selecting)
+            ? (listFocused ? Palette.accent.opacity(0.16) : Palette.border.opacity(0.9)) : .clear,
+          in: RoundedRectangle(cornerRadius: 7, style: .continuous))
     }.buttonStyle(.plain)
       .accessibilityAddTraits((selecting ? isPicked : selected || isPicked) ? .isSelected : [])
       .accessibilityHint(selecting ? "Selects this meeting" : "Opens this meeting")
@@ -219,11 +217,11 @@ struct MeetingListColumn: View {
   private var bulkBar: some View {
     VStack(alignment: .leading, spacing: 8) {
       HStack {
-        Text(picked.isEmpty ? "Select meetings" : "\(picked.count) selected").font(.caption.weight(.semibold))
+        Text(picked.isEmpty ? "Select meetings" : "\(picked.count) selected").font(.detail.weight(.semibold))
         Spacer()
         Button(picked.count == meetings.count ? "Select none" : "Select all") {
           picked = picked.count == meetings.count ? [] : Set(meetings.map(\.id))
-        }.buttonStyle(.plain).font(.caption).foregroundStyle(Palette.accent)
+        }.buttonStyle(.plain).font(.detail).foregroundStyle(Palette.accent)
       }
       HStack(spacing: 8) {
         Button("Tag…") { tagging = true }.controlSize(.small).disabled(picked.isEmpty)
@@ -298,8 +296,8 @@ struct TodayView: View {
       VStack(alignment: .leading, spacing: 28) {
         VStack(alignment: .leading, spacing: 8) {
           Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased())
-            .font(.system(size: 11, weight: .semibold)).tracking(1.6).foregroundStyle(Palette.accent)
-          Text(greeting).font(.system(size: 34, weight: .semibold))
+            .font(.detail.weight(.semibold)).tracking(1.6).foregroundStyle(Palette.accent)
+          Text(greeting).font(.pageTitle)
         }
         HStack(spacing: 12) {
           Button {
@@ -325,7 +323,7 @@ struct TodayView: View {
                 systemImage: "2.circle")
               Label("Add names and terms under Personal so transcripts spell them right.",
                 systemImage: "3.circle")
-            }.font(.system(size: 14)).foregroundStyle(Palette.secondary)
+            }.font(.ui).foregroundStyle(Palette.secondary)
           }
         } else {
           section("Recent recordings") {
@@ -344,13 +342,13 @@ struct TodayView: View {
               } label: {
                 HStack(spacing: 14) {
                   Image(systemName: item.meeting ? "person.2.fill" : "waveform")
-                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.accent)
+                    .font(.detail.weight(.semibold)).foregroundStyle(Palette.accent)
                     .frame(width: 30, height: 30).background(Palette.sidebar, in: Circle())
                     .accessibilityLabel(item.meeting ? "Meeting" : "Dictation")
                   VStack(alignment: .leading, spacing: 4) {
-                    Text(item.title).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                    Text(item.title).font(.heading).lineLimit(1)
                     Text(item.created.formatted(date: .abbreviated, time: .shortened))
-                      .font(.caption).foregroundStyle(Palette.secondary)
+                      .font(.detail).foregroundStyle(Palette.secondary)
                   }
                   Spacer()
                   if item.meeting, let job = state.job(for: item.id) {
@@ -373,9 +371,9 @@ struct TodayView: View {
                 Toggle("", isOn: Binding(get: { false }, set: { _ in complete(action) }))
                   .labelsHidden().accessibilityLabel("Complete " + action.title)
                 VStack(alignment: .leading, spacing: 3) {
-                  Text(action.title).font(.system(size: 14))
+                  Text(action.title).font(.ui)
                   Text(meetingTitle(action.meetingID) + (action.owner.map { " · \($0)" } ?? ""))
-                    .font(.caption).foregroundStyle(Palette.secondary)
+                    .font(.detail).foregroundStyle(Palette.secondary)
                 }
                 Spacer()
               }.padding(14).workspaceSurface()
@@ -392,7 +390,7 @@ struct TodayView: View {
     -> some View
   {
     VStack(alignment: .leading, spacing: 10) {
-      Text(title).font(.system(size: 18, weight: .semibold))
+      Text(title).font(.heading)
       content()
     }
   }
@@ -432,33 +430,14 @@ struct TodayView: View {
   }
 }
 
-/// The window's own material (set on the scene with containerBackground) shows through here;
-/// this adds an Aero-style blue tint, gloss and light streak. Reduce Transparency gets a solid fill.
+/// The window's own material (set on the scene with containerBackground) shows through here,
+/// untinted like a macOS sidebar. Reduce Transparency gets a solid fill.
 struct ShellGlass: View {
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   var body: some View {
-    if reduceTransparency {
-      Palette.sidebar
-    } else {
-      ZStack {
-        // ponytail: a fixed light wash fakes a light desktop behind the blur, so dark wallpapers or
-        // windows show as soft colour, not murk. Sensing what's behind needs screen recording; skipped.
-        Color.white.opacity(0.2)
-        // Aero-style: a cool sky-blue tint, deeper toward the bottom…
-        LinearGradient(
-          colors: [Palette.glassTop.opacity(0.16), Palette.glassBottom.opacity(0.24)],
-          startPoint: .top, endPoint: .bottom)
-        // …a glossy top highlight…
-        LinearGradient(
-          stops: [.init(color: .white.opacity(0.32), location: 0), .init(color: .white.opacity(0.08), location: 0.3),
-                  .init(color: .clear, location: 0.55)],
-          startPoint: .top, endPoint: .bottom)
-        // …and a soft diagonal light streak across the pane.
-        LinearGradient(
-          stops: [.init(color: .clear, location: 0.18), .init(color: .white.opacity(0.14), location: 0.3),
-                  .init(color: .clear, location: 0.42)],
-          startPoint: .topLeading, endPoint: .bottomTrailing)
-      }
+    if reduceTransparency { Palette.sidebar } else {
+      // ponytail: a fixed light wash keeps dark wallpapers from muddying the blur.
+      Color.white.opacity(0.35)
     }
   }
 }

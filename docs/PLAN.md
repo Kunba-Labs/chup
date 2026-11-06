@@ -63,6 +63,12 @@ Waseem asked to see every screen as a design board before any build work.
 
 **Design board decision (2026-10-30):** Waseem picked palette **A, voice gradient** (backdrop #E6E4F0→#F5ECE6, ink #16151A, muted #615E6D, accent #6A4CF5→#E8735A) and icon **A, pill bars** (five gradient pill bars on a light tile, dark variant for dark appearance). Warm and reference palettes are dropped from the shipped build.
 
+**Apple-style design pass (2026-11-06).** Waseem asked for consistent fonts and a more Apple-like interface. The voice palette is replaced in the light workspace by neutral Apple greys (window #F5F5F7, ink #1D1D1F, muted #6E6E73, hairline #E3E3E8) with the violet accent kept. The gradient now appears only in the logo mark and waveforms. Changes:
+- **Type:** one scale in `Theme.swift`: `pageTitle` 26 bold, `sectionTitle` 20, `heading` 15 semibold, `reading` 15, `ui` 13, `detail` 11, `micro` 10. This replaces about 30 ad-hoc sizes.
+- **Controls:** buttons are 28 pt rounded rectangles (primary solid accent). Tabs are a macOS-style segmented control. Fields are 8 pt rounded rectangles.
+- **Lists and window:** list selection is a filled highlight. The Aero glass tint is gone. Empty states use SF Symbols instead of voxel art.
+- **Stop:** the notepad's Stop button is solid red.
+
 **Wispr Flow realignment (decided 2026-10-30, evening).** Waseem rejected the two-pane meeting page and the window glass ("unusable"), and asked to base the note taker on Wispr Flow Notetaker. Researched from Wispr's help centre (meeting notes and editor, hub, live transcript, recording, Flow Summaries). Decisions:
 
 1. **Meeting page: Wispr tabs.** One column: back, date pill, editable title, tags, ⋯ menu; tabs **My thoughts / Summary / Transcript**; an **Ask anything** bar docked at the bottom. Replaces the two panes, the side Ask panel and the bottom timeline; the audio player moves into the Transcript tab. Supersedes item 3 above.

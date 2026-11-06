@@ -36,7 +36,7 @@ struct WorkspaceShell: View {
         if let notice = state.notice {
           HStack(alignment: .top, spacing: 10) {
             Image(systemName: "info.circle").foregroundStyle(Palette.accent)
-            Text(notice).font(.system(size: 12))
+            Text(notice).font(.detail)
               .fixedSize(horizontal: false, vertical: true)
               .frame(maxWidth: .infinity, alignment: .leading)
             Button {
@@ -90,10 +90,10 @@ struct PageHeader: View {
   var subtitle: String
   var body: some View {
     VStack(alignment: .leading, spacing: 9) {
-      Text(eyebrow.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(1.8)
+      Text(eyebrow.uppercased()).font(.micro.weight(.semibold)).tracking(1.8)
         .foregroundStyle(Palette.accent)
-      Text(title).font(Palette.title)
-      Text(subtitle).font(.system(size: 14)).foregroundStyle(Palette.secondary)
+      Text(title).font(.pageTitle)
+      Text(subtitle).font(.ui).foregroundStyle(Palette.secondary)
     }
   }
 }
@@ -142,7 +142,7 @@ struct MeetingsView: View {
         HStack(spacing: 12) {
           MeetingSourceIcon(meeting: meeting)
           VStack(alignment: .leading, spacing: 3) {
-            Text(meeting.title).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+            Text(meeting.title).font(.heading).lineLimit(1)
             HStack(spacing: 6) {
               Text(meeting.created.formatted(date: .omitted, time: .shortened))
               if let service = meeting.callService { Text("· " + service) }
@@ -150,14 +150,14 @@ struct MeetingsView: View {
               ForEach(Meeting.tagList(meeting.tags).prefix(3), id: \.self) { tag in
                 Text(tag).foregroundStyle(Palette.accent)
               }
-            }.font(.system(size: 12)).foregroundStyle(Palette.secondary)
+            }.font(.detail).foregroundStyle(Palette.secondary)
             if !query.isEmpty, let hit = searchHits.first(where: { $0.meetingID == meeting.id }) {
-              Text(hit.excerpt).font(.system(size: 12)).foregroundStyle(Palette.secondary).lineLimit(2)
+              Text(hit.excerpt).font(.detail).foregroundStyle(Palette.secondary).lineLimit(2)
             }
           }
           Spacer()
           if meeting.status == "Recording" {
-            Label("Recording", systemImage: "record.circle.fill").font(.caption).foregroundStyle(Palette.red)
+            Label("Recording", systemImage: "record.circle.fill").font(.detail).foregroundStyle(Palette.red)
           } else if let job = state.job(for: meeting.id) {
             MeetingJobBadge(job: job)
           } else {
@@ -250,13 +250,13 @@ struct MeetingsView: View {
           TextField("Search meetings, notes and transcripts", text: $query).textFieldStyle(.plain)
             .onChange(of: query) { _, _ in search() }.onAppear { search() }
           Spacer()
-          Text("\(filtered.count) meetings").font(.caption).foregroundStyle(Palette.secondary)
+          Text("\(filtered.count) meetings").font(.detail).foregroundStyle(Palette.secondary)
         }.padding(13).background(Palette.paper, in: RoundedRectangle(cornerRadius: 8))
         filterBar
-        if let searchError { Text(searchError).font(.caption).foregroundStyle(Palette.red) }
+        if let searchError { Text(searchError).font(.detail).foregroundStyle(Palette.red) }
         if filtered.isEmpty {
           QuietEmpty(
-            icon: "person.2.wave.2", art: "VoxelMeetings", title: "No meetings yet",
+            icon: "person.2.wave.2", title: "No meetings yet",
             subtitle:
               "Press Record in the rail to start your first meeting."
           )
@@ -264,7 +264,7 @@ struct MeetingsView: View {
           // Wispr-style: past notes under Today, Yesterday and date headers, one compact row each.
             LazyVStack(alignment: .leading, spacing: 4) {
               ForEach(MeetingDays.group(filtered), id: \.title) { day in
-                Text(day.title).font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.secondary)
+                Text(day.title).font(.detail.weight(.semibold)).foregroundStyle(Palette.secondary)
                   .padding(.top, 14).padding(.bottom, 2).padding(.horizontal, 4)
                   .accessibilityAddTraits(.isHeader)
                 ForEach(day.meetings) { meeting in row(meeting) }
@@ -392,7 +392,7 @@ struct MeetingDetailView: View {
       .sheet(isPresented: $captureSheet) { CaptureSetupView().environmentObject(state) }
       .sheet(isPresented: $editMetadata) {
         VStack(alignment: .leading, spacing: 18) {
-          Text("Meeting details").font(.title2)
+          Text("Meeting details").font(.sectionTitle)
           TextField("Title", text: $title)
           TextField("People in the meeting", text: $people)
           TextField("Tags, separated by commas", text: $tags)
@@ -490,7 +490,7 @@ struct MeetingDetailView: View {
           }.accessibilityLabel("Pause or resume recording")
           Button("Stop and save") { state.stopMeeting() }
         } else {
-          Label("Notes save as you type", systemImage: "checkmark.circle").font(.system(size: 14))
+          Label("Notes save as you type", systemImage: "checkmark.circle").font(.ui)
             .foregroundStyle(Palette.secondary)
           Spacer()
           Button {
@@ -500,8 +500,8 @@ struct MeetingDetailView: View {
             Label("Record", systemImage: "record.circle")
           }.buttonStyle(.pillPrimary).disabled(state.activeMeetingID != nil)
         }
-      }.font(.system(size: 12)).padding(.vertical, 8).padding(.horizontal, 14).background(
-        Palette.paper, in: Capsule()
+      }.font(.detail).padding(.vertical, 8).padding(.horizontal, 14).background(
+        Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous)
       ).padding(.top, 14).padding(.bottom, 16)
       tabBar
     }.background(Palette.workspace)
@@ -518,7 +518,7 @@ struct MeetingDetailView: View {
         TextField("Untitled meeting", text: Binding(
           get: { titleEdit ?? state.selectedMeeting?.title ?? "" }, set: { titleEdit = $0 }))
           .textFieldStyle(.plain)
-          .font(.system(size: 26, weight: .semibold)).focused($titleFocused).onSubmit(saveTitle)
+          .font(.pageTitle).focused($titleFocused).onSubmit(saveTitle)
           .frame(minWidth: 140, minHeight: 36)  // A 26 pt plain field otherwise clips its ascenders.
           .accessibilityLabel("Meeting title")
         Spacer(minLength: 12)
@@ -579,7 +579,7 @@ struct MeetingDetailView: View {
           Text(people).lineLimit(1)
         }
         if let meeting = state.selectedMeeting { TagEditor(meeting: meeting).padding(.leading, 4) }
-      }.font(.caption).foregroundStyle(Palette.secondary).padding(.leading, 34)
+      }.font(.detail).foregroundStyle(Palette.secondary).padding(.leading, 34)
     }
   }
   private func saveTitle() {
@@ -602,21 +602,13 @@ struct MeetingDetailView: View {
     askOpen = false
   }
   private var tabBar: some View {
-    HStack(spacing: 22) {
-      ForEach(["My thoughts", "Summary", "Transcript"], id: \.self) { name in
-        Button {
-          tab = name
-          askOpen = false
-        } label: {
-          VStack(spacing: 8) {
-            Text(name).font(.system(size: 14, weight: tab == name ? .semibold : .regular))
-              .foregroundStyle(tab == name ? Palette.ink : Palette.secondary)
-            Capsule().fill(tab == name ? Palette.accent : .clear).frame(height: 2)
-          }.fixedSize()
-        }.buttonStyle(.plain).accessibilityAddTraits(tab == name ? .isSelected : [])
-      }
+    HStack {
+      PillSegmented(title: "Meeting view", selection: Binding(get: { tab }, set: {
+        tab = $0
+        askOpen = false
+      }), options: ["My thoughts", "Summary", "Transcript"]) { $0 }
       Spacer()
-    }.overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 1) }
+    }
   }
   /// The open tab's own actions sit in the top bar beside Export, not floating above its content.
   @ViewBuilder private var tabActions: some View {
@@ -647,11 +639,11 @@ struct MeetingDetailView: View {
       Text(count == 0
         ? "“\(findQuery)” isn’t a whole word in any line"
         : "Replace “\(findQuery)” in \(count) \(count == 1 ? "line" : "lines")")
-        .font(.headline)
+        .font(.ui.weight(.semibold))
       TextField("Replace with", text: $replaceWith).textFieldStyle(.roundedBorder)
         .onSubmit { if count > 0, !replaceWith.trimmingCharacters(in: .whitespaces).isEmpty { applyReplace() } }
       Toggle("Use this spelling in future transcripts and dictation", isOn: $rememberSpelling)
-        .font(.caption)
+        .font(.detail)
       HStack {
         Spacer()
         Button("Cancel") { replacing = false }
@@ -691,7 +683,7 @@ struct MeetingDetailView: View {
           Text(findMatches.isEmpty
             ? (labelled ? "No matches" : "None")
             : labelled ? "\(max(0, findIndex) + 1) of \(findMatches.count)" : "\(findMatches.count)")
-            .font(.caption.monospacedDigit())
+            .font(.detail.monospacedDigit())
             .foregroundStyle(findMatches.isEmpty ? Palette.red : Palette.secondary).fixedSize()
             .accessibilityLabel(findMatches.isEmpty ? "No matches" : "\(findMatches.count) matches")
           Button { nextMatch() } label: { Image(systemName: "chevron.down") }
@@ -701,8 +693,8 @@ struct MeetingDetailView: View {
             .help("Replace in the whole transcript").accessibilityLabel("Replace")
             .popover(isPresented: $replacing, arrowEdge: .bottom) { replacePopover }
         }
-      }.font(.system(size: 12)).padding(.horizontal, 10).padding(.vertical, 5).frame(width: findWidth)
-        .background(Palette.paper, in: Capsule())
+      }.font(.detail).padding(.horizontal, 10).padding(.vertical, 5).frame(width: findWidth)
+        .background(Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
       Menu {
         // Always a full pass: lines you edited come back for review instead of being skipped.
         Button("Transcribe again") { state.transcribeMeeting(reprocess: true) }.disabled(refineLocked)
@@ -728,7 +720,7 @@ struct MeetingDetailView: View {
           Text("Type your notes here. Chup! keeps them as you wrote them.")
             .foregroundStyle(Palette.secondary).padding(.top, 8).padding(.leading, 5).allowsHitTesting(false)
         }
-        TextEditor(text: $state.noteDraft).font(.system(size: 16)).lineSpacing(4)
+        TextEditor(text: $state.noteDraft).font(.reading).lineSpacing(4)
           .scrollContentBackground(.hidden)
           .onChange(of: state.noteDraft) { _, new in state.saveNote(new) }
           .accessibilityLabel("My thoughts")
@@ -736,9 +728,9 @@ struct MeetingDetailView: View {
       HStack {
         if state.noteSaveFailed {
           Label("Not saved. Keep typing to try again.", systemImage: "exclamationmark.triangle")
-            .font(.caption).foregroundStyle(Palette.red)
+            .font(.detail).foregroundStyle(Palette.red)
         } else {
-          Text("Saved on this Mac").font(.caption).foregroundStyle(Palette.secondary)
+          Text("Saved on this Mac").font(.detail).foregroundStyle(Palette.secondary)
         }
         Spacer()
         Button("Undo last edit") { state.undoNote() }.disabled(state.lastReceipt == nil).controlSize(.small)
@@ -746,7 +738,7 @@ struct MeetingDetailView: View {
       DisclosureGroup {
         PrivateThoughtsView(embedded: true).padding(.top, 6)
       } label: {
-        Label("Private thoughts", systemImage: "lock.fill").font(.system(size: 13, weight: .semibold))
+        Label("Private thoughts", systemImage: "lock.fill").font(.ui.weight(.semibold))
           .help("Only you see these. They never go to AI.")
       }
     }
@@ -773,7 +765,7 @@ struct MeetingDetailView: View {
           if !summaryQuery.isEmpty {
             let count = summaryMatches(outline).count
             Text(count == 0 ? "No matches" : "\(max(0, summaryFindIndex) + 1) of \(count)")
-              .font(.caption.monospacedDigit()).foregroundStyle(Palette.secondary)
+              .font(.detail.monospacedDigit()).foregroundStyle(Palette.secondary)
             Button { nextSummaryMatch(outline) } label: { Image(systemName: "chevron.down") }
               .buttonStyle(.plain).disabled(count == 0).accessibilityLabel("Next match")
           }
@@ -782,10 +774,10 @@ struct MeetingDetailView: View {
             summaryFinding = false
           } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain)
             .foregroundStyle(Palette.secondary).accessibilityLabel("Close find")
-        }.font(.system(size: 13)).padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
+        }.font(.ui).padding(8).background(Palette.paper, in: RoundedRectangle(cornerRadius: 9))
       }
       if outline.isEmpty && state.summaryEdits.isEmpty && (state.enhancedNotes?.blocks.isEmpty ?? true),
-        let job = state.job(for: state.selectedMeetingID)
+        let job = state.job(for: state.selectedMeetingID), job.step != .transcript
       {
         SummaryWritingPlaceholder(job: job)
       } else if outline.isEmpty && state.summaryEdits.isEmpty, state.enhancedNotes?.blocks.isEmpty == false {
@@ -795,7 +787,7 @@ struct MeetingDetailView: View {
           showTab: { tab = Self.tabName($0) }, embedded: true, showsHeader: false, highlight: summaryQuery)
       } else if outline.isEmpty && state.summaryEdits.isEmpty {
         QuietEmpty(
-          icon: "text.alignleft", art: "VoxelNotebook", title: "No summary yet",
+          icon: "text.alignleft", title: "No summary yet",
           subtitle: !state.segments.isEmpty
             ? "Press Write summary to make one."
             : state.autoSummaryEnabled && state.cloudEnabled
@@ -825,7 +817,7 @@ struct MeetingDetailView: View {
                 Text("No next steps yet.").foregroundStyle(Palette.secondary)
               }
               ForEach(outline.nextSteps, id: \.owner) { group in
-                Text(group.owner).font(.system(size: 13, weight: .semibold)).foregroundStyle(Palette.secondary)
+                Text(group.owner).font(.ui.weight(.semibold)).foregroundStyle(Palette.secondary)
                   .padding(.top, 4)
                 ForEach(group.steps) { step in nextStep(step) }
               }
@@ -838,7 +830,7 @@ struct MeetingDetailView: View {
               DisclosureGroup(isExpanded: $notesExpanded) {
                 VStack(alignment: .leading, spacing: 22) { outlineSections(outline) }.padding(.top, 8)
               } label: {
-                Text("Summary points with sources").font(.system(size: 15, weight: .semibold))
+                Text("Summary points with sources").font(.heading)
               }
             }
           }.frame(maxWidth: .infinity, alignment: .leading).padding(22).workspaceSurface()
@@ -850,8 +842,8 @@ struct MeetingDetailView: View {
   private func addStepField(template: Bool) -> some View {
     HStack(spacing: 8) {
       TextField("Add a next step…", text: $newStep).textFieldStyle(.plain).onSubmit(addStep)
-        .font(.system(size: 14)).padding(.horizontal, 14).frame(height: 40)
-        .background(Palette.paper, in: Capsule())
+        .font(.ui).padding(.horizontal, 14).frame(height: 40)
+        .background(Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
       Button("Add", action: addStep).buttonStyle(.pill)
         .disabled(newStep.trimmingCharacters(in: .whitespaces).isEmpty)
       if template { NotesTemplateMenu() }
@@ -892,7 +884,7 @@ struct MeetingDetailView: View {
       summarySection("TL;DR") {
         ForEach(outline.tldr) { item in
           HStack(alignment: .firstTextBaseline) {
-            Text(item.text).font(.system(size: 17)).textSelection(.enabled)
+            Text(item.text).font(.reading).textSelection(.enabled)
               .background(found(item.text) ? Palette.accent.opacity(0.15) : .clear)
             sourceLinks(item.sources)
             Spacer(minLength: 0)
@@ -922,7 +914,7 @@ struct MeetingDetailView: View {
     let words = blocks.reduce(0) { $0 + $1.text.split(separator: " ").count }
     return HStack(spacing: 14) {
       Label("\(max(1, Int((Double(words) / 200).rounded()))) MIN READ", systemImage: "lightbulb")
-        .font(.system(size: 11, weight: .semibold)).tracking(1).foregroundStyle(Palette.secondary)
+        .font(.detail.weight(.semibold)).tracking(1).foregroundStyle(Palette.secondary)
       Spacer()
       Button { summaryFinding = true; summaryFindFocused = true } label: { Image(systemName: "magnifyingglass") }
         .buttonStyle(.plain).accessibilityLabel("Find in summary")
@@ -933,14 +925,14 @@ struct MeetingDetailView: View {
   }
   private func summarySection(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text(title).font(.system(size: 15, weight: .semibold)).accessibilityAddTraits(.isHeader)
+      Text(title).font(.heading).accessibilityAddTraits(.isHeader)
       content()
     }
   }
   private func bullet(_ text: String, sources: [Evidence], edit: SummaryItem?, id: String? = nil) -> some View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
       Text("•").foregroundStyle(Palette.secondary)
-      Text(text).font(.system(size: 15)).textSelection(.enabled)
+      Text(text).font(.reading).textSelection(.enabled)
         .background(found(text) ? Palette.accent.opacity(0.15) : .clear)
       sourceLinks(sources)
       Spacer(minLength: 0)
@@ -968,7 +960,7 @@ struct MeetingDetailView: View {
           state.createAction(from: item)
         }
       })).labelsHidden().toggleStyle(.checkbox).accessibilityLabel("Done: " + step.text)
-      Text(step.text).font(.system(size: 15)).strikethrough(step.done)
+      Text(step.text).font(.reading).strikethrough(step.done)
         .background(found(step.text) ? Palette.accent.opacity(0.15) : .clear)
         .foregroundStyle(step.done ? Palette.secondary : Palette.ink)
       if let action = step.action {
@@ -986,7 +978,7 @@ struct MeetingDetailView: View {
           return state.saveAction(copy)
         }.frame(width: 80)
       } else if let due = step.dueDate {
-        Text("due \(due)").font(.caption).foregroundStyle(Palette.secondary)
+        Text("due \(due)").font(.detail).foregroundStyle(Palette.secondary)
       }
       sourceLinks(step.sources)
       Spacer(minLength: 0)
@@ -1006,7 +998,7 @@ struct MeetingDetailView: View {
   @ViewBuilder private var timeline: some View {
     if state.playbackDuration == 0 && !state.playbackLoading {
       Label(state.partial.audio ? "Audio deleted" : "No audio for this meeting", systemImage: "waveform.slash")
-        .font(.caption).foregroundStyle(Palette.secondary)
+        .font(.detail).foregroundStyle(Palette.secondary)
     } else {
       VStack(spacing: 6) {
         SpeakerTimeline(
@@ -1050,7 +1042,7 @@ struct MeetingDetailView: View {
           Button("Show audio files") {
             NSWorkspace.shared.open(state.root.appendingPathComponent("Recordings/\(state.selectedMeetingID ?? "")"))
           }
-        }.font(.caption)
+        }.font(.detail)
       }.padding(12).background(Palette.paper.opacity(0.7), in: RoundedRectangle(cornerRadius: 14))
     }
   }
@@ -1068,11 +1060,11 @@ struct MeetingDetailView: View {
           Text("Ask anything about this meeting").foregroundStyle(Palette.secondary)
           Spacer()
           if !state.assistantHistory.isEmpty {
-            Text("\(state.assistantHistory.count) earlier").font(.caption).foregroundStyle(Palette.secondary)
+            Text("\(state.assistantHistory.count) earlier").font(.detail).foregroundStyle(Palette.secondary)
           }
-        }.font(.system(size: 14)).padding(.horizontal, 16).padding(.vertical, 12)
-          .background(Palette.paper, in: Capsule())
-          .overlay { Capsule().strokeBorder(Palette.border) }
+        }.font(.ui).padding(.horizontal, 16).padding(.vertical, 12)
+          .background(Palette.paper, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+          .overlay { RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Palette.border) }
           .contentShape(Capsule())
       }.buttonStyle(.plain).padding(.top, 12).accessibilityLabel("Ask anything about this meeting")
     }
@@ -1111,7 +1103,7 @@ struct MeetingDetailView: View {
         Divider()
         Button("New speaker") { state.splitSpeaker(segment) }
       }
-    }.menuStyle(.borderlessButton).fixedSize().font(.system(size: 12, weight: .semibold))
+    }.menuStyle(.borderlessButton).fixedSize().font(.detail.weight(.semibold))
       .accessibilityLabel("Speaker \(label)").accessibilityHint("Rename this speaker or move this line")
   }
   /// Consecutive lines from one speaker on one track, in order.
@@ -1140,12 +1132,12 @@ struct MeetingDetailView: View {
           Label(
             "Capture gap at \(WorkspaceState.time(gap.start)): \(gap.reason)",
             systemImage: "waveform.slash"
-          ).font(.caption).foregroundStyle(Palette.red)
+          ).font(.detail).foregroundStyle(Palette.red)
         }
       }
       if state.segments.isEmpty {
         QuietEmpty(
-          icon: "waveform", art: "VoxelDictation", title: "No transcript yet",
+          icon: "waveform", title: "No transcript yet",
           subtitle:
             "Record the meeting. The transcript shows here when you stop."
         )
@@ -1161,13 +1153,13 @@ struct MeetingDetailView: View {
                 VStack(alignment: .leading, spacing: 6) {
                   HStack {
                     if segment.provisional {
-                      Text("Live text · speaker not known yet").font(.system(size: 12, weight: .semibold))
+                      Text("Live text · speaker not known yet").font(.detail.weight(.semibold))
                     } else {
                       Circle().fill(Palette.speaker(segment.speakerID)).frame(width: 8, height: 8)
                         .accessibilityHidden(true)
                       speakerMenu(segment)
                       if let reason = state.inferredNameReason(segment.speakerID) {
-                        Text("Inferred").font(.system(size: 10, weight: .medium))
+                        Text("Inferred").font(.micro)
                           .foregroundStyle(Palette.secondary).padding(.horizontal, 6).padding(.vertical, 2)
                           .overlay { Capsule().strokeBorder(Palette.border) }
                           .help("Named from the transcript: " + reason)
@@ -1177,7 +1169,7 @@ struct MeetingDetailView: View {
                         Button("Who is this?") {
                           newSpeakerName = ""
                           renaming = segment
-                        }.buttonStyle(.plain).font(.system(size: 11, weight: .medium))
+                        }.buttonStyle(.plain).font(.detail.weight(.medium))
                           .padding(.horizontal, 8).padding(.vertical, 3)
                           .background(Palette.speaker(segment.speakerID).opacity(0.14), in: Capsule())
                           .accessibilityHint("Name this speaker everywhere in the meeting")
@@ -1187,7 +1179,7 @@ struct MeetingDetailView: View {
                       segment.track == .microphone
                         ? "MIC" : (segment.track == .assistant ? "ASSISTANT" : "CALL")
                     ).font(
-                      .system(size: 9, weight: .semibold)
+                      .micro.weight(.semibold)
                     ).foregroundStyle(Palette.secondary)
                     Spacer()
                   }
@@ -1220,13 +1212,13 @@ private struct TranscriptLine: View {
   @FocusState private var focused: Int?
   var body: some View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
-      Text(text).font(.system(size: 16)).lineSpacing(5).textSelection(.enabled)
+      Text(text).font(.reading).lineSpacing(5).textSelection(.enabled)
         .padding(.horizontal, 4).padding(.vertical, 1)
         .background(highlight, in: RoundedRectangle(cornerRadius: 5))
       Spacer(minLength: 0)
       // Shown on hover or keyboard focus; always reachable by keyboard and VoiceOver.
       HStack(spacing: 10) {
-        Button(time, action: play).font(.caption.monospacedDigit()).foregroundStyle(Palette.accent)
+        Button(time, action: play).font(.detail.monospacedDigit()).foregroundStyle(Palette.accent)
           .accessibilityLabel("Play from \(time)").focused($focused, equals: 0)
         Button(action: edit) { Image(systemName: "pencil") }.foregroundStyle(Palette.secondary)
           .accessibilityLabel("Fix this line").focused($focused, equals: 1)
@@ -1240,7 +1232,7 @@ struct CaptureSetupView: View {
   var permissionSetup = false
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {
-      Text("Record a meeting").font(.system(size: 27, weight: .semibold))
+      Text("Record a meeting").font(.pageTitle)
       Text(
         "Tell everyone you’re recording. The audio stays on this Mac."
       ).foregroundStyle(Palette.secondary)
@@ -1248,7 +1240,7 @@ struct CaptureSetupView: View {
         Text(
           "Pick the call app to record. Nothing starts until you press Start recording."
         )
-        .font(.callout).foregroundStyle(Palette.secondary)
+        .font(.detail).foregroundStyle(Palette.secondary)
       }
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
@@ -1267,9 +1259,9 @@ struct CaptureSetupView: View {
             if state.selectedPID != 0 {
               Text(
                 "Chup! records all sound from this app. In a browser, that can include other tabs."
-              ).font(.caption).foregroundStyle(Palette.red)
+              ).font(.detail).foregroundStyle(Palette.red)
             }
-            Text("Pause stops the recording. The call can still hear you.").font(.caption)
+            Text("Pause stops the recording. The call can still hear you.").font(.detail)
               .foregroundStyle(Palette.secondary)
           }
         }.padding(.trailing, 4)
@@ -1307,11 +1299,11 @@ struct SegmentEditor: View {
   }
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      Text("Fix this line").font(.system(size: 25, weight: .semibold))
+      Text("Fix this line").font(.pageTitle)
       ScrollView {
         VStack(alignment: .leading, spacing: 18) {
           WorkspaceCard("Transcript", icon: "text.bubble") {
-            TextEditor(text: $text).font(.system(size: 16)).scrollContentBackground(.hidden).frame(
+            TextEditor(text: $text).font(.reading).scrollContentBackground(.hidden).frame(
               height: 130)
           }
           WorkspaceCard("Speaker", icon: "person.crop.circle") {
@@ -1319,7 +1311,7 @@ struct SegmentEditor: View {
             DisclosureGroup("Remember this voice in future meetings") {
               Text(
                 "Listen first. Only this person may speak in the clip."
-              ).font(.caption)
+              ).font(.detail)
               Button("Listen to the clip") { state.play(at: segment.start) }
               Toggle(
                 "Only this person speaks in the clip",
@@ -1388,7 +1380,7 @@ struct PipelineStatus: View {
       if !state.notesQueue.isEmpty {
         item(nil, "\(state.notesQueue.count) waiting for notes")
       }
-    }.font(.caption).foregroundStyle(Palette.secondary)
+    }.font(.detail).foregroundStyle(Palette.secondary)
       .task(id: "\(state.backendURL)|\(state.backendToken)|\(state.cloudEnabled)") {
         backend = nil
         while state.cloudEnabled, !state.backendToken.isEmpty, !Task.isCancelled {
@@ -1439,14 +1431,14 @@ struct VoiceSampleConfirmation: View {
   }
   private var content: some View {
     VStack(alignment: .leading, spacing: 16) {
-      Text("Remember \(sample.name)’s voice").font(.system(size: 22, weight: .semibold))
+      Text("Remember \(sample.name)’s voice").font(.sectionTitle)
       Text("Chup! will save this clip encrypted on this Mac and send it with future transcriptions to recognise \(sample.name).")
         .foregroundStyle(Palette.secondary)
       WorkspaceCard("Clip · \(WorkspaceState.time(sample.segment.start))", icon: "waveform") {
-        Text(sample.segment.text).font(.system(size: 15)).textSelection(.enabled)
+        Text(sample.segment.text).font(.reading).textSelection(.enabled)
         Button("Listen to clip") { state.playVoiceSample(sample.segment) }
         Text("\(sample.segment.track == .microphone ? "Microphone" : "Call audio") only · \(Int(min(sample.segment.end - sample.segment.start, 10).rounded())) s")
-          .font(.caption).foregroundStyle(Palette.secondary)
+          .font(.detail).foregroundStyle(Palette.secondary)
       }
       Toggle("This clip contains only \(sample.name)", isOn: $confirmed)
       HStack {
@@ -1472,7 +1464,7 @@ struct CommitField: View {
   @FocusState private var focused: Bool
   var body: some View {
     TextField(placeholder, text: Binding(get: { draft ?? value }, set: { draft = $0 }))
-      .textFieldStyle(.plain).font(.caption).foregroundStyle(Palette.secondary)
+      .textFieldStyle(.plain).font(.detail).foregroundStyle(Palette.secondary)
       .focused($focused).accessibilityLabel(label)
       .onSubmit(save)
       .onChange(of: focused) { _, now in if !now { save() } }
@@ -1534,7 +1526,7 @@ struct MeetingJobCard: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack(alignment: .firstTextBaseline, spacing: 8) {
-        Text(job.title).font(.system(size: 14, weight: .semibold))
+        Text(job.title).font(.ui.weight(.semibold))
         if let fraction = job.fraction {
           Text(fraction.formatted(.percent.precision(.fractionLength(0)))).monospacedDigit()
             .foregroundStyle(Palette.secondary)
@@ -1561,7 +1553,7 @@ struct MeetingJobCard: View {
         if let parts = job.parts {
           Text("Part \(parts.done) of \(parts.total)").monospacedDigit()
         }
-      }.font(.caption).foregroundStyle(Palette.secondary)
+      }.font(.detail).foregroundStyle(Palette.secondary)
     }.padding(14).workspaceSurface()
   }
 }
@@ -1572,7 +1564,7 @@ struct MeetingJobBadge: View {
     HStack(spacing: 6) {
       ProgressView().controlSize(.mini)
       Text(job.short).monospacedDigit()
-    }.font(.caption.weight(.medium)).foregroundStyle(Palette.accent)
+    }.font(.detail.weight(.medium)).foregroundStyle(Palette.accent)
       .padding(.horizontal, 9).padding(.vertical, 4).background(Palette.accent.opacity(0.10), in: Capsule())
       .accessibilityElement(children: .combine)
   }
@@ -1633,7 +1625,7 @@ struct SummaryWritingPlaceholder: View {
         Spacer()
         Text("step \(index) of \(job.steps.count) · \(job.title.lowercased())").monospacedDigit()
           .foregroundStyle(Palette.secondary)
-      }.font(.system(size: 12)).padding(.horizontal, 14).frame(height: 40)
+      }.font(.detail).padding(.horizontal, 14).frame(height: 40)
         .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 10))
       ForEach(0..<2, id: \.self) { _ in
         VStack(alignment: .leading, spacing: 10) {

@@ -16,7 +16,7 @@ struct DictationDiagnosticsView: View {
         Text(
           "Your recent dictations, with how long each step took. No text is kept."
         )
-        .font(.callout).foregroundStyle(Palette.secondary)
+        .font(.detail).foregroundStyle(Palette.secondary)
         if state.traceStorageFailed {
           Label("Some timing data could not be saved.", systemImage: "exclamationmark.circle")
         }
@@ -51,11 +51,11 @@ struct DictationDiagnosticsView: View {
         Text(
           "Keeps the latest 50 attempts locally. Export contains timing, status and counts only."
         )
-        .font(.caption).foregroundStyle(Palette.secondary)
+        .font(.detail).foregroundStyle(Palette.secondary)
       }
       WorkspaceCard("Paste activity", icon: "arrow.down.doc") {
         Text("Shows where each dictation went: typed in, copied, or held back.")
-          .font(.callout).foregroundStyle(Palette.secondary)
+          .font(.detail).foregroundStyle(Palette.secondary)
         if state.deliveryDiagnostics.isEmpty {
           Text("No paste attempts yet.").foregroundStyle(Palette.secondary)
         } else {
@@ -64,11 +64,11 @@ struct DictationDiagnosticsView: View {
               HStack {
                 Label(item.result.title, systemImage: item.result.icon)
                 Spacer()
-                Text(item.date.formatted(date: .omitted, time: .shortened)).font(.caption)
+                Text(item.date.formatted(date: .omitted, time: .shortened)).font(.detail)
               }
               Text("Trigger: \(item.trigger) · Route: \(item.route)")
-                .font(.caption).foregroundStyle(Palette.secondary)
-              Text(item.detail).font(.caption2).foregroundStyle(Palette.secondary)
+                .font(.detail).foregroundStyle(Palette.secondary)
+              Text(item.detail).font(.detail).foregroundStyle(Palette.secondary)
             }.padding(.vertical, 6)
           }
         }

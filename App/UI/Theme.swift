@@ -1,6 +1,24 @@
 import AppKit
 import SwiftUI
 
+/// The whole type scale (design pass 2026-11-06): SF Pro at macOS sizes. Use these, not
+/// `.system(size:)`; weight changes go through `.weight(_:)`. Icons size themselves.
+extension Font {
+  /// Page and meeting titles.
+  static let pageTitle = Font.system(size: 26, weight: .bold)
+  /// Sheet titles and empty-state titles.
+  static let sectionTitle = Font.system(size: 20, weight: .semibold)
+  /// Section headings inside a page or card.
+  static let heading = Font.system(size: 15, weight: .semibold)
+  /// Long-form reading text: notes, summaries, transcript lines.
+  static let reading = Font.system(size: 15)
+  /// Interface text: controls, list rows, labels. macOS body size.
+  static let ui = Font.system(size: 13)
+  /// Secondary detail: metadata, descriptions, captions.
+  static let detail = Font.system(size: 11)
+  /// Badges and counters only.
+  static let micro = Font.system(size: 10, weight: .medium)
+}
 enum Palette {
   static func color(_ light: UInt32, _ dark: UInt32) -> Color {
     Color(
@@ -11,20 +29,17 @@ enum Palette {
           blue: Double(hex & 255) / 255, alpha: 1)
       })
   }
-  // Voice palette (picked 2026-10-30, docs/PLAN.md increment 10).
-  static let workspace = color(0xEEECF4, 0x17161C), paper = color(0xFFFFFF, 0x201F27),
-    sidebar = color(0xE6E4F0, 0x1B1A21)
-  static let ink = color(0x16151A, 0xF4F3F8), secondary = color(0x615E6D, 0xA9A6B5),
+  // Neutral Apple-style greys with the violet accent (design pass 2026-11-06).
+  static let workspace = color(0xF5F5F7, 0x17161C), paper = color(0xFFFFFF, 0x201F27),
+    sidebar = color(0xEDEDF0, 0x1B1A21)
+  static let ink = color(0x1D1D1F, 0xF4F3F8), secondary = color(0x6E6E73, 0xA9A6B5),
     accent = color(0x5B3DE6, 0xB9A8FF), red = color(0xB03D30, 0xF29A8C)
-  static let border = color(0xDCD9E6, 0x34323D)
+  static let border = color(0xE3E3E8, 0x34323D)
   static let backdrop = color(0xF5ECE6, 0x121116)
-  /// Aero-style window glass tint (top → bottom), chosen 2026-10-31.
-  static let glassTop = color(0x9ECCFA, 0x2A3C55), glassBottom = color(0x5C94E6, 0x1E2E4A)
   static let violet = Color(red: 106 / 255, green: 76 / 255, blue: 245 / 255)
   static let coral = Color(red: 232 / 255, green: 115 / 255, blue: 90 / 255)
   static let gradient = LinearGradient(
     colors: [violet, coral], startPoint: .leading, endPoint: .trailing)
-  static let title = Font.system(size: 30, weight: .semibold)
   /// Brand gradient sampled at `t` in 0...1, for per-bar waveform fills.
   static func gradient(at t: Double) -> Color {
     let t = min(1, max(0, t))
@@ -55,21 +70,15 @@ struct WaveMark: View {
 }
 struct QuietEmpty: View {
   var icon: String
-  /// A voxel illustration from the asset catalog; the SF Symbol is the fallback.
-  var art: String?
   var title: String
   var subtitle: String
   var body: some View {
-    VStack(spacing: 16) {
-      if let art {
-        Image(art).resizable().interpolation(.high).frame(width: 72, height: 72).accessibilityHidden(true)
-      } else {
-        Image(systemName: icon).font(.system(size: 32, weight: .ultraLight)).foregroundStyle(
-          Palette.accent)
-      }
-      Text(title).font(.system(size: 25, weight: .semibold))
-      Text(subtitle).font(.system(size: 14)).foregroundStyle(Palette.secondary)
-        .multilineTextAlignment(.center).frame(maxWidth: 370)
+    VStack(spacing: 8) {
+      Image(systemName: icon).font(.system(size: 40, weight: .light)).foregroundStyle(Palette.secondary.opacity(0.7))
+        .padding(.bottom, 6).accessibilityHidden(true)
+      Text(title).font(.sectionTitle)
+      Text(subtitle).font(.ui).foregroundStyle(Palette.secondary)
+        .multilineTextAlignment(.center).frame(maxWidth: 340)
     }.padding(40).frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 }
@@ -87,7 +96,7 @@ struct SourceMeter: View {
             width: g.size.width * CGFloat(min(1, max(0.02, level))))
         }
       }.frame(width: 42, height: 4)
-    }.font(.caption).foregroundStyle(Palette.secondary).accessibilityLabel(
+    }.font(.detail).foregroundStyle(Palette.secondary).accessibilityLabel(
       "\(name): \(receiving ? "receiving audio" : "no audio packets")")
   }
 }
@@ -112,16 +121,16 @@ struct WorkspaceCard<Content: View>: View {
       if let title {
         HStack(alignment: .top, spacing: 12) {
           if let icon {
-            Image(systemName: icon).font(.system(size: 17, weight: .medium))
-              .foregroundStyle(Palette.accent).frame(width: 30, height: 30)
-              .background(Palette.sidebar.opacity(0.55), in: RoundedRectangle(cornerRadius: 9))
+            Image(systemName: icon).font(.system(size: 14, weight: .medium))
+              .foregroundStyle(Palette.accent).frame(width: 26, height: 26)
+              .background(Palette.sidebar.opacity(0.55), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
               .accessibilityHidden(true)
           }
           VStack(alignment: .leading, spacing: 5) {
-            Text(title).font(.system(size: 20, weight: .semibold)).foregroundStyle(Palette.ink)
+            Text(title).font(.heading).foregroundStyle(Palette.ink)
               .accessibilityAddTraits(.isHeader)
             if let subtitle {
-              Text(subtitle).font(.callout).foregroundStyle(Palette.secondary)
+              Text(subtitle).font(.detail).foregroundStyle(Palette.secondary)
                 .fixedSize(horizontal: false, vertical: true).lineSpacing(3)
             }
           }
@@ -134,9 +143,9 @@ struct WorkspaceCard<Content: View>: View {
 
 extension View {
   func workspaceSurface() -> some View {
-    self.background(Palette.paper, in: RoundedRectangle(cornerRadius: 16))
+    self.background(Palette.paper, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
       .overlay {
-        RoundedRectangle(cornerRadius: 16).strokeBorder(
+        RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(
           Palette.border.opacity(0.6), lineWidth: 0.75
         ).allowsHitTesting(false)
       }
@@ -154,9 +163,9 @@ struct SettingSwitch: View {
   var body: some View {
     Toggle(isOn: $isOn) {
       VStack(alignment: .leading, spacing: 5) {
-        Text(title).font(.system(size: 13, weight: .medium))
+        Text(title).font(.ui.weight(.medium))
         if let detail {
-          Text(detail).font(.callout).foregroundStyle(Palette.secondary).fixedSize(
+          Text(detail).font(.detail).foregroundStyle(Palette.secondary).fixedSize(
             horizontal: false, vertical: true
           ).lineSpacing(3)
         }
@@ -170,12 +179,12 @@ struct DetailDisclosure: View {
   let text: String
   var body: some View {
     DisclosureGroup(title) {
-      Text(text).font(.callout).foregroundStyle(Palette.secondary).lineSpacing(4)
+      Text(text).font(.detail).foregroundStyle(Palette.secondary).lineSpacing(4)
         .fixedSize(horizontal: false, vertical: true).frame(
           maxWidth: .infinity, alignment: .leading
         )
         .padding(.top, 8)
-    }.font(.callout).foregroundStyle(Palette.secondary)
+    }.font(.detail).foregroundStyle(Palette.secondary)
   }
 }
 
@@ -189,7 +198,7 @@ struct InlineStatus: View {
     } icon: {
       Image(systemName: icon)
     }
-    .font(.callout).foregroundStyle(warning ? Palette.red : Palette.secondary)
+    .font(.detail).foregroundStyle(warning ? Palette.red : Palette.secondary)
     .frame(maxWidth: .infinity, alignment: .leading).insetSurface()
   }
 }
@@ -215,33 +224,35 @@ struct InstalledAppIcon: View {
   }
 }
 
-/// Page-level actions: 40 pt tall pills. Primary uses the brand gradient, secondary a white
-/// pill with a hairline, both with a pressed state.
+/// Page-level actions in the macOS idiom: 28 pt rounded rectangles (22 pt when small). Primary
+/// is solid accent; secondary is white with a hairline. The names stay for the call sites.
 struct PillButtonStyle: ButtonStyle {
   var primary = false
   @Environment(\.isEnabled) private var enabled
   @Environment(\.controlSize) private var controlSize
-  /// Small controls in dense rows stay compact; everything else gets the full 40 pt pill.
   private var compact: Bool { controlSize == .small || controlSize == .mini }
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.system(size: compact ? 12 : 14, weight: .semibold)).labelStyle(PillLabelStyle())
-      .padding(.horizontal, compact ? 12 : 18).frame(minHeight: compact ? 28 : 40)
+      .font(.ui.weight(primary ? .semibold : .medium)).labelStyle(PillLabelStyle())
+      .padding(.horizontal, compact ? 10 : 14).frame(minHeight: compact ? 22 : 28)
       .foregroundStyle(primary ? Color.white : Palette.ink)
       .background {
-        if primary { Capsule().fill(Palette.gradient) } else {
-          Capsule().fill(Palette.paper).overlay(Capsule().strokeBorder(Palette.border))
-        }
+        RoundedRectangle(cornerRadius: 7, style: .continuous)
+          .fill(primary ? AnyShapeStyle(Palette.accent) : AnyShapeStyle(Palette.paper))
+          .overlay {
+            if !primary {
+              RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(Palette.border)
+            }
+          }
       }
-      .shadow(color: .black.opacity(primary ? 0.12 : 0.04), radius: primary ? 6 : 2, y: 1)
-      .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.45)
-      .scaleEffect(configuration.isPressed ? 0.98 : 1)
-      .contentShape(Capsule())
+      .shadow(color: .black.opacity(0.05), radius: 0.5, y: 0.5)
+      .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.45)
+      .contentShape(RoundedRectangle(cornerRadius: 7))
   }
 }
 private struct PillLabelStyle: LabelStyle {
   func makeBody(configuration: Configuration) -> some View {
-    HStack(spacing: 8) { configuration.icon.font(.system(size: 13, weight: .semibold)); configuration.title }
+    HStack(spacing: 6) { configuration.icon; configuration.title }
   }
 }
 extension ButtonStyle where Self == PillButtonStyle {
@@ -249,9 +260,8 @@ extension ButtonStyle where Self == PillButtonStyle {
   static var pillPrimary: PillButtonStyle { PillButtonStyle(primary: true) }
 }
 
-/// Segmented choice in the pill vocabulary: a soft capsule track, the selected option a white
-/// pill with a hairline. Replaces `.pickerStyle(.segmented)`, whose stock look and small hit
-/// targets didn't match the page pills.
+/// Segmented choice like a macOS segmented control: a grey track, the selected option a white
+/// raised segment. Larger hit targets than `.pickerStyle(.segmented)`.
 struct PillSegmented<Value: Hashable>: View {
   /// VoiceOver name for the group, like a Picker's label.
   let title: String
@@ -260,24 +270,24 @@ struct PillSegmented<Value: Hashable>: View {
   let label: (Value) -> String
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var body: some View {
-    HStack(spacing: 2) {
+    HStack(spacing: 0) {
       ForEach(options, id: \.self) { option in
         let selected = option == selection
         Button { selection = option } label: {
-          Text(label(option)).font(.system(size: 13, weight: selected ? .semibold : .medium))
+          Text(label(option)).font(.ui.weight(selected ? .semibold : .regular))
             .foregroundStyle(selected ? Palette.ink : Palette.secondary)
-            .padding(.horizontal, 16).frame(minHeight: 32)
+            .padding(.horizontal, 14).frame(minHeight: 24)
             .background {
               if selected {
-                Capsule().fill(Palette.paper).overlay(Capsule().strokeBorder(Palette.border))
-                  .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
+                RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Palette.paper)
+                  .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
               }
             }
-            .contentShape(Capsule())
+            .contentShape(Rectangle())
         }.buttonStyle(.plain)
           .accessibilityAddTraits(selected ? .isSelected : [])
       }
-    }.padding(3).background(Capsule().fill(Palette.border.opacity(0.55)))
+    }.padding(2).background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Palette.border.opacity(0.8)))
       .accessibilityElement(children: .contain).accessibilityLabel(title)
       .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: selection)
       .fixedSize()

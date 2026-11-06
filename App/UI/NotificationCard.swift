@@ -76,7 +76,7 @@ struct NotificationCard: View {
         Text(
           kind == .callDetected || kind == .browserDetected
             ? appName.uppercased() : recording ? "CHUP! · LIVE" : "CHUP!"
-        ).font(.system(size: 9, weight: .semibold)).tracking(1.4).foregroundStyle(Palette.secondary)
+        ).font(.micro.weight(.semibold)).tracking(1.4).foregroundStyle(Palette.secondary)
         Spacer()
         if kind == .callDetected || kind == .browserDetected {
           ZStack {
@@ -92,12 +92,12 @@ struct NotificationCard: View {
         }
       }
       VStack(alignment: .leading, spacing: 6) {
-        Text(title).font(.system(size: 16, weight: .semibold))
-        Text(detail).font(.system(size: 12)).lineSpacing(2).foregroundStyle(Palette.secondary)
+        Text(title).font(.heading)
+        Text(detail).font(.detail).lineSpacing(2).foregroundStyle(Palette.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
       if kind == .callDetected {
-        Text("Tell everyone before you record.").font(.system(size: 10)).foregroundStyle(
+        Text("Tell everyone before you record.").font(.micro).foregroundStyle(
           Palette.secondary)
       }
       HStack(spacing: 10) {
@@ -117,7 +117,7 @@ struct NotificationCard: View {
         Spacer()
         Button(primaryTitle, action: primary).buttonStyle(.pillPrimary).controlSize(.small)
 
-      }.font(.system(size: 11))
+      }.font(.detail)
     }.padding(16).frame(width: 336, alignment: .leading)
       .background(Palette.workspace, in: RoundedRectangle(cornerRadius: 18))
       .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.border) }
