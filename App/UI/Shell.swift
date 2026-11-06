@@ -97,7 +97,7 @@ struct GlassRail: View {
       } label: {
         Image(systemName: state.meetingStatus == .recording ? "record.circle.fill" : "record.circle")
           .font(.heading).foregroundStyle(.white)
-          .frame(width: 40, height: 40).background(Palette.red, in: Circle())
+          .frame(width: 40, height: 40).background(Palette.record, in: Circle())
       }
       .buttonStyle(.plain).padding(.vertical, 14)
       .help(state.activeMeetingID == nil ? "Record a meeting" : "Show the recording meeting")
@@ -434,14 +434,15 @@ struct TodayView: View {
   }
 }
 
-/// The window's own material (set on the scene with containerBackground) shows through here,
-/// untinted like a macOS sidebar. Reduce Transparency gets a solid fill.
-struct ShellGlass: View {
-  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+/// The window's own backdrop behind the rail and the content panel: the voice gradient,
+/// lavender at the top left warming to peach at the bottom right, with soft violet and coral
+/// glows. Opaque, so nothing behind the window shows through (decided 2026-11-06).
+struct ShellBackdrop: View {
   var body: some View {
-    if reduceTransparency { Palette.sidebar } else {
-      // ponytail: a fixed light wash keeps dark wallpapers from muddying the blur.
-      Color.white.opacity(0.35)
+    ZStack {
+      LinearGradient(colors: [Palette.sidebar, Palette.backdrop], startPoint: .topLeading, endPoint: .bottomTrailing)
+      RadialGradient(colors: [Palette.violet.opacity(0.16), .clear], center: .topLeading, startRadius: 0, endRadius: 520)
+      RadialGradient(colors: [Palette.coral.opacity(0.14), .clear], center: .bottomTrailing, startRadius: 0, endRadius: 620)
     }
   }
 }

@@ -79,7 +79,7 @@ struct WorkspaceShell: View {
       if let toast = state.undoToast {
         UndoToastView(toast: toast).padding(.bottom, 28).transition(.move(edge: .bottom).combined(with: .opacity))
       }
-    }.animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: state.undoToast).background(ShellGlass().ignoresSafeArea()).foregroundStyle(Palette.ink).tint(Palette.accent)
+    }.animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: state.undoToast).background(ShellBackdrop().ignoresSafeArea()).foregroundStyle(Palette.ink).tint(Palette.accent)
       // Buttons without their own style are pills everywhere in the workspace.
       .buttonStyle(.pill)
   }

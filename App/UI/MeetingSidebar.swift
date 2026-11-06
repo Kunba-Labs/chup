@@ -274,7 +274,7 @@ struct MeetingSidebarView: View {
           // Notes are written on stop only when cloud processing can run; otherwise audio is saved.
           Label(state.cloudEnabled && !state.backendToken.isEmpty ? "Stop and write notes" : "Stop and save",
             systemImage: "stop.fill").font(.ui.weight(.semibold))
-            .frame(maxWidth: .infinity).frame(height: 34).background(Palette.red, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .frame(maxWidth: .infinity).frame(height: 34).background(Palette.record, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .foregroundStyle(.white)
         }.buttonStyle(.plain)
         Menu {

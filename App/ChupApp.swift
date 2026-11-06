@@ -28,8 +28,6 @@ import ChupCore
       WorkspaceView().environmentObject(state).frame(minWidth: 900, minHeight: 650)
         .background(WorkspaceFrameRestorer())
         .preferredColorScheme(.light)
-        // The window itself is the glass: a behind-window material, under a hidden title bar.
-        .containerBackground(.thinMaterial, for: .window)
     }.defaultSize(width: 1240, height: 810)
       .windowStyle(.hiddenTitleBar)
       .commands {
