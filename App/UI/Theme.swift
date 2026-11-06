@@ -43,6 +43,8 @@ enum Palette {
   static let onAccent = color(0xFFFFFF, 0xF2F1EE)
   /// Bauhaus yellow: marks (open counts, stars). Folders and tags are `red`.
   static let star = color(0xC98A06, 0xF0B323)
+  /// Ink on a yellow block (membox's yellow pad ink).
+  static let onStar = color(0x17171C, 0x17171C)
   /// Record and Stop: Apple red in light panels, Bauhaus red in the window.
   static let record = color(0xFF3B30, 0xD93B2B)
   /// Unselected sidebar symbols: label grey, darker than `secondary` so outlines hold up.

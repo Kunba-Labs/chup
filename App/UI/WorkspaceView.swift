@@ -35,8 +35,8 @@ struct WorkspaceShell: View {
       VStack(spacing: 0) {
         if let notice = state.notice {
           HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "info.circle").foregroundStyle(Palette.accent)
-            Text(notice).font(.detail)
+            Image(systemName: "info.circle.fill")
+            Text(notice).font(.ui.weight(.medium))
               .fixedSize(horizontal: false, vertical: true)
               .frame(maxWidth: .infinity, alignment: .leading)
             Button {
@@ -44,7 +44,8 @@ struct WorkspaceShell: View {
             } label: {
               Image(systemName: "xmark")
             }.buttonStyle(.plain).accessibilityLabel("Dismiss notice")
-          }.padding(13).background(Palette.paper)
+          }.padding(13).foregroundStyle(Palette.onStar)
+            .background(Palette.star)  // Bauhaus: yellow marks, a solid block with ink icons.
         }
         Group {
           switch state.page {
