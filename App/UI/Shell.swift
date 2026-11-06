@@ -9,12 +9,12 @@ enum RailModule: String, CaseIterable, Identifiable {
   var id: String { rawValue }
   var icon: String {
     switch self {
-    case .today: return "sun.max.fill"
-    case .meetings: return "person.2.fill"
+    case .today: return "sun.max"
+    case .meetings: return "person.2"
     case .dictation: return "waveform"
-    case .notebook: return "book.closed.fill"
-    case .personal: return "character.book.closed.fill"
-    case .settings: return "gearshape.fill"
+    case .notebook: return "book.closed"
+    case .personal: return "character.book.closed"
+    case .settings: return "gearshape"
     }
   }
   var page: WorkspacePage {
@@ -40,10 +40,13 @@ enum RailModule: String, CaseIterable, Identifiable {
 }
 
 /// Chunky rail glyph: filled SF Symbols at a heavier weight than body icons.
+/// macOS sidebar idiom: outline symbols at regular weight; the selected one fills.
 struct RailIcon: View {
   let symbol: String
+  var active = false
   var body: some View {
-    Image(systemName: symbol).font(.system(size: 18, weight: .semibold)).accessibilityHidden(true)
+    Image(systemName: symbol).font(.system(size: 17, weight: .regular))
+      .symbolVariant(active ? .fill : .none).accessibilityHidden(true)
   }
 }
 
@@ -59,8 +62,8 @@ struct GlassRail: View {
             state.searchOpen = true
           } label: {
             RailIcon(symbol: "magnifyingglass")
-              .frame(width: 40, height: 40).contentShape(RoundedRectangle(cornerRadius: 12))
-          }.buttonStyle(.plain).foregroundStyle(Palette.secondary).help("Search  ⌘K")
+              .frame(width: 36, height: 32).contentShape(RoundedRectangle(cornerRadius: 8))
+          }.buttonStyle(.plain).foregroundStyle(Palette.railIcon).help("Search  ⌘K")
             .accessibilityLabel("Search")
           Spacer()
         }
@@ -74,15 +77,16 @@ struct GlassRail: View {
             } else if module == .dictation && state.dictationStatus == .processing {
               ProcessingCircle().frame(width: 18)
             } else {
-              RailIcon(symbol: module.icon)
+              RailIcon(symbol: module.icon, active: active)
             }
           }
-          .frame(width: 40, height: 40)
-          .background(active ? Palette.paper : .clear, in: RoundedRectangle(cornerRadius: 12))
-          .shadow(color: .black.opacity(active ? 0.08 : 0), radius: 4, y: 1)
-          .contentShape(RoundedRectangle(cornerRadius: 12))
+          .frame(width: 36, height: 32)
+          // Selection is a soft tint, like a Finder sidebar row, not a raised tile.
+          .background(active ? Palette.accent.opacity(0.13) : .clear,
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+          .contentShape(RoundedRectangle(cornerRadius: 8))
         }
-        .buttonStyle(.plain).foregroundStyle(active ? Palette.accent : Palette.secondary)
+        .buttonStyle(.plain).foregroundStyle(active ? Palette.accent : Palette.railIcon)
         .help("\(module.rawValue)  ⌘\(index + 1)")
         .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
         .accessibilityLabel(module.rawValue)

@@ -35,6 +35,9 @@ enum Palette {
   static let ink = color(0x1D1D1F, 0xF4F3F8), secondary = color(0x6E6E73, 0xA9A6B5),
     accent = color(0x5B3DE6, 0xB9A8FF), red = color(0xB03D30, 0xF29A8C)
   static let border = color(0xE3E3E8, 0x34323D)
+  /// Unselected sidebar symbols: macOS label grey, darker than `secondary` so outlines hold up
+  /// on the translucent rail.
+  static let railIcon = color(0x3C3C43, 0xC7C7CC).opacity(0.78)
   static let backdrop = color(0xF5ECE6, 0x121116)
   static let violet = Color(red: 106 / 255, green: 76 / 255, blue: 245 / 255)
   static let coral = Color(red: 232 / 255, green: 115 / 255, blue: 90 / 255)
