@@ -387,6 +387,7 @@ struct TodayView: View {
       }.padding(38).frame(maxWidth: 760, alignment: .leading)
         .frame(maxWidth: .infinity)  // Full-width scroll area: scrollbar at the window edge.
     }
+      .background { SpaceBackdrop().ignoresSafeArea() }
       .onAppear(perform: load).onChange(of: state.meetings) { _, _ in load() }
       .onChange(of: state.actions) { _, _ in load() }
   }
@@ -470,5 +471,39 @@ enum MeetingDays {
             .year(calendar.isDate(day, equalTo: now, toGranularity: .year) ? .omitted : .defaultDigits))
       return (title, days[day]!)
     }
+  }
+}
+
+/// Today's backdrop: a dark space image (generated with Higgsfield, 2026-11-06) that drifts very
+/// slowly, with a few faint stars twinkling over it. Reduce Motion holds it still.
+struct SpaceBackdrop: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  /// Fixed star field: (x, y in 0...1, size, phase), so stars don't jump between launches.
+  private static let stars: [(CGFloat, CGFloat, CGFloat, Double)] = (0..<48).map { i in
+    let h = UInt64(i + 1) &* 0x9E37_79B9_7F4A_7C15
+    func unit(_ shift: UInt64) -> CGFloat { CGFloat((h >> shift) & 0xFFFF) / 65535 }
+    return (unit(0), unit(16), 0.8 + unit(32) * 1.4, Double(unit(48)) * 6.28)
+  }
+  var body: some View {
+    // ponytail: 15 fps timeline only while Today is on screen; the GPU cost is one image and 48 dots.
+    TimelineView(.animation(minimumInterval: 1 / 15, paused: reduceMotion)) { context in
+      let t = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate
+      GeometryReader { geometry in
+        ZStack {
+          Image("SpaceBackdrop").resizable().scaledToFill()
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            // A slow drift: about one cycle a minute, a few points each way.
+            .scaleEffect(1.06)
+            .offset(x: 10 * sin(t / 9.5), y: 6 * cos(t / 11))
+          Canvas { ctx, size in
+            for (x, y, r, phase) in Self.stars {
+              let glow = 0.25 + 0.35 * (1 + sin(t * 0.8 + phase)) / 2
+              let dot = CGRect(x: x * size.width, y: y * size.height, width: r, height: r)
+              ctx.fill(Path(ellipseIn: dot), with: .color(.white.opacity(glow)))
+            }
+          }
+        }.clipped()
+      }
+    }.accessibilityHidden(true).allowsHitTesting(false)
   }
 }
