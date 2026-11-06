@@ -103,18 +103,16 @@ struct DictationView: View {
                 ).font(
                   .reading
                 ).lineSpacing(5).textSelection(.enabled)
-                if let microphone = entry.microphoneName {
-                  Label(microphone, systemImage: "mic").font(.detail).foregroundStyle(
-                    Palette.secondary)
-                }
-                if let provider = entry.transcriptionProvider {
-                  Label(
-                    provider, systemImage: provider.hasPrefix("Local") ? "internaldrive" : "cloud"
-                  )
-                  .font(.detail).foregroundStyle(Palette.secondary)
-                }
-                if let note = entry.processingNote {
-                  Text(note).font(.detail).foregroundStyle(Palette.secondary)
+                // Statuses side by side as small tags; a warning is a yellow mark.
+                HStack(spacing: 6) {
+                  if let microphone = entry.microphoneName { StatusTag(text: microphone, icon: "mic") }
+                  if let provider = entry.transcriptionProvider {
+                    StatusTag(text: provider, icon: provider.hasPrefix("Local") ? "internaldrive" : "cloud")
+                  }
+                  // Older entries saved this as a note; it is the normal local result, not a warning.
+                  if let note = entry.processingNote, note != "Plain local transcript · cloud cleanup not applied" {
+                    StatusTag(text: note, icon: "exclamationmark.triangle.fill", warning: true)
+                  }
                 }
                 HStack {
                   Button {
@@ -463,5 +461,25 @@ struct ListSearchField: View {
           .buttonStyle(.plain).foregroundStyle(Palette.secondary).accessibilityLabel("Clear search")
       }
     }.padding(11).background(Palette.paper, in: RoundedRectangle(cornerRadius: 0))
+  }
+}
+
+/// A compact status chip: icon and short text in a ruled block; warnings are yellow marks.
+struct StatusTag: View {
+  let text: String
+  let icon: String
+  var warning = false
+  var body: some View {
+    Label(text, systemImage: icon).labelStyle(TagLabelStyle()).font(.detail.weight(.medium)).lineLimit(1)
+      .padding(.horizontal, 7).padding(.vertical, 3)
+      .foregroundStyle(warning ? Palette.onStar : Palette.secondary)
+      .background(warning ? Palette.star : Palette.paper)
+      .overlay { if !warning { Rectangle().strokeBorder(Palette.border) } }
+      .help(text)
+  }
+}
+private struct TagLabelStyle: LabelStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    HStack(spacing: 5) { configuration.icon.imageScale(.small); configuration.title }
   }
 }

@@ -129,6 +129,23 @@ public final class WorkspaceStore {
   func json<T: Encodable>(_ value: T) throws -> String {
     String(decoding: try encoder.encode(value), as: UTF8.self)
   }
+  /// Saves transcript lines together (a relabel of a whole speaker group): all or none.
+  public func putSegments(_ segments: [TranscriptSegment]) throws {
+    try transaction {
+      for segment in segments {
+        if !(try rows("SELECT id FROM objects WHERE kind='deletedMeeting' AND id=?", [segment.meetingID])).isEmpty {
+          throw WorkspaceError.message("This meeting has been deleted. Late work was discarded.")
+        }
+        try execute(
+          "INSERT OR REPLACE INTO objects(kind,id,parent,json) VALUES('segment',?,?,?)",
+          [segment.id, segment.meetingID, try json(segment)])
+        try execute("DELETE FROM search WHERE kind='segment' AND id=?", [segment.id])
+        try execute(
+          "INSERT INTO search(kind,id,parent,body) VALUES('segment',?,?,?)",
+          [segment.id, segment.meetingID, segment.text])
+      }
+    }
+  }
   public func put<T: Encodable>(
     _ value: T, kind: String, id: String, parent: String = "", searchable: String = ""
   ) throws {

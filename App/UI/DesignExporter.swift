@@ -464,7 +464,11 @@ import ChupCore
     state.selectedMeetingID = nil
     try renderNative(MeetingsView().environmentObject(state).background(Palette.workspace), size: CGSize(width: 900, height: 720), to: destination.appendingPathComponent("layout-meetings.png"))
     try renderNative(NotebookView().environmentObject(state).background(Palette.workspace), size: CGSize(width: 900, height: 720), to: destination.appendingPathComponent("layout-notebook.png"))
-    state.history = [DictationEntry(text: "We need to test the USB microphones before the next meeting.", original: "We need to test the USB microphones before the next meeting.", application: "Sample application", mode: CleanupMode.light.rawValue, audioDirectory: "")]
+    var sample = DictationEntry(text: "We need to test the USB microphones before the next meeting.", original: "We need to test the USB microphones before the next meeting.", application: "Sample application", mode: CleanupMode.light.rawValue, audioDirectory: "")
+    sample.microphoneName = "C922 Pro Stream Webcam"
+    sample.transcriptionProvider = "Local · Whisper large-v3-turbo"
+    sample.processingNote = "Cloud unavailable · transcribed locally"
+    state.history = [sample]
     try renderNative(DictationView().environmentObject(state).background(Palette.workspace), size: CGSize(width: 900, height: 720), to: destination.appendingPathComponent("layout-dictation.png"))
     state.personalization = [
       Personalization(kind: "dictionary", trigger: "Chup", replacement: "Chup!", language: "en"),

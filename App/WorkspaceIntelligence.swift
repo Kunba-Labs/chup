@@ -83,20 +83,22 @@ extension WorkspaceState {
         names[found.speakerID] = (found.name, found.sources.map { "“\($0.quote)”" }.joined(separator: " "))
       }
     }
-    // Re-read after the backend call: a rename or text fix made meanwhile is never overwritten.
-    // ponytail: one put per line, not one transaction; a crash mid-way leaves some lines named.
+    // Re-read after the backend call. Any change to the transcript meanwhile (a fix, a rename)
+    // means the quotes may no longer hold, so nothing is written; every line is named in one
+    // transaction so a group is never left half named.
     let current = try db().list(TranscriptSegment.self, kind: "segment", parent: meetingID)
-    for var segment in current
-    where !segment.provisional && segment.speakerName == nil && segment.nameCorrected != true
-      && !current.contains(where: {
-        $0.speakerID == segment.speakerID && ($0.speakerName != nil || $0.nameCorrected == true)
-      })
-    {
-      guard let found = names[segment.speakerID] else { continue }
+      .filter { !$0.provisional }
+    guard TranscriptScope.fingerprint(current) == TranscriptScope.fingerprint(source) else {
+      throw WorkspaceError.staleVersion
+    }
+    let relabelled = current.compactMap { segment -> TranscriptSegment? in
+      guard segment.speakerName == nil, let found = names[segment.speakerID] else { return nil }
+      var segment = segment
       segment.speakerName = found.name
       segment.attribution = Self.inferredNamePrefix + found.why
-      try db().put(segment, kind: "segment", id: segment.id, parent: meetingID, searchable: segment.text)
+      return segment
     }
+    try db().putSegments(relabelled)
   }
   /// The quote behind a name Chup! inferred and nobody has confirmed yet.
   func inferredNameReason(_ speakerID: String) -> String? {
@@ -108,12 +110,15 @@ extension WorkspaceState {
   /// Undo: every unconfirmed inferred name in this meeting goes back to "Speaker N".
   func undoInferredNames() {
     do {
-      for var segment in segments
-      where segment.nameCorrected != true && segment.attribution?.hasPrefix(Self.inferredNamePrefix) == true {
+      try db().putSegments(segments.compactMap { segment in
+        guard segment.nameCorrected != true,
+          segment.attribution?.hasPrefix(Self.inferredNamePrefix) == true
+        else { return nil }
+        var segment = segment
         segment.speakerName = nil
         segment.attribution = "request-local acoustic group"
-        try db().put(segment, kind: "segment", id: segment.id, parent: segment.meetingID, searchable: segment.text)
-      }
+        return segment
+      })
       try refreshDetail()
     } catch { notice = error.localizedDescription }
   }
@@ -246,6 +251,8 @@ extension WorkspaceState {
     // With topic-led notes, copy what the Summary tab shows: the notes, then next steps.
     let text = enhancedNotes.flatMap { $0.blocks.isEmpty ? nil : $0 }.map {
       $0.markdown(title: title)
+        + (noteDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+          ? "" : "\n## My thoughts\n" + noteDraft.trimmingCharacters(in: .whitespacesAndNewlines) + "\n")
         + (summaryEdits.isEmpty ? "" : "\n## Your edits\n" + summaryEdits.map { "- " + $0.text }.joined(separator: "\n") + "\n")
         + outline.nextStepsMarkdown()
     } ?? outline.markdown(title: title, thoughts: noteDraft)

@@ -86,6 +86,24 @@ final class TrashTests: XCTestCase {
   func testTagListSplitsOnCommaAndDot() {
     XCTAssertEqual(Meeting.tagList("Product · Launch, product,  , Q3"), ["Product", "Launch", "Q3"])
   }
+  func testPutSegmentsWritesAGroupTogetherAndNeverIntoADeletedMeeting() throws {
+    let (store, _) = try workspace()
+    let lines = (0..<3).map {
+      TranscriptSegment(id: "s\($0)", meetingID: "m", start: Double($0), end: Double($0) + 1,
+        text: "line \($0)", speakerID: "a", speakerName: "Mo", track: .remote)
+    }
+    try store.putSegments(lines)
+    XCTAssertEqual(try store.list(TranscriptSegment.self, kind: "segment", parent: "m").sorted { $0.id < $1.id }.map { $0.speakerName }, ["Mo", "Mo", "Mo"])
+    try store.put(["id": "gone"], kind: "deletedMeeting", id: "gone")
+    let late = lines.map { line -> TranscriptSegment in
+      var line = line
+      line.meetingID = line.id == "s2" ? "gone" : "m"
+      line.speakerName = "Astrid"
+      return line
+    }
+    XCTAssertThrowsError(try store.putSegments(late))
+    XCTAssertEqual(try store.list(TranscriptSegment.self, kind: "segment", parent: "m").sorted { $0.id < $1.id }.map { $0.speakerName }, ["Mo", "Mo", "Mo"])
+  }
 }
 
 final class SummaryOutlineTests: XCTestCase {
@@ -110,4 +128,5 @@ final class SummaryOutlineTests: XCTestCase {
     XCTAssertTrue(md.contains("## My thoughts\nbudget??"))
     XCTAssertTrue(md.contains("- [x] Write release notes"))
   }
+
 }

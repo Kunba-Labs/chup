@@ -1111,6 +1111,7 @@ struct MeetingDetailView: View {
         Button("New speaker") { state.splitSpeaker(segment) }
       }
     }.menuStyle(.borderlessButton).fixedSize().font(.detail.weight(.semibold))
+      .tint(Palette.speaker(segment.speakerID))  // The name takes its speaker's colour, like the dot.
       .accessibilityLabel("Speaker \(label)").accessibilityHint("Rename this speaker or move this line")
   }
   /// Consecutive lines from one speaker on one track, in order.

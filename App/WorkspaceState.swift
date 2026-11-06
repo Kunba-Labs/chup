@@ -1385,9 +1385,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
           try db().put(entry, kind: "dictation", id: entry.id, searchable: text)
           try refresh()
           throw WorkspaceError.message("Editing selected text needs cloud AI. Your words are saved in history.")
-        } else {
-          entry.processingNote = "Plain local transcript · cloud cleanup not applied"
-        }
+        }  // A plain local transcript is the expected result here, not something to flag.
       }
       entry.text = DictationPersonalization.spellings(entry.text, entries: preferences, language: language)
     }
