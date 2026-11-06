@@ -313,12 +313,11 @@ struct MeetingSidebarView: View {
         Button("What did I miss?") {
           state.askLive("What did I miss in the last five minutes?", lastSeconds: 300)
         }.buttonStyle(.pill).controlSize(.small).fixedSize()
-      }.disabled(state.liveAnswer.map { $0.meetingID == state.activeMeetingID && $0.answer == nil } ?? false)
+      }.disabled(state.liveAskTask != nil)  // Busy until the answer lands, even if its card was closed.
       Text("Sends the call's text so far to AI.").font(.micro).foregroundStyle(Palette.secondary)
     }.onChange(of: state.activeMeetingID) { _, _ in state.liveAnswer = nil }
   }
   private func send() {
-    state.askLive(question)
-    question = ""
+    if state.askLive(question) { question = "" }
   }
 }

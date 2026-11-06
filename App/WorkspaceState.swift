@@ -172,7 +172,7 @@ enum WorkspacePage: String, CaseIterable, Identifiable {
   @Published var liveLines: [TranscriptSegment] = []
   /// The live notepad's last question and answer; answer nil while it is being written.
   @Published var liveAnswer: (meetingID: String, question: String, answer: String?)?
-  var liveAskTask: Task<Void, Never>?
+  @Published var liveAskTask: Task<Void, Never>?
   /// Meeting ID → bundle ID of the app its call audio came from.
   @Published var meetingApps: [String: String] = [:]
   /// A ⌘K result hands its text to the list it opens, which filters to it.

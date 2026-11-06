@@ -120,14 +120,19 @@ extension WorkspaceState {
         return segment
       })
       try refreshDetail()
+      // The summary and notes were written with those names; say so rather than leave them silently stale.
+      if summary != nil || enhancedNotes?.blocks.isEmpty == false {
+        notice = "Names removed. The summary and notes still use them: press Update summary to rewrite."
+      }
     } catch { notice = error.localizedDescription }
   }
   /// Ask during the call, over the live captions (decided 2026-11-06, spec F12). Captions are
   /// sent as evidence copies, like the live outline; the answer joins the meeting's Ask history.
-  func askLive(_ question: String, lastSeconds: Double? = nil) {
+  /// Returns whether the question was taken, so the field keeps text that was not.
+  @discardableResult func askLive(_ question: String, lastSeconds: Double? = nil) -> Bool {
     guard liveAskTask == nil, let id = activeMeetingID, cloudEnabled, !backendToken.isEmpty,
       !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    else { return }
+    else { return false }
     let all = liveLines.filter { $0.meetingID == id }.map { line -> TranscriptSegment in
       var line = line
       line.provisional = false
@@ -139,7 +144,7 @@ extension WorkspaceState {
     let lines = lastSeconds.map { window in all.filter { $0.end > now - window } } ?? all
     guard !lines.isEmpty else {
       liveAnswer = (id, question, "Nothing has been transcribed yet.")
-      return
+      return true
     }
     liveAnswer = (id, question, nil)
     liveAskTask = Task {
@@ -168,6 +173,7 @@ extension WorkspaceState {
         liveAnswer = (id, question, "Couldn't answer that: " + error.localizedDescription)
       }
     }
+    return true
   }
   /// Gives a still-untitled meeting a topic title from its summary, "with" the people named on
   /// the call. Without a usable summary title it falls back to "Sunday morning with Rizwan".
@@ -251,14 +257,20 @@ extension WorkspaceState {
     // With topic-led notes, copy what the Summary tab shows: the notes, then next steps.
     let text = enhancedNotes.flatMap { $0.blocks.isEmpty ? nil : $0 }.map {
       $0.markdown(title: title)
-        + (noteDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-          ? "" : "\n## My thoughts\n" + noteDraft.trimmingCharacters(in: .whitespacesAndNewlines) + "\n")
+        + Self.notesAddedSince($0, draft: noteDraft)
         + (summaryEdits.isEmpty ? "" : "\n## Your edits\n" + summaryEdits.map { "- " + $0.text }.joined(separator: "\n") + "\n")
         + outline.nextStepsMarkdown()
     } ?? outline.markdown(title: title, thoughts: noteDraft)
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(text, forType: .string)
     notice = "Copied as Markdown."
+  }
+  /// "My thoughts" lines written after the notes were generated; lines already in them aren't repeated.
+  nonisolated static func notesAddedSince(_ notes: EnhancedNotes, draft: String) -> String {
+    let included = Set(notes.blocks.filter { $0.kind == "user" }.map { $0.text.trimmingCharacters(in: .whitespaces) })
+    let added = draft.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+      .filter { !$0.isEmpty && !included.contains($0) }
+    return added.isEmpty ? "" : "\n## Added to my thoughts since\n" + added.joined(separator: "\n") + "\n"
   }
   func draftFollowup() {
     guard let id = selectedMeetingID, let notes = enhancedNotes else { return }
